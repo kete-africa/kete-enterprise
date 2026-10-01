@@ -2,6 +2,7 @@ import { PageSection, PageTitle, TextField } from '@kete/design';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
+import { fetchMyReaches } from '@/lib/rights';
 import { fetchChart } from '@/lib/structure';
 import { StructureForms } from '@/lib/structure-forms';
 import { StructureTree } from '@/lib/structure-tree';
@@ -15,16 +16,20 @@ export const Route = createFileRoute('/structure')({
     isDay(search['asOf']) ? { asOf: search['asOf'] } : {},
   beforeLoad: ({ location }) => requirePerson(location.href),
   loaderDeps: ({ search }) => ({ asOf: search.asOf }),
-  loader: ({ deps }) => fetchChart({ data: { asOf: deps.asOf } }),
+  loader: async ({ deps }) => {
+    const [chart, reaches] = await Promise.all([
+      fetchChart({ data: { asOf: deps.asOf } }),
+      fetchMyReaches(),
+    ]);
+    return { chart, canDraw: reaches.some((r) => r.permission === 'structure:write') };
+  },
   component: StructurePage,
 });
 
-/** The organization at a date, and for its owners and admins, the forms to draw it (spec 002). */
+/** The organization at a date as the person may see it, and the forms for whoever may draw it. */
 function StructurePage() {
-  const chart = Route.useLoaderData();
-  const { me } = Route.useRouteContext();
+  const { chart, canDraw } = Route.useLoaderData();
   const navigate = useNavigate({ from: '/structure' });
-  const canChange = me.role === 'owner' || me.role === 'admin';
   return (
     <AppShell current="structure">
       <PageTitle>{m.structure_title()}</PageTitle>
@@ -42,7 +47,7 @@ function StructurePage() {
           <StructureTree chart={chart} />
         </div>
       </PageSection>
-      {canChange && (
+      {canDraw && (
         <PageSection title={m.structure_draw()}>
           <StructureForms chart={chart} />
         </PageSection>

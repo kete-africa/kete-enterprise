@@ -2,7 +2,7 @@
 
 **Feature Branch**: `002-structure`
 **Created**: 2026-10-01
-**Status**: In progress
+**Status**: Delivered (proof on staging pending)
 **Input**: Doctrine D-028 (Kete Enterprise knows where a person is in the company), D-041 (generic
 primitives: organization, units with configurable types, positions, dated assignments), ARCHITECTURE
 §13 (structure: legal entities, countries, units, positions, dated assignments — primary,

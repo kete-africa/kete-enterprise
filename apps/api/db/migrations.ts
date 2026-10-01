@@ -1,5 +1,6 @@
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
+import { rightsMigrationSql } from '../src/features/rights/index.js';
 import { structureMigrationSql } from '../src/features/structure/index.js';
 
 export interface MigrationContext {
@@ -30,4 +31,6 @@ export const migrations: Migration[] = [
   },
   // Units, positions, people and dated assignments (spec 002).
   { name: '0001_structure', sql: (context) => structureMigrationSql(context) },
+  // Roles and their grants, scoped to a subtree, a country or the organization (spec 003).
+  { name: '0002_rights', sql: (context) => rightsMigrationSql(context) },
 ];
