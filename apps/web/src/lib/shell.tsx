@@ -7,7 +7,7 @@ export function AppShell({
   current,
   children,
 }: {
-  current: 'home' | 'inbox' | 'structure' | 'rights' | 'registry';
+  current: 'home' | 'inbox' | 'structure' | 'rights' | 'registry' | 'agents';
   children: ReactNode;
 }) {
   return (
@@ -32,6 +32,9 @@ export function AppShell({
           </NavItem>
           <NavItem href="/registre" icon="library" current={current === 'registry'}>
             {m.nav_registry()}
+          </NavItem>
+          <NavItem href="/agents" icon="agent" current={current === 'agents'}>
+            {m.nav_agents()}
           </NavItem>
         </NavSection>
       }

@@ -1,4 +1,5 @@
 import { defineCommand } from '@kete/commands';
+import type { SqlExecutor } from '@kete/tenancy';
 import { z } from 'zod';
 import { openRequest } from '../decisions/index.js';
 import {
@@ -153,3 +154,21 @@ export const retireResource = defineCommand({
   },
   summarize: (input) => `Resource ${input.resourceId} retired`,
 });
+
+/** An agent enters the registry when it is created, in its responsible person's space (spec 007). */
+export async function registerAgent(
+  db: SqlExecutor,
+  organizationId: string,
+  agent: { name: string; mission: string; ownerUserId: string },
+): Promise<string> {
+  const resource = await insertResource(db, organizationId, {
+    kind: 'agent',
+    name: agent.name,
+    description: agent.mission,
+    ownerUserId: agent.ownerUserId,
+    ownerName: (await nameOf(db, agent.ownerUserId)) ?? agent.ownerUserId,
+    card: null,
+    risk: 'unknown',
+  });
+  return resource.resourceId;
+}

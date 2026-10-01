@@ -2,7 +2,7 @@
 
 **Feature Branch**: `006-gateway`
 **Created**: 2026-10-01
-**Status**: In progress
+**Status**: Delivered (proof on staging pending)
 **Input**: Doctrine D-028 (its MCP gateway), ARCHITECTURE §13 (one MCP address per person, which
 exposes only what her scope allows; every call authorized and traced), D-037 (MCP Apps views),
 principle 4 (an agent never has more rights than the person).

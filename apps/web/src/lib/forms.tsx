@@ -22,6 +22,7 @@ export function refusal(code: string | null): string {
     not_an_approver: m.error_not_an_approver,
     unknown_subject: m.error_unknown_subject,
     in_circuit: m.error_in_circuit,
+    unknown_watch: m.error_unknown_watch,
   };
   return (messages[code ?? ''] ?? m.error_generic)();
 }
