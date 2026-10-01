@@ -1,0 +1,12 @@
+{
+  "product": "prd_kete_enterprise",
+  "name": "Kete Enterprise",
+  "version": "0.1.0",
+  "events": [],
+  "governance": {
+    "owner": { "name": "Kete" },
+    "dataCategories": ["personal", "confidential"],
+    "ai": { "used": false },
+    "criticality": "high"
+  }
+}

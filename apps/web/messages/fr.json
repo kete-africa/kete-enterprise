@@ -1,0 +1,13 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "app_name": "Kete Enterprise",
+  "meta_description": "La chaîne de votre entreprise : sa structure, ses droits, ses décisions, ses ressources et ses agents.",
+  "nav_label": "Navigation principale",
+  "nav_show": "Afficher la navigation",
+  "nav_hide": "Masquer la navigation",
+  "nav_home": "Accueil",
+  "nav_sign_out": "Se déconnecter",
+  "home_title": "Bonjour {name}",
+  "home_organization": "Votre organisation",
+  "home_organization_id": "Identifiant : {id}"
+}

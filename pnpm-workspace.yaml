@@ -1,0 +1,15 @@
+packages:
+  - apps/*
+
+# Build scripts run only when approved here.
+allowBuilds:
+  esbuild: true
+  # Optional native builds of the Testcontainers stack (ssh2): the JavaScript fallbacks suffice.
+  cpu-features: false
+  protobufjs: false
+  ssh2: false
+
+# Kete's own packages are trusted as soon as kete-core publishes them; everything else waits for
+# pnpm's minimum release age.
+minimumReleaseAgeExclude:
+  - '@kete-africa/*'

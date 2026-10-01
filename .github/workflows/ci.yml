@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # A token that reads kete-core's packages (read:packages): the repository's own token cannot.
+      NODE_AUTH_TOKEN: ${{ secrets.KETE_PACKAGES_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+          # Writes NODE_AUTH_TOKEN into the runner's user configuration, never into the repository.
+          registry-url: https://npm.pkg.github.com
+          scope: '@kete-africa'
+      - run: pnpm install --frozen-lockfile
+      - name: Lint, types (and the web build), formatting, catalogs, audit
+        run: pnpm check
+      - name: Tests on a plain Postgres (any Postgres, doctrine D-029)
+        run: pnpm test
+        env:
+          KETE_TEST_POSTGRES: container
+      - name: The images build, and both start and report healthy
+        run: |
+          docker build -f apps/api/Dockerfile --secret id=node_auth_token,env=NODE_AUTH_TOKEN -t kete-enterprise-api:ci .
+          docker build -f apps/web/Dockerfile --secret id=node_auth_token,env=NODE_AUTH_TOKEN -t kete-enterprise-web:ci .
+          docker network create ci
+          docker run -d --name db --network ci -e POSTGRES_PASSWORD=ci pgvector/pgvector:pg17
+          for attempt in $(seq 1 30); do docker exec db pg_isready -U postgres && break; sleep 2; done
+          docker run -d --name api --network ci -p 3001:3000 \
+            -e DATABASE_URL=postgres://postgres:ci@db:5432/postgres \
+            -e OWNER_DATABASE_URL=postgres://postgres:ci@db:5432/postgres \
+            -e KETE_ACCOUNT_URL=https://compte.kete.test kete-enterprise-api:ci
+          docker run -d --name web -p 3002:3000 kete-enterprise-web:ci
+          for port in 3001 3002; do
+            for attempt in $(seq 1 30); do
+              if curl -fsS http://localhost:$port/health; then echo; break; fi
+              sleep 2
+            done
+            curl -fsS http://localhost:$port/health | grep -q '"status":"healthy"'
+          done
+      - name: The containers' logs, when an image fails
+        if: failure()
+        run: docker logs api || true; docker logs web || true
