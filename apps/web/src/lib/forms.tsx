@@ -15,6 +15,10 @@ export function refusal(code: string | null): string {
     invalid_input: m.error_invalid_input,
     duplicate: m.error_duplicate,
     unknown_permission: m.error_invalid_input,
+    own_request: m.error_own_request,
+    already_pending: m.error_already_pending,
+    retired: m.error_retired,
+    decided: m.error_decided,
   };
   return (messages[code ?? ''] ?? m.error_generic)();
 }

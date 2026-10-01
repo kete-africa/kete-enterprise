@@ -1,5 +1,6 @@
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
+import { registryMigrationSql } from '../src/features/registry/index.js';
 import { rightsMigrationSql } from '../src/features/rights/index.js';
 import { structureMigrationSql } from '../src/features/structure/index.js';
 
@@ -33,4 +34,6 @@ export const migrations: Migration[] = [
   { name: '0001_structure', sql: (context) => structureMigrationSql(context) },
   // Roles and their grants, scoped to a subtree, a country or the organization (spec 003).
   { name: '0002_rights', sql: (context) => rightsMigrationSql(context) },
+  // Apps, skills, MCP servers and agents, with their tier and risk (spec 004).
+  { name: '0003_registry', sql: (context) => registryMigrationSql(context) },
 ];

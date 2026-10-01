@@ -7,7 +7,7 @@ export function AppShell({
   current,
   children,
 }: {
-  current: 'home' | 'structure' | 'rights';
+  current: 'home' | 'structure' | 'rights' | 'registry';
   children: ReactNode;
 }) {
   return (
@@ -26,6 +26,9 @@ export function AppShell({
           </NavItem>
           <NavItem href="/droits" icon="check" current={current === 'rights'}>
             {m.nav_rights()}
+          </NavItem>
+          <NavItem href="/registre" icon="library" current={current === 'registry'}>
+            {m.nav_registry()}
           </NavItem>
         </NavSection>
       }

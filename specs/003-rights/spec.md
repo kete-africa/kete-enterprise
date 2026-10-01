@@ -2,7 +2,7 @@
 
 **Feature Branch**: `003-rights`
 **Created**: 2026-10-01
-**Status**: In progress
+**Status**: Delivered (proof on staging pending)
 **Input**: Doctrine D-028 (rights with a scope), ARCHITECTURE §13 (roles with a scope — subtree,
 country, project; each resource's owner and scope; an agent never has more rights than the person
 or the manager it acts for), principle 4.
