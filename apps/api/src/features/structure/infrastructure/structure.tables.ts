@@ -442,3 +442,25 @@ export async function readChart(db: SqlExecutor, asOf: string) {
     assignments: assignments.rows.map(toAssignment),
   };
 }
+
+/** The unit a position belongs to, for checking rights on it. */
+export async function unitOfPosition(db: SqlExecutor, positionId: string): Promise<string | null> {
+  const { rows } = await db.query<{ unit_id: string }>(
+    `select unit_id from positions where position_id = $1`,
+    [positionId],
+  );
+  return rows[0]?.unit_id ?? null;
+}
+
+/** The unit of an assignment's position, for checking rights on it. */
+export async function unitOfAssignment(
+  db: SqlExecutor,
+  assignmentId: string,
+): Promise<string | null> {
+  const { rows } = await db.query<{ unit_id: string }>(
+    `select p.unit_id from assignments a join positions p on p.position_id = a.position_id
+      where a.assignment_id = $1`,
+    [assignmentId],
+  );
+  return rows[0]?.unit_id ?? null;
+}

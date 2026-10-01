@@ -127,7 +127,7 @@ describe('drawing the organization', () => {
     });
     expect(assigned.status).toBe(201);
 
-    const today = await chart(member, '2026-06-01');
+    const today = await chart(admin, '2026-06-01');
     expect(today.units.map((u) => u.name).sort()).toEqual([
       'Agence de Lomé',
       'KYA Group',
@@ -148,17 +148,17 @@ describe('drawing the organization', () => {
 
   it('reads the past as it was', async () => {
     // Before Ama's assignment began, the position was empty.
-    expect((await chart(member, '2026-01-15')).assignments).toEqual([]);
+    expect((await chart(admin, '2026-01-15')).assignments).toEqual([]);
     const ended = await post(
       admin,
-      `/assignments/${(await chart(member, '2026-06-01')).assignments.at(0)?.assignmentId ?? ''}/end`,
+      `/assignments/${(await chart(admin, '2026-06-01')).assignments.at(0)?.assignmentId ?? ''}/end`,
       {
         endsOn: '2026-08-31',
       },
     );
     expect(ended.status).toBe(201);
-    expect((await chart(member, '2026-08-31')).assignments).toHaveLength(1);
-    expect((await chart(member, '2026-09-01')).assignments).toHaveLength(0);
+    expect((await chart(admin, '2026-08-31')).assignments).toHaveLength(1);
+    expect((await chart(admin, '2026-09-01')).assignments).toHaveLength(0);
   });
 
   it('gives a person one primary position at a time, but other kinds beside it', async () => {
@@ -191,20 +191,20 @@ describe('drawing the organization', () => {
     expect(cycle).toMatchObject({ status: 409, body: { error: 'cycle' } });
     const moved = await post(admin, `/units/${lome}/move`, { parentId: group });
     expect(moved.status).toBe(201);
-    expect((await chart(member, '2026-06-01')).units.find((u) => u.unitId === lome)?.parentId).toBe(
+    expect((await chart(admin, '2026-06-01')).units.find((u) => u.unitId === lome)?.parentId).toBe(
       group,
     );
   });
 
   it('closes a unit at a date: it disappears from later charts only', async () => {
     expect((await post(admin, `/units/${togo}/close`, { endsOn: '2026-12-31' })).status).toBe(201);
-    expect((await chart(member, '2026-12-31')).units.some((u) => u.unitId === togo)).toBe(true);
-    expect((await chart(member, '2027-01-01')).units.some((u) => u.unitId === togo)).toBe(false);
+    expect((await chart(admin, '2026-12-31')).units.some((u) => u.unitId === togo)).toBe(true);
+    expect((await chart(admin, '2027-01-01')).units.some((u) => u.unitId === togo)).toBe(false);
   });
 });
 
 describe('safe and traced', () => {
-  it('lets a member read, never change', async () => {
+  it('refuses a member without rights any change', async () => {
     const refused = await post(member, '/unit-types', { key: 'team', name: 'Équipe' });
     expect(refused).toMatchObject({ status: 403, body: { error: 'forbidden' } });
   });

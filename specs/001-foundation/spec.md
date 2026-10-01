@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-foundation`
 **Created**: 2026-10-01
-**Status**: In progress
+**Status**: Delivered (proof on staging pending)
 **Input**: Doctrine D-025 (Kete Enterprise starts, KYA first), D-028 (its boundary), D-029 (its
 technical choices), D-035 (the workspace design), D-040 (an app's identity card).
 
