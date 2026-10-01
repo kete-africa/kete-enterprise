@@ -8,6 +8,7 @@ import {
   insertPromotion,
   insertResource,
   linkRequest,
+  nameOf,
   retire,
   setCard,
   setTier,
@@ -20,8 +21,8 @@ import {
   retireInput,
   riskLevel,
   riskOf,
-  type IdentityCard,
 } from './registry.record.js';
+import { readCard } from './infrastructure/identity-card.js';
 
 /** A rule of the registry was not met: the change is refused, nothing is written. */
 export class RegistryRuleError extends Error {
@@ -34,32 +35,43 @@ export class RegistryRuleError extends Error {
   }
 }
 
-/** The card the API read itself; a caller never supplies it. */
-const card = z.custom<IdentityCard | null>((value) => value === null || typeof value === 'object');
-
 export const registerResource = defineCommand({
   name: 'register-resource',
-  input: registerInput.extend({ ownerName: z.string().min(1).max(160), card }),
+  // The owner's name, when the screen knows it; otherwise the person of the structure.
+  input: registerInput.extend({ ownerName: z.string().min(1).max(160).optional() }),
   reversibility: { reversible: true, inverse: 'retire-resource' },
-  handler: (input, { db, organizationId, actor }) =>
-    insertResource(db, organizationId, {
+  async handler(input, { db, organizationId, actor }) {
+    const ownerUserId = actor.onBehalfOf?.id ?? actor.id;
+    // The API reads an app's card itself: a caller, a person or an agent, never supplies it.
+    const card = input.address ? await readCard(input.address) : null;
+    return insertResource(db, organizationId, {
       ...input,
-      ownerUserId: actor.onBehalfOf?.id ?? actor.id,
-      risk: riskOf(input.card),
-    }),
+      ownerUserId,
+      ownerName: input.ownerName ?? (await nameOf(db, ownerUserId)) ?? ownerUserId,
+      card,
+      risk: riskOf(card),
+    });
+  },
   summarize: (input) => `${input.kind} "${input.name}" registered in its owner's space`,
+});
+
+/** The same registration for an agent acting for a person: her name comes from the structure. */
+export const registerResourceForAgent = defineCommand({
+  ...registerResource,
+  input: registerInput,
+  handler: (input, context) => registerResource.handler(input, context),
 });
 
 export const refreshIdentityCard = defineCommand({
   name: 'refresh-identity-card',
-  input: z.object({ resourceId, card }),
+  input: z.object({ resourceId }),
   reversibility: { reversible: false },
   async handler(input, { db }) {
-    if (!(await findResource(db, input.resourceId))) {
-      throw new RegistryRuleError('not_found', 'The resource does not exist here.');
-    }
-    const risk = riskOf(input.card);
-    await setCard(db, input.resourceId, input.card, risk);
+    const resource = await findResource(db, input.resourceId);
+    if (!resource) throw new RegistryRuleError('not_found', 'The resource does not exist here.');
+    const card = resource.address ? await readCard(resource.address) : null;
+    const risk = riskOf(card);
+    await setCard(db, input.resourceId, card, risk);
     return { resourceId: input.resourceId, risk };
   },
   summarize: (input) => `Identity card of ${input.resourceId} read again`,

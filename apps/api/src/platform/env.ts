@@ -20,6 +20,10 @@ export const env = {
       ? value
       : 'development';
   },
+  /** Where people's copilots reach this API (the MCP gateway's resource). */
+  get publicApiUrl() {
+    return (process.env.PUBLIC_API_URL ?? '').replace(/\/$/, '');
+  },
   get port() {
     return Number(process.env.PORT ?? 3000);
   },

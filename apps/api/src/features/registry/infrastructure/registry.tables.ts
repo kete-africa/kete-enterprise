@@ -271,3 +271,12 @@ export async function linkRequest(
     requestId,
   ]);
 }
+
+/** A person's name in the structure, from her account. */
+export async function nameOf(db: SqlExecutor, accountUserId: string): Promise<string | null> {
+  const { rows } = await db.query<{ name: string }>(
+    `select name from people where account_user_id = $1`,
+    [accountUserId],
+  );
+  return rows[0]?.name ?? null;
+}

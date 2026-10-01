@@ -1,6 +1,7 @@
 import { healthHandler, manifestHandler } from '@kete/sdk';
 import { Hono } from 'hono';
 import { decisionsPermissions, decisionsRoutes } from './features/decisions/index.js';
+import { gatewayResourceMetadata, gatewayRoutes, handleGateway } from './features/gateway/index.js';
 import { registryPermissions, registryRoutes } from './features/registry/index.js';
 import { rightsPermissions, rightsRoutes } from './features/rights/index.js';
 import { structurePermissions, structureRoutes } from './features/structure/index.js';
@@ -24,6 +25,9 @@ export function createApi(): Hono {
   const api = new Hono();
   api.get('/health', () => healthHandler(health)());
   api.get('/.well-known/kete', () => manifestHandler(manifest())());
+  // The MCP gateway checks its own token, and tells copilots where to get one (spec 006).
+  api.all('/mcp', (c) => handleGateway(c.req.raw));
+  api.get('/.well-known/oauth-protected-resource', (c) => gatewayResourceMetadata(c.req.raw));
 
   const v1 = new Hono<{ Variables: IdentityVariables }>();
   v1.use('*', requirePerson);
@@ -36,6 +40,7 @@ export function createApi(): Hono {
   v1.route('/rights', rightsRoutes(permissionCatalog));
   v1.route('/registry', registryRoutes);
   v1.route('/decisions', decisionsRoutes);
+  v1.route('/gateway', gatewayRoutes);
   api.route('/v1', v1);
   // A refused gesture says why, with a stable code the screens translate.
   api.onError((error, c) => {

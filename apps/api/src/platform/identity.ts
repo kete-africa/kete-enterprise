@@ -15,6 +15,20 @@ function verify(token: string): Promise<KeteIdentity> {
   return verifier(token);
 }
 
+/** The person behind a request's bearer token, with her organization; null otherwise. */
+export async function identityOf(request: Request): Promise<IdentityVariables['identity'] | null> {
+  const token = /^Bearer (.+)$/.exec(request.headers.get('authorization') ?? '')?.[1];
+  if (!token) return null;
+  try {
+    const identity = await verify(token);
+    return identity.organizationId
+      ? { ...identity, organizationId: identity.organizationId }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Tests: verify tokens with other keys. */
 export function useVerifier(next: TokenVerifier): void {
   verifier = next;

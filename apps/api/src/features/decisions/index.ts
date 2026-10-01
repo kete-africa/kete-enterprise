@@ -3,4 +3,4 @@ export { DecisionRuleError } from './commands.js';
 export type { Circuit, DecisionRequest } from './decisions.record.js';
 export { knownSubjects, openRequest, registerSubject, type SubjectHandler } from './engine.js';
 export { decisionsMigrationSql } from './infrastructure/decisions.tables.js';
-export { decisionsPermissions, decisionsRoutes } from './routes.js';
+export { decisionsPermissions, decisionsRoutes, inboxFor } from './routes.js';

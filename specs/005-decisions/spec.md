@@ -2,7 +2,7 @@
 
 **Feature Branch**: `005-decisions`
 **Created**: 2026-10-01
-**Status**: In progress
+**Status**: Delivered (proof on staging pending)
 **Input**: Doctrine D-028 (decisions: approval circuits described as data — approver found by
 relation or by role, thresholds, delegation, reminders — and the Inbox of humans and agents),
 ARCHITECTURE §13, principle 3 (the more binding a gesture, the more present a person).
