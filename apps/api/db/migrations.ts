@@ -1,5 +1,6 @@
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
+import { agentsMigrationSql } from '../src/features/agents/index.js';
 import { decisionsMigrationSql } from '../src/features/decisions/index.js';
 import { gatewayMigrationSql } from '../src/features/gateway/index.js';
 import {
@@ -46,4 +47,6 @@ export const migrations: Migration[] = [
   { name: '0005_registry_circuits', sql: (context) => registryCircuitsMigrationSql(context) },
   // Every call through the MCP gateway (spec 006).
   { name: '0006_gateway', sql: (context) => gatewayMigrationSql(context) },
+  // Agents with a job description, and their signals (spec 007).
+  { name: '0007_agents', sql: (context) => agentsMigrationSql(context) },
 ];

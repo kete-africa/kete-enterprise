@@ -10,6 +10,10 @@ export const env = {
   get databaseUrl() {
     return required('DATABASE_URL');
   },
+  /** The owner role: migrations, and the worker's jobs schema. */
+  get ownerDatabaseUrl() {
+    return required('OWNER_DATABASE_URL');
+  },
   /** The identity that issues people's tokens: the Compte Kete, or the instance's own. */
   get accountUrl() {
     return required('KETE_ACCOUNT_URL').replace(/\/$/, '');

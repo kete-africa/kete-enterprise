@@ -1,6 +1,6 @@
 // The registry feature's only door: what the rest of the API may use (spec 004).
 import './subjects.js';
-export { RegistryRuleError, registerResourceForAgent } from './commands.js';
+export { registerAgent, RegistryRuleError, registerResourceForAgent } from './commands.js';
 export {
   isPublicIp,
   readIdentityCard,

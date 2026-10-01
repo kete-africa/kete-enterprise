@@ -42,11 +42,10 @@ export function gatewayResourceMetadata(request: Request): Response {
 }
 
 /** The tools a JSON-RPC body calls: the gateway traces each one. */
-async function toolsCalled(request: Request): Promise<string[]> {
-  if (request.method !== 'POST') return [];
+function toolsCalled(body: string): string[] {
   try {
-    const body: unknown = await request.clone().json();
-    const messages = Array.isArray(body) ? body : [body];
+    const parsed: unknown = JSON.parse(body);
+    const messages = Array.isArray(parsed) ? parsed : [parsed];
     return messages
       .filter(
         (m): m is { method: string; params?: { name?: unknown } } =>
@@ -84,7 +83,9 @@ export async function handleGateway(request: Request): Promise<Response> {
     resourceMetadataUrl: `${new URL(resourceUrl(request)).origin}/.well-known/oauth-protected-resource`,
   });
   if (!identity) return handler(request);
-  const tools = await toolsCalled(request);
+  // The body is read once, for the trace, and handed on as it came.
+  const body = request.method === 'POST' ? await request.text() : null;
+  const tools = body ? toolsCalled(body) : [];
   if (tools.length > 0) {
     const client = request.headers.get('user-agent')?.slice(0, 200) ?? null;
     await transaction(identity.organizationId, async (db) => {
@@ -93,5 +94,9 @@ export async function handleGateway(request: Request): Promise<Response> {
       }
     });
   }
-  return asPerson(identity, () => handler(request));
+  const forwarded =
+    body === null
+      ? request
+      : new Request(request.url, { method: request.method, headers: request.headers, body });
+  return asPerson(identity, () => handler(forwarded));
 }
