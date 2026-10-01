@@ -38,6 +38,8 @@ export function gatewayResourceMetadata(request: Request): Response {
   return protectedResourceMetadata({
     resource: resourceUrl(request),
     authorizationServers: [env.accountUrl],
+    // offline_access: the copilot keeps its access without asking the person every 15 minutes.
+    scopes: ['openid', 'profile', 'email', 'offline_access'],
   })();
 }
 
