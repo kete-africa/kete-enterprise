@@ -233,3 +233,34 @@ export async function ownUnits(
   );
   return new Set(rows.map((row) => row.unit_id));
 }
+
+/**
+ * The units where the person holds a position at `asOf`, and every unit above them: a resource
+ * shared with a unit is visible to the people of that unit and below.
+ */
+export async function ownUnitsAndAbove(
+  db: SqlExecutor,
+  accountUserId: string,
+  asOf: string,
+): Promise<Set<string>> {
+  const { rows } = await db.query<{ unit_id: string }>(
+    `with recursive
+       own as (
+         select p.unit_id
+           from assignments a
+           join people pe on pe.person_id = a.person_id
+           join positions p on p.position_id = a.position_id
+          where pe.account_user_id = $1
+            and a.starts_on <= $2::date and (a.ends_on is null or a.ends_on >= $2::date)
+       ),
+       up as (
+         select unit_id from own
+         union
+         select u.parent_id from units u join up on u.unit_id = up.unit_id
+          where u.parent_id is not null
+       )
+     select unit_id from up`,
+    [accountUserId, asOf],
+  );
+  return new Set(rows.map((row) => row.unit_id));
+}

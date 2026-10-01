@@ -1,6 +1,6 @@
 import type { KeteIdentity } from '@kete/auth';
 import type { SqlExecutor } from '@kete/tenancy';
-import { ownUnits, reachOf } from './infrastructure/rights.tables.js';
+import { ownUnits, ownUnitsAndAbove, reachOf } from './infrastructure/rights.tables.js';
 import type { Reach } from './rights.record.js';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -41,4 +41,13 @@ export function unitsOfPerson(
   asOf: string = today(),
 ): Promise<Set<string>> {
   return ownUnits(db, identity.userId, asOf);
+}
+
+/** The units where the person holds a position, and every unit above them. */
+export function unitsOfPersonAndAbove(
+  db: SqlExecutor,
+  identity: Pick<KeteIdentity, 'userId'>,
+  asOf: string = today(),
+): Promise<Set<string>> {
+  return ownUnitsAndAbove(db, identity.userId, asOf);
 }

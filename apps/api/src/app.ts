@@ -1,5 +1,6 @@
 import { healthHandler, manifestHandler } from '@kete/sdk';
 import { Hono } from 'hono';
+import { registryPermissions, registryRoutes } from './features/registry/index.js';
 import { rightsPermissions, rightsRoutes } from './features/rights/index.js';
 import { structurePermissions, structureRoutes } from './features/structure/index.js';
 import { GestureRefusal } from './platform/gestures.js';
@@ -7,7 +8,11 @@ import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
 
 /** Every permission a role may allow: each feature declares its own (spec 003). */
-export const permissionCatalog = [...structurePermissions, ...rightsPermissions];
+export const permissionCatalog = [
+  ...structurePermissions,
+  ...rightsPermissions,
+  ...registryPermissions,
+];
 
 /**
  * The API (doctrine D-029): framework-free building blocks from kete-core (`Request → Response`),
@@ -27,6 +32,7 @@ export function createApi(): Hono {
   });
   v1.route('/structure', structureRoutes);
   v1.route('/rights', rightsRoutes(permissionCatalog));
+  v1.route('/registry', registryRoutes);
   api.route('/v1', v1);
   // A refused gesture says why, with a stable code the screens translate.
   api.onError((error, c) => {
