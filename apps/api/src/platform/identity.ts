@@ -10,8 +10,16 @@ import { env } from './env.js';
 let verifier: TokenVerifier | undefined;
 
 /** People's tokens: issued by the identity, verified with its published keys. */
+/**
+ * The audiences the API accepts: Kete apps' tokens, and those a copilot asked for the MCP gateway
+ * itself (RFC 8707, kete-core spec 038).
+ */
+export function acceptedAudiences(): string[] {
+  return ['urn:kete:apps', ...(env.publicApiUrl ? [`${env.publicApiUrl}/mcp`] : [])];
+}
+
 function verify(token: string): Promise<KeteIdentity> {
-  verifier ??= createTokenVerifier({ issuer: env.accountUrl });
+  verifier ??= createTokenVerifier({ issuer: env.accountUrl, audience: acceptedAudiences() });
   return verifier(token);
 }
 

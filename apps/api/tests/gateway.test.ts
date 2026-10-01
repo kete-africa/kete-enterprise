@@ -201,6 +201,32 @@ describe('the copilot acts for her, within her rights', () => {
   });
 });
 
+describe('a copilot signed in with the identity', () => {
+  it("reaches the gateway with a token bound to its address, and not with another server's", async () => {
+    const bound = await tokenFor('usr_awa', {
+      role: 'member',
+      audience: 'https://api.kete.test/mcp',
+    });
+    const client = await copilot(bound);
+    expect((await call(client, 'decisions_inbox')).error).toBe(false);
+    await client.close();
+    const elsewhere = await tokenFor('usr_awa', {
+      role: 'member',
+      audience: 'https://other.kete.test/mcp',
+    });
+    await expect(copilot(elsewhere)).rejects.toThrow();
+  });
+
+  it('advertises the scopes a copilot asks for', async () => {
+    const metadata = await (
+      await api.request('https://api.kete.test/.well-known/oauth-protected-resource')
+    ).json();
+    expect(metadata).toMatchObject({
+      scopes_supported: ['openid', 'profile', 'email', 'offline_access'],
+    });
+  });
+});
+
 describe('every call traced', () => {
   it('lets the person read her own calls', async () => {
     const response = await api.request('/v1/gateway/calls', {
