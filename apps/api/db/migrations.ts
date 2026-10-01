@@ -1,5 +1,6 @@
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
+import { structureMigrationSql } from '../src/features/structure/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -27,4 +28,6 @@ export const migrations: Migration[] = [
         outboxMigrationSql(context),
       ].join('\n'),
   },
+  // Units, positions, people and dated assignments (spec 002).
+  { name: '0001_structure', sql: (context) => structureMigrationSql(context) },
 ];
