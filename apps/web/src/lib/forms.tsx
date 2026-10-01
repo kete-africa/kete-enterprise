@@ -23,6 +23,14 @@ export function refusal(code: string | null): string {
     unknown_subject: m.error_unknown_subject,
     in_circuit: m.error_in_circuit,
     unknown_watch: m.error_unknown_watch,
+    unknown_check: m.error_unknown_check,
+    not_attested: m.error_not_attested,
+    not_automatic: m.error_not_automatic,
+    own_writing: m.error_own_writing,
+    not_draft: m.error_not_draft,
+    not_owner: m.error_not_owner,
+    not_done: m.error_not_done,
+    own_action: m.error_own_action,
   };
   return (messages[code ?? ''] ?? m.error_generic)();
 }

@@ -11,6 +11,11 @@ export function signalLabel(kind: string): string {
     'registry.no_card': m.signal_registry_no_card,
     'registry.no_owner': m.signal_registry_no_owner,
     'decisions.overdue': m.signal_decisions_overdue,
+    'compliance.control_failing': m.signal_compliance_control_failing,
+    'compliance.control_expired': m.signal_compliance_control_expired,
+    'compliance.control_missing': m.signal_compliance_control_missing,
+    'compliance.action_overdue': m.signal_compliance_action_overdue,
+    'compliance.certificate_expiring': m.signal_compliance_certificate_expiring,
   };
   return labels[kind]?.() ?? kind;
 }
@@ -19,6 +24,7 @@ function watchLabel(watch: string): string {
   const labels: Record<string, () => string> = {
     registry: m.watch_registry,
     decisions: m.watch_decisions,
+    compliance: m.watch_compliance,
   };
   return labels[watch]?.() ?? watch;
 }

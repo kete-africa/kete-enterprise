@@ -2,7 +2,7 @@
 
 **Feature Branch**: `007-agents`
 **Created**: 2026-10-01
-**Status**: In progress
+**Status**: Delivered (proof on staging pending)
 **Input**: Doctrine D-039 (three kinds of agents, one job description; one organization per agent;
 asleep until woken; delegations that only narrow; every gesture with its chain up to a person; an
 agent never decides for a person; a budget of drafts; the first permanent agent is level 1 and

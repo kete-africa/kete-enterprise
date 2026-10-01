@@ -57,3 +57,11 @@ export async function callsOf(db: SqlExecutor, userId: string): Promise<GatewayC
     createdAt: new Date(row.created_at).toISOString(),
   }));
 }
+
+/** The trace stays append-only whatever a schema's default privileges give (spec 006). */
+export function gatewayAppendOnlySql(options: { schema: string; appRole: string }): string {
+  return `
+revoke all on ${options.schema}.gateway_calls from ${options.appRole};
+grant select, insert on ${options.schema}.gateway_calls to ${options.appRole};
+`;
+}

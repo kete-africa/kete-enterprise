@@ -1,6 +1,7 @@
 import { healthHandler, manifestHandler } from '@kete/sdk';
 import { Hono } from 'hono';
 import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
+import { compliancePermissions, complianceRoutes } from './features/compliance/index.js';
 import { decisionsPermissions, decisionsRoutes } from './features/decisions/index.js';
 import { gatewayResourceMetadata, gatewayRoutes, handleGateway } from './features/gateway/index.js';
 import { registryPermissions, registryRoutes } from './features/registry/index.js';
@@ -17,6 +18,7 @@ export const permissionCatalog = [
   ...registryPermissions,
   ...decisionsPermissions,
   ...agentsPermissions,
+  ...compliancePermissions,
 ];
 
 /**
@@ -44,6 +46,7 @@ export function createApi(): Hono {
   v1.route('/decisions', decisionsRoutes);
   v1.route('/gateway', gatewayRoutes);
   v1.route('/agents', agentsRoutes(permissionCatalog));
+  v1.route('/compliance', complianceRoutes);
   api.route('/v1', v1);
   // A refused gesture says why, with a stable code the screens translate.
   api.onError((error, c) => {
