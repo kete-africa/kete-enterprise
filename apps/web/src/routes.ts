@@ -4,6 +4,7 @@ import { index, rootRoute, route } from '@tanstack/virtual-file-routes';
 // (doctrine ARCHITECTURE_APP §3).
 export const routes = rootRoute('__root.tsx', [
   index('index.tsx'),
+  route('/structure', 'structure.tsx'),
   route('/auth/connexion', 'auth/sign-in.ts'),
   route('/auth/callback', 'auth/callback.ts'),
   route('/auth/sortie', 'auth/sign-out.ts'),

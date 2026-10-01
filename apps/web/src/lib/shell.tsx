@@ -3,7 +3,13 @@ import type { ReactNode } from 'react';
 import * as m from '@/paraglide/messages.js';
 
 /** The frame of every signed-in screen, in the workspace design (doctrine D-035, D-036). */
-export function AppShell({ current, children }: { current: 'home'; children: ReactNode }) {
+export function AppShell({
+  current,
+  children,
+}: {
+  current: 'home' | 'structure';
+  children: ReactNode;
+}) {
   return (
     <Shell
       brand={m.app_name()}
@@ -14,6 +20,9 @@ export function AppShell({ current, children }: { current: 'home'; children: Rea
         <NavSection>
           <NavItem href="/" icon="apps" current={current === 'home'}>
             {m.nav_home()}
+          </NavItem>
+          <NavItem href="/structure" icon="library" current={current === 'structure'}>
+            {m.nav_structure()}
           </NavItem>
         </NavSection>
       }

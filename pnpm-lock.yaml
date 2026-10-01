@@ -47,6 +47,9 @@ importers:
       '@kete/commands':
         specifier: npm:@kete-africa/commands@^0.2.0
         version: '@kete-africa/commands@0.2.0(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+      '@kete/records':
+        specifier: npm:@kete-africa/records@^0.1.1
+        version: '@kete-africa/records@0.1.1'
       '@kete/sdk':
         specifier: npm:@kete-africa/sdk@^0.3.0
         version: '@kete-africa/sdk@0.3.0'
@@ -608,6 +611,9 @@ packages:
     resolution: {integrity: sha512-alVcN63Kp1JamNCKIXCQgSaKGXyISs6OiL7FmRR2Gatk35wOKx+RiXdVmlGvqS7q/LKgY8GNxvoCh4WXu6zFnw==, tarball: https://npm.pkg.github.com/download/@kete-africa/design/0.2.0/487edb2f2d9dd45c37a4eaf0bc1bd5be83360e50}
     peerDependencies:
       react: ^19
+
+  '@kete-africa/records@0.1.1':
+    resolution: {integrity: sha512-6OZeaKLcuuMC87hLL0+DHxwD7a5JYaKISds1NrSqWx4cjqe+z+kRNvljTxvCHbJ5VEaSSf4la+qg7Hd3hIv6pw==, tarball: https://npm.pkg.github.com/download/@kete-africa/records/0.1.1/91ab0f3b0e4956907c45f4479e2abd67652b5e26}
 
   '@kete-africa/sdk@0.3.0':
     resolution: {integrity: sha512-oA7uqcSAT7Ojg4/2jYPvn/tgCqdsQBQUHhxneKWz7sUDIKrTPsJwDvr/6idj4q80eTQuL9HKePW9WVHM/kU61Q==, tarball: https://npm.pkg.github.com/download/@kete-africa/sdk/0.3.0/edf5c753df3adce29d26d4bbc986bae69a95a321}
@@ -3652,6 +3658,13 @@ snapshots:
       react: 19.3.0
     transitivePeerDependencies:
       - supports-color
+
+  '@kete-africa/records@0.1.1':
+    dependencies:
+      '@kete/sdk': '@kete-africa/sdk@0.3.0'
+      zod: 4.6.5
+    transitivePeerDependencies:
+      - pg-native
 
   '@kete-africa/sdk@0.3.0':
     dependencies:

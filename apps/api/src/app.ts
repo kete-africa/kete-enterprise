@@ -1,5 +1,7 @@
 import { healthHandler, manifestHandler } from '@kete/sdk';
 import { Hono } from 'hono';
+import { structureRoutes } from './features/structure/index.js';
+import { GestureRefusal } from './platform/gestures.js';
 import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
 
@@ -19,6 +21,15 @@ export function createApi(): Hono {
     const { userId, name, email, organizationId, role } = c.get('identity');
     return c.json({ userId, name, email, organizationId, role });
   });
+  v1.route('/structure', structureRoutes);
   api.route('/v1', v1);
+  // A refused gesture says why, with a stable code the screens translate.
+  api.onError((error, c) => {
+    if (error instanceof GestureRefusal) {
+      return c.json({ error: error.code, message: error.message }, error.status);
+    }
+    console.error(error);
+    return c.json({ error: 'internal' }, 500);
+  });
   return api;
 }
