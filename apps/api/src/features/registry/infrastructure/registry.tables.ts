@@ -9,6 +9,16 @@ import type {
   Tier,
 } from '../registry.record.js';
 
+/** Promotions decided through an approval circuit keep its request (spec 005). */
+export function registryCircuitsMigrationSql(options: { schema: string }): string {
+  const s = options.schema;
+  return `
+alter table ${s}.promotions add column decision_request_id text;
+alter table ${s}.promotions add foreign key (organization_id, decision_request_id)
+  references ${s}.decision_requests (organization_id, request_id);
+`;
+}
+
 /** The registry's tables, with row-level security in the same migration (constitution V). */
 export function registryMigrationSql(options: { schema: string; appRole: string }): string {
   const s = options.schema;
@@ -86,6 +96,7 @@ type PromotionRow = {
   decided_by: string | null;
   reason: string | null;
   created_at: Date;
+  decision_request_id: string | null;
 };
 
 const tierOf = (kind: Tier['kind'], unitId: string | null): Tier =>
@@ -114,12 +125,13 @@ const toPromotion = (r: PromotionRow): Promotion => ({
   decidedBy: r.decided_by,
   reason: r.reason,
   createdAt: new Date(r.created_at).toISOString(),
+  decisionRequestId: r.decision_request_id,
 });
 
 const resourceColumns = `resource_id, kind, name, description, address, owner_user_id, owner_name,
   tier_kind, tier_unit_id, status, card, risk, created_at`;
 const promotionColumns = `promotion_id, resource_id, target_kind, target_unit_id, requested_by,
-  status, decided_by, reason, created_at`;
+  status, decided_by, reason, created_at, decision_request_id`;
 
 export async function insertResource(
   db: SqlExecutor,
@@ -247,4 +259,15 @@ export async function decide(
       where promotion_id = $1`,
     [promotionId, status, decidedBy, reason],
   );
+}
+
+export async function linkRequest(
+  db: SqlExecutor,
+  promotionId: string,
+  requestId: string,
+): Promise<void> {
+  await db.query(`update promotions set decision_request_id = $2 where promotion_id = $1`, [
+    promotionId,
+    requestId,
+  ]);
 }

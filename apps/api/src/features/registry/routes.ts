@@ -70,7 +70,8 @@ function sees(resource: Resource, me: string, r: Reaches): boolean {
 
 /** Whether the person may decide a promotion: a reviewer of its target, never of her own request. */
 function mayDecide(promotion: Promotion, resource: Resource | null, me: string, r: Reaches) {
-  if (!resource || promotion.requestedBy === me) return false;
+  // A promotion in an approval circuit is decided there (spec 005).
+  if (!resource || promotion.requestedBy === me || promotion.decisionRequestId) return false;
   // A high-risk resource is promoted by a reviewer of the whole organization only.
   if (resource.risk === 'high') return r.review.everywhere;
   return covers(r.review, unitOf(promotion.target));
@@ -186,6 +187,9 @@ export const registryRoutes = new Hono<{ Variables: IdentityVariables }>()
     });
     if (!allowed) throw new GestureRefusal(404, 'not_found', 'No such promotion here.');
     if (!allowed.ok) {
+      if (allowed.promotion.decisionRequestId) {
+        throw new GestureRefusal(409, 'in_circuit', 'This promotion is decided in its circuit.');
+      }
       if (allowed.promotion.requestedBy === userId) {
         throw new GestureRefusal(409, 'own_request', 'A person does not decide her own request.');
       }

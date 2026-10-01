@@ -1,6 +1,10 @@
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
-import { registryMigrationSql } from '../src/features/registry/index.js';
+import { decisionsMigrationSql } from '../src/features/decisions/index.js';
+import {
+  registryCircuitsMigrationSql,
+  registryMigrationSql,
+} from '../src/features/registry/index.js';
 import { rightsMigrationSql } from '../src/features/rights/index.js';
 import { structureMigrationSql } from '../src/features/structure/index.js';
 
@@ -36,4 +40,7 @@ export const migrations: Migration[] = [
   { name: '0002_rights', sql: (context) => rightsMigrationSql(context) },
   // Apps, skills, MCP servers and agents, with their tier and risk (spec 004).
   { name: '0003_registry', sql: (context) => registryMigrationSql(context) },
+  // Approval circuits, their requests and steps (spec 005); promotions may go through them.
+  { name: '0004_decisions', sql: (context) => decisionsMigrationSql(context) },
+  { name: '0005_registry_circuits', sql: (context) => registryCircuitsMigrationSql(context) },
 ];

@@ -19,6 +19,9 @@ export function refusal(code: string | null): string {
     already_pending: m.error_already_pending,
     retired: m.error_retired,
     decided: m.error_decided,
+    not_an_approver: m.error_not_an_approver,
+    unknown_subject: m.error_unknown_subject,
+    in_circuit: m.error_in_circuit,
   };
   return (messages[code ?? ''] ?? m.error_generic)();
 }

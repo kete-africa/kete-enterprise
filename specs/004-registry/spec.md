@@ -2,7 +2,7 @@
 
 **Feature Branch**: `004-registry`
 **Created**: 2026-10-01
-**Status**: In progress
+**Status**: Delivered (proof on staging pending)
 **Input**: Doctrine D-028 (the registry of a company's resources — skills, apps, MCP, agents — with
 personal and team spaces, submission without Git, review according to risk, promotion by tiers of
 the organization chart), D-040 (govern once, run anywhere: an app's identity card in its manifest),

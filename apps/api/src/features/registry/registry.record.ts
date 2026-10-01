@@ -75,6 +75,8 @@ export interface Promotion {
   decidedBy: string | null;
   reason: string | null;
   createdAt: string;
+  /** The approval circuit's request deciding it (spec 005); null when reviewed directly. */
+  decisionRequestId: string | null;
 }
 
 const sensitive = new Set(['special', 'children', 'payment', 'credentials']);
@@ -85,6 +87,11 @@ const personal = new Set(['personal', 'financial', 'location', 'confidential']);
  * or when it handles sensitive data; medium when it handles people's or the company's data, or
  * uses AI; low otherwise. Without a card, it is unknown — and flagged.
  */
+/** A risk as a measure for approval circuits: a step can apply from a level (spec 005). */
+export function riskLevel(risk: Risk): number {
+  return { low: 1, medium: 2, unknown: 2, high: 3 }[risk];
+}
+
 export function riskOf(card: IdentityCard | null): Risk {
   const g = card?.governance;
   if (!g) return 'unknown';
