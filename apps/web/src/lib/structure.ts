@@ -34,7 +34,13 @@ export interface Chart {
     startsOn: string;
     endsOn: string | null;
   }[];
-  people: { personId: string; name: string; email: string | null; phone: string | null }[];
+  people: {
+    personId: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    accountUserId: string | null;
+  }[];
   assignments: {
     assignmentId: string;
     personId: string;

@@ -15,6 +15,8 @@ export function permissionLabel(permission: string): string {
     'registry:review': m.permission_registry_review,
     'decisions:manage': m.permission_decisions_manage,
     'agents:manage': m.permission_agents_manage,
+    'compliance:read': m.permission_compliance_read,
+    'compliance:manage': m.permission_compliance_manage,
   };
   return labels[permission]?.() ?? permission;
 }

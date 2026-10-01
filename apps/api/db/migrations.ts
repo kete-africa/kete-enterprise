@@ -1,8 +1,9 @@
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
 import { agentsMigrationSql } from '../src/features/agents/index.js';
+import { complianceMigrationSql } from '../src/features/compliance/index.js';
 import { decisionsMigrationSql } from '../src/features/decisions/index.js';
-import { gatewayMigrationSql } from '../src/features/gateway/index.js';
+import { gatewayAppendOnlySql, gatewayMigrationSql } from '../src/features/gateway/index.js';
 import {
   registryCircuitsMigrationSql,
   registryMigrationSql,
@@ -49,4 +50,8 @@ export const migrations: Migration[] = [
   { name: '0006_gateway', sql: (context) => gatewayMigrationSql(context) },
   // Agents with a job description, and their signals (spec 007).
   { name: '0007_agents', sql: (context) => agentsMigrationSql(context) },
+  // Frameworks, requirements, shared controls, evidence, documents, audits, findings, corrective
+  // actions and certificates (spec 008).
+  { name: '0008_compliance', sql: (context) => complianceMigrationSql(context) },
+  { name: '0009_gateway_append_only', sql: (context) => gatewayAppendOnlySql(context) },
 ];
