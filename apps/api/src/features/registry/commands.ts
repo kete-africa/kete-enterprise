@@ -1,11 +1,13 @@
 import { defineCommand } from '@kete/commands';
 import { z } from 'zod';
+import { openRequest } from '../decisions/index.js';
 import {
   decide,
   findPromotion,
   findResource,
   insertPromotion,
   insertResource,
+  linkRequest,
   retire,
   setCard,
   setTier,
@@ -16,6 +18,7 @@ import {
   requestPromotionInput,
   resourceId,
   retireInput,
+  riskLevel,
   riskOf,
   type IdentityCard,
 } from './registry.record.js';
@@ -72,12 +75,24 @@ export const requestPromotion = defineCommand({
     if (resource.status === 'retired') {
       throw new RegistryRuleError('retired', 'A retired resource is not promoted.');
     }
+    const requestedBy = actor.onBehalfOf?.id ?? actor.id;
     try {
-      return await insertPromotion(db, organizationId, {
+      const promotion = await insertPromotion(db, organizationId, {
         resourceId: input.resourceId,
         target: input.target,
-        requestedBy: actor.onBehalfOf?.id ?? actor.id,
+        requestedBy,
       });
+      // With an approval circuit for promotions, it decides; its measure is the resource's risk.
+      const requestId = await openRequest(db, organizationId, {
+        subject: 'registry.promotion',
+        reference: promotion.promotionId,
+        title: resource.name,
+        requesterUserId: requestedBy,
+        unitId: input.target.kind === 'unit' ? input.target.unitId : null,
+        measure: riskLevel(resource.risk),
+      });
+      if (requestId) await linkRequest(db, promotion.promotionId, requestId);
+      return { ...promotion, decisionRequestId: requestId };
     } catch (error) {
       const code = (error as { code?: string }).code;
       if (code === '23505') {

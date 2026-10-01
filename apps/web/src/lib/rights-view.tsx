@@ -13,6 +13,7 @@ export function permissionLabel(permission: string): string {
     'rights:manage': m.permission_rights_manage,
     'registry:read': m.permission_registry_read,
     'registry:review': m.permission_registry_review,
+    'decisions:manage': m.permission_decisions_manage,
   };
   return labels[permission]?.() ?? permission;
 }
