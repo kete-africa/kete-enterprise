@@ -13,7 +13,7 @@ RUN --mount=type=secret,id=node_auth_token,env=NODE_AUTH_TOKEN \
   && pnpm config delete "//npm.pkg.github.com/:_authToken"
 COPY apps/web apps/web
 RUN pnpm --filter @kete-enterprise/web build \
-  && pnpm install --frozen-lockfile --offline --prod --filter "@kete-enterprise/web"
+  && pnpm install --frozen-lockfile --offline --prod --filter "@kete-enterprise/web" \n    --config.confirm-modules-purge=false
 
 FROM node:22.14.0-bookworm-slim
 WORKDIR /app
