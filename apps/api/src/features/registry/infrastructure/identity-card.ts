@@ -50,3 +50,15 @@ export const readIdentityCard: CardReader = async (address) => {
   }
   return validateManifest(manifest).ok ? (manifest as IdentityCard) : null;
 };
+
+let reader: CardReader = readIdentityCard;
+
+/** Tests: read identity cards another way. */
+export function useCardReader(next: CardReader): void {
+  reader = next;
+}
+
+/** Reads an app's card with the reader in use. */
+export function readCard(address: string): Promise<IdentityCard | null> {
+  return reader(address);
+}

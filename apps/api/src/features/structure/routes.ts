@@ -5,7 +5,8 @@ import type { z } from 'zod';
 import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal, runGesture } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
-import { covers, reach, reachesAnything, unitsOfPerson, type Reach } from '../rights/index.js';
+import { covers, reach, reachesAnything, type Reach } from '../rights/index.js';
+import { chartFor } from './chart.js';
 import {
   addPerson,
   assignPerson,
@@ -18,8 +19,8 @@ import {
   moveUnit,
   StructureRuleError,
 } from './commands.js';
-import { readChart, unitOfAssignment, unitOfPosition } from './infrastructure/structure.tables.js';
-import { day, type Chart } from './structure.record.js';
+import { unitOfAssignment, unitOfPosition } from './infrastructure/structure.tables.js';
+import { day } from './structure.record.js';
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
 
@@ -66,32 +67,6 @@ const field = (input: unknown, name: string): string | null => {
   return typeof value === 'string' ? value : null;
 };
 
-/** The chart as the person may see it: her reach for « structure:read », and her own units. */
-async function visibleChart(c: Ctx, asOf: string): Promise<Chart> {
-  const identity = c.get('identity');
-  return transaction(identity.organizationId, async (db) => {
-    const chart = await readChart(db, asOf);
-    const scope = await reach(db, identity, 'structure:read', asOf);
-    if (scope.everywhere) return { asOf, ...chart };
-    const visible = new Set([...scope.units, ...(await unitsOfPerson(db, identity, asOf))]);
-    const positions = chart.positions.filter((p) => visible.has(p.unitId));
-    const positionIds = new Set(positions.map((p) => p.positionId));
-    const assignments = chart.assignments.filter((a) => positionIds.has(a.positionId));
-    // Whoever draws a part of the organization chooses among all its people; others see those of
-    // the positions they see.
-    const drawing = reachesAnything(await reach(db, identity, 'structure:write', asOf));
-    const assigned = new Set(assignments.map((a) => a.personId));
-    return {
-      asOf,
-      unitTypes: chart.unitTypes,
-      units: chart.units.filter((u) => visible.has(u.unitId)),
-      positions,
-      people: drawing ? chart.people : chart.people.filter((p) => assigned.has(p.personId)),
-      assignments,
-    };
-  });
-}
-
 /** The structure's routes, under /v1/structure (spec 002, under the rights of spec 003). */
 export const structureRoutes = new Hono<{ Variables: IdentityVariables }>()
   .get('/', async (c) => {
@@ -99,7 +74,8 @@ export const structureRoutes = new Hono<{ Variables: IdentityVariables }>()
     if (!day.safeParse(asOf).success) {
       throw new GestureRefusal(422, 'invalid_date', 'asOf is written YYYY-MM-DD.');
     }
-    return c.json(await visibleChart(c, asOf));
+    const identity = c.get('identity');
+    return c.json(await transaction(identity.organizationId, (db) => chartFor(db, identity, asOf)));
   })
   // Unit types are the organization's vocabulary: changing it needs the whole organization.
   .post('/unit-types', async (c) => change(c, createUnitType, await bodyOf(c), () => [null]))

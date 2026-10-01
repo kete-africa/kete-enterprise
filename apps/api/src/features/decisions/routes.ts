@@ -1,4 +1,6 @@
+import type { KeteIdentity } from '@kete/auth';
 import type { CommandDefinition } from '@kete/commands';
+import type { SqlExecutor } from '@kete/tenancy';
 import { Hono, type Context } from 'hono';
 import type { z } from 'zod';
 import { transaction } from '../../platform/db.js';
@@ -54,29 +56,7 @@ export const decisionsRoutes = new Hono<{ Variables: IdentityVariables }>()
   // What waits for this person's decision, and her own requests.
   .get('/inbox', async (c) => {
     const identity = c.get('identity');
-    const inbox = await transaction(identity.organizationId, async (db) => {
-      const reminders = new Map<string, number>();
-      const remindAfter = async (circuitId: string) => {
-        if (!reminders.has(circuitId)) {
-          reminders.set(circuitId, (await findCircuit(db, circuitId))?.remindAfterHours ?? 48);
-        }
-        return reminders.get(circuitId) ?? 48;
-      };
-      const toDecide = [];
-      for (const id of await pendingRequestIds(db)) {
-        const request = await findRequest(db, id);
-        if (request && (await mayDecide(db, request, identity.userId, isAdministrator(identity)))) {
-          toDecide.push(forInbox(request, await remindAfter(request.circuitId)));
-        }
-      }
-      const mine = [];
-      for (const id of await requestIdsOf(db, identity.userId)) {
-        const request = await findRequest(db, id);
-        if (request) mine.push(forInbox(request, await remindAfter(request.circuitId)));
-      }
-      return { toDecide, mine };
-    });
-    return c.json(inbox);
+    return c.json(await transaction(identity.organizationId, (db) => inboxFor(db, identity)));
   })
   .post('/requests/:requestId/decide', async (c) => {
     const body = (await bodyOf(c)) as Record<string, unknown>;
@@ -105,3 +85,30 @@ export const decisionsRoutes = new Hono<{ Variables: IdentityVariables }>()
     if (!allowed) throw new GestureRefusal(403, 'forbidden', 'This needs « decisions:manage ».');
     return run(c, defineCircuit, await bodyOf(c));
   });
+
+/**
+ * What waits for the person's decision, and her own requests, with their current step and whether
+ * it waits too long. The screens and the MCP gateway read the same.
+ */
+export async function inboxFor(db: SqlExecutor, identity: Pick<KeteIdentity, 'role' | 'userId'>) {
+  const reminders = new Map<string, number>();
+  const remindAfter = async (circuitId: string) => {
+    if (!reminders.has(circuitId)) {
+      reminders.set(circuitId, (await findCircuit(db, circuitId))?.remindAfterHours ?? 48);
+    }
+    return reminders.get(circuitId) ?? 48;
+  };
+  const toDecide = [];
+  for (const id of await pendingRequestIds(db)) {
+    const request = await findRequest(db, id);
+    if (request && (await mayDecide(db, request, identity.userId, isAdministrator(identity)))) {
+      toDecide.push(forInbox(request, await remindAfter(request.circuitId)));
+    }
+  }
+  const mine = [];
+  for (const id of await requestIdsOf(db, identity.userId)) {
+    const request = await findRequest(db, id);
+    if (request) mine.push(forInbox(request, await remindAfter(request.circuitId)));
+  }
+  return { toDecide, mine };
+}

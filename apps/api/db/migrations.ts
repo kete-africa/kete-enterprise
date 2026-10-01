@@ -1,6 +1,7 @@
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
 import { decisionsMigrationSql } from '../src/features/decisions/index.js';
+import { gatewayMigrationSql } from '../src/features/gateway/index.js';
 import {
   registryCircuitsMigrationSql,
   registryMigrationSql,
@@ -43,4 +44,6 @@ export const migrations: Migration[] = [
   // Approval circuits, their requests and steps (spec 005); promotions may go through them.
   { name: '0004_decisions', sql: (context) => decisionsMigrationSql(context) },
   { name: '0005_registry_circuits', sql: (context) => registryCircuitsMigrationSql(context) },
+  // Every call through the MCP gateway (spec 006).
+  { name: '0006_gateway', sql: (context) => gatewayMigrationSql(context) },
 ];

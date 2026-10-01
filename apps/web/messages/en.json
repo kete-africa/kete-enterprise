@@ -153,5 +153,10 @@
   "permission_decisions_manage": "Manage circuits",
   "error_not_an_approver": "This step is not yours.",
   "error_unknown_subject": "This kind of request does not exist.",
-  "error_in_circuit": "This promotion is decided in its circuit, from the Inbox."
+  "error_in_circuit": "This promotion is decided in its circuit, from the Inbox.",
+  "gateway_title": "Your copilot",
+  "gateway_explain": "Add this MCP address to Claude, ChatGPT or any copilot: it will see what you see, and act for you, never beyond your rights.",
+  "gateway_how": "In Claude: Settings, Connectors, Add a custom connector, then paste the address. It will ask you to sign in.",
+  "gateway_calls": "Its latest calls",
+  "gateway_no_calls": "No call yet."
 }

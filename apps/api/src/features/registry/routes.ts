@@ -1,3 +1,4 @@
+import type { KeteIdentity } from '@kete/auth';
 import type { CommandDefinition } from '@kete/commands';
 import type { SqlExecutor } from '@kete/tenancy';
 import { Hono, type Context } from 'hono';
@@ -14,7 +15,6 @@ import {
   requestPromotion,
   retireResource,
 } from './commands.js';
-import { readIdentityCard, type CardReader } from './infrastructure/identity-card.js';
 import {
   findPromotion,
   findResource,
@@ -27,13 +27,6 @@ type Ctx = Context<{ Variables: IdentityVariables }>;
 
 /** The permissions this feature declares (spec 004). */
 export const registryPermissions = ['registry:read', 'registry:review'] as const;
-
-let readCard: CardReader = readIdentityCard;
-
-/** Tests: read identity cards another way. */
-export function useCardReader(next: CardReader): void {
-  readCard = next;
-}
 
 const unitOf = (tier: Tier): string | null => (tier.kind === 'unit' ? tier.unitId : null);
 
@@ -50,8 +43,9 @@ interface Reaches {
   above: Set<string>;
 }
 
-async function reachesOf(c: Ctx, db: SqlExecutor): Promise<Reaches> {
-  const identity = c.get('identity');
+type Person = Pick<KeteIdentity, 'role' | 'userId'>;
+
+async function reachesOf(identity: Person, db: SqlExecutor): Promise<Reaches> {
   const [read, review, above] = await Promise.all([
     reach(db, identity, 'registry:read'),
     reach(db, identity, 'registry:review'),
@@ -99,7 +93,7 @@ async function ownerOrReviewer(c: Ctx, resourceId: string): Promise<Resource> {
   const { organizationId, userId } = c.get('identity');
   const found = await transaction(organizationId, async (db) => ({
     resource: await findResource(db, resourceId),
-    reaches: await reachesOf(c, db),
+    reaches: await reachesOf(c.get('identity'), db),
   }));
   if (!found.resource) throw new GestureRefusal(404, 'not_found', 'No such resource here.');
   const { resource, reaches } = found;
@@ -113,54 +107,18 @@ async function ownerOrReviewer(c: Ctx, resourceId: string): Promise<Resource> {
 export const registryRoutes = new Hono<{ Variables: IdentityVariables }>()
   // My resources, the inventory in my reach (with its flags), and the promotions I may decide.
   .get('/', async (c) => {
-    const { organizationId, userId } = c.get('identity');
-    const screen = await transaction(organizationId, async (db) => {
-      const reaches = await reachesOf(c, db);
-      const all = await listResources(db);
-      const byId = new Map(all.map((r) => [r.resourceId, r]));
-      const resources = all.filter((r) => sees(r, userId, reaches));
-      const pending = await listPendingPromotions(db);
-      // A request comes with what it is about: a reviewer decides on a resource she may not see yet.
-      const withResource = (p: Promotion) => {
-        const resource = byId.get(p.resourceId);
-        return {
-          ...p,
-          resource: resource
-            ? {
-                name: resource.name,
-                kind: resource.kind,
-                risk: resource.risk,
-                ownerName: resource.ownerName,
-              }
-            : null,
-        };
-      };
-      return {
-        resources: resources.map((r) => ({ ...r, flags: flagsOf(r) })),
-        toDecide: pending
-          .filter((p) => mayDecide(p, byId.get(p.resourceId) ?? null, userId, reaches))
-          .map(withResource),
-        mine: pending.filter((p) => p.requestedBy === userId).map(withResource),
-        reviews: reaches.review.everywhere || reaches.review.units.size > 0,
-      };
-    });
-    return c.json(screen);
+    const identity = c.get('identity');
+    return c.json(await transaction(identity.organizationId, (db) => registryFor(db, identity)));
   })
   // Anyone registers a resource, in her own space; the API reads an app's card itself.
   .post('/resources', async (c) => {
     const parsed = registerInput.safeParse(await bodyOf(c));
     if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', parsed.error.message);
-    const card = parsed.data.address ? await readCard(parsed.data.address) : null;
-    return run(c, registerResource, {
-      ...parsed.data,
-      ownerName: c.get('identity').name,
-      card,
-    });
+    return run(c, registerResource, { ...parsed.data, ownerName: c.get('identity').name });
   })
   .post('/resources/:resourceId/refresh', async (c) => {
     const resource = await ownerOrReviewer(c, c.req.param('resourceId'));
-    const card = resource.address ? await readCard(resource.address) : null;
-    return run(c, refreshIdentityCard, { resourceId: resource.resourceId, card });
+    return run(c, refreshIdentityCard, { resourceId: resource.resourceId });
   })
   .post('/resources/:resourceId/retire', async (c) => {
     const resource = await ownerOrReviewer(c, c.req.param('resourceId'));
@@ -183,7 +141,10 @@ export const registryRoutes = new Hono<{ Variables: IdentityVariables }>()
       const promotion = await findPromotion(db, promotionId);
       if (!promotion) return null;
       const resource = await findResource(db, promotion.resourceId);
-      return { promotion, ok: mayDecide(promotion, resource, userId, await reachesOf(c, db)) };
+      return {
+        promotion,
+        ok: mayDecide(promotion, resource, userId, await reachesOf(c.get('identity'), db)),
+      };
     });
     if (!allowed) throw new GestureRefusal(404, 'not_found', 'No such promotion here.');
     if (!allowed.ok) {
@@ -198,3 +159,40 @@ export const registryRoutes = new Hono<{ Variables: IdentityVariables }>()
     const body = (await bodyOf(c)) as Record<string, unknown>;
     return run(c, decidePromotion, { ...body, promotionId });
   });
+
+/**
+ * The registry as a person sees it: her resources and those shared with her units or in her
+ * reach (with the inventory's flags), the promotions she may decide, and her own requests. The
+ * screens and the MCP gateway read the same.
+ */
+export async function registryFor(db: SqlExecutor, identity: Person) {
+  const userId = identity.userId;
+  const reaches = await reachesOf(identity, db);
+  const all = await listResources(db);
+  const byId = new Map(all.map((r) => [r.resourceId, r]));
+  const resources = all.filter((r) => sees(r, userId, reaches));
+  const pending = await listPendingPromotions(db);
+  // A request comes with what it is about: a reviewer decides on a resource she may not see yet.
+  const withResource = (p: Promotion) => {
+    const resource = byId.get(p.resourceId);
+    return {
+      ...p,
+      resource: resource
+        ? {
+            name: resource.name,
+            kind: resource.kind,
+            risk: resource.risk,
+            ownerName: resource.ownerName,
+          }
+        : null,
+    };
+  };
+  return {
+    resources: resources.map((r) => ({ ...r, flags: flagsOf(r) })),
+    toDecide: pending
+      .filter((p) => mayDecide(p, byId.get(p.resourceId) ?? null, userId, reaches))
+      .map(withResource),
+    mine: pending.filter((p) => p.requestedBy === userId).map(withResource),
+    reviews: reaches.review.everywhere || reaches.review.units.size > 0,
+  };
+}
