@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/.tanstack
+**/src/paraglide
+**/src/routeTree.gen.ts
+**/project.inlang/cache
+**/test-results
+.env
+.env.*
+!.env.example
+.git

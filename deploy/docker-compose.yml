@@ -1,0 +1,50 @@
+# An instance of Kete Enterprise on one machine (doctrine D-026, D-029): Postgres with pgvector, the
+# API (it applies its migrations at start-up) and the screens. Values come from deploy/.env, never
+# from this file: see deploy/README.md.
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kete_enterprise
+      POSTGRES_USER: enterprise_owner
+      POSTGRES_PASSWORD: ${OWNER_PASSWORD:?set it in deploy/.env}
+      # Read once, by init/01-app-role.sh, to create the API's role.
+      APP_PASSWORD: ${APP_PASSWORD:?set it in deploy/.env}
+    volumes:
+      - db:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'enterprise_owner', '-d', 'kete_enterprise']
+      interval: 5s
+      retries: 20
+
+  api:
+    image: ${API_IMAGE:-ghcr.io/kete-africa/kete-enterprise-api:latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      OWNER_DATABASE_URL: postgres://enterprise_owner:${OWNER_PASSWORD}@db:5432/kete_enterprise
+      DATABASE_URL: postgres://enterprise_app:${APP_PASSWORD:?set it in deploy/.env}@db:5432/kete_enterprise
+      KETE_ACCOUNT_URL: ${IDENTITY_URL:?set it in deploy/.env}
+      KETE_ENVIRONMENT: production
+
+  web:
+    image: ${WEB_IMAGE:-ghcr.io/kete-africa/kete-enterprise-web:latest}
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - '${WEB_PORT:-8080}:3000'
+    environment:
+      PUBLIC_URL: ${PUBLIC_URL:?set it in deploy/.env}
+      API_URL: http://api:3000
+      KETE_ACCOUNT_URL: ${IDENTITY_URL}
+      KETE_CLIENT_ID: ${CLIENT_ID:?set it in deploy/.env}
+      KETE_CLIENT_SECRET: ${CLIENT_SECRET:?set it in deploy/.env}
+      SESSION_SECRET: ${SESSION_SECRET:?set it in deploy/.env}
+
+volumes:
+  db:
