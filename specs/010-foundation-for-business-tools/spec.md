@@ -69,6 +69,20 @@ indicator grid) is the business owner's. The screens must show that split.
    people and accounts, rights, modules, circuits, registry, agents, test outbox, demo.
 2. **Given** anyone, **Then** the space holds « Me » (home, to do) and the business tools her
    rights open; it never shows the frame.
+3. **Given** an administrator on the Administration's front page, **Then** beside the frame she
+   sees what is moving, each part read on its own and left out when it fails: active registry
+   resources and the promotions she has to decide, the active agents (module on), the model and
+   the tokens used this month (administrator), and the way to compliance (module on).
+
+```mermaid
+flowchart LR
+  H[/administration/] --> F[The frame: units, people, rights, modules, circuits, registry, outbox, demo]
+  H --> W[What is moving]
+  W --> R[Registry · resources, promotions to decide]
+  W --> A[Agents · active, module on]
+  W --> I[AI · model, tokens this month, administrator]
+  W --> C[Compliance · module on]
+```
 
 ### User Story 7 — A demo organization (P2)
 
