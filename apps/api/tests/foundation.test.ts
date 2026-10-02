@@ -41,12 +41,14 @@ describe('the API', () => {
       bearer(await tokenFor('usr_awa', { role: 'owner' })),
     );
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
+    expect(await response.json()).toMatchObject({
       userId: 'usr_awa',
       name: 'usr_awa',
       email: 'usr_awa@example.test',
       organizationId: 'org_kya',
       role: 'owner',
+      administrator: true,
+      personId: null,
     });
   });
 

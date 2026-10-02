@@ -67,6 +67,48 @@ export const addPersonInput = z.object({
   accountUserId: z.string().min(1).max(128).optional(),
 });
 
+/** A correction of a person: a field left out stays, `null` empties it. */
+export const updatePersonInput = z.object({
+  personId,
+  name: name.optional(),
+  email: z.email().nullable().optional(),
+  phone: z
+    .string()
+    .regex(/^\+[1-9]\d{6,14}$/, 'A phone number is written +228…')
+    .nullable()
+    .optional(),
+});
+
+/** An administrator links a person to a Compte Kete account, or unlinks her (`null`). */
+export const linkPersonAccountInput = z.object({
+  personId,
+  accountUserId: z.string().min(1).max(128).nullable(),
+});
+
+/**
+ * A list of people to create at once, each with her primary position from the day of import. Rows
+ * are checked one by one: a refused row does not stop the others.
+ */
+export const importPeopleInput = z.object({
+  rows: z
+    .array(
+      z.object({
+        name: z.string().max(400),
+        email: z.string().max(400).optional(),
+        phone: z.string().max(40).optional(),
+        positionId: z.string().max(80).optional(),
+      }),
+    )
+    .min(1)
+    .max(500),
+  startsOn: day.optional(),
+});
+
+export interface ImportReport {
+  created: number;
+  refused: { row: number; code: 'invalid_row' | 'not_found' | 'closed' | 'duplicate_email' }[];
+}
+
 export const assignPersonInput = z.object({
   personId,
   positionId,

@@ -1,5 +1,6 @@
 // The rights feature's only door: what the rest of the API may use (spec 003).
-export { RightsRuleError } from './commands.js';
+export { createRole, grantRole, RightsRuleError, setRolePermissionsCommand } from './commands.js';
+export { listRoles } from './infrastructure/rights.tables.js';
 export { rightsMigrationSql } from './infrastructure/rights.tables.js';
 export {
   covers,

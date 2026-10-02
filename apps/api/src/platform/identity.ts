@@ -44,6 +44,8 @@ export function useVerifier(next: TokenVerifier): void {
 
 export interface IdentityVariables {
   identity: KeteIdentity & { organizationId: string };
+  /** In a demo organization, the administrator who views the space as `identity` (spec 010). */
+  viewedBy?: string;
 }
 
 /**

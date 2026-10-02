@@ -18,7 +18,7 @@ function Home() {
   const gateway = Route.useLoaderData();
   const format = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
   return (
-    <AppShell current="home">
+    <AppShell me={me} current="home">
       <PageTitle>{m.home_title({ name: me.name })}</PageTitle>
       <PageSection first title={m.home_organization()}>
         <p className="text-fg-muted">{m.home_organization_id({ id: me.organizationId })}</p>

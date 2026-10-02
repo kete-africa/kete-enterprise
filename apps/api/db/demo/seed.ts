@@ -1,0 +1,150 @@
+import { executeCommand, type Actor, type CommandDefinition } from '@kete/commands';
+import { inOrganization, type SqlExecutor } from '@kete/tenancy';
+import type pg from 'pg';
+import type { z } from 'zod';
+import { moduleKeys, setModule } from '../../src/features/organization/index.js';
+import {
+  createRole,
+  grantRole,
+  listRoles,
+  setRolePermissionsCommand,
+} from '../../src/features/rights/index.js';
+import {
+  addPerson,
+  assignPerson,
+  createPosition,
+  createUnit,
+  createUnitType,
+} from '../../src/features/structure/index.js';
+import * as kya from './kya.js';
+
+const actor: Actor = { kind: 'service', id: 'demo-seed', channel: 'script' };
+
+/** The day the demo's structure starts: decision 2026-011 named the heads of the directions. */
+const startsOn = '2026-07-24';
+
+export interface SeedReport {
+  structure: 'created' | 'kept';
+  units: number;
+  positions: number;
+  people: number;
+  roles: number;
+}
+
+/**
+ * Seeds a demo organization with the KYA profile (spec 010). The structure is created only in an
+ * empty organization; roles and modules are brought up to date at every run, so a later spec's
+ * permissions reach the demo without starting over. Every change goes through the commands, so the
+ * journal tells what the seed did.
+ */
+export async function seedDemo(options: {
+  app: pg.Pool;
+  owner: pg.Pool;
+  schema: string;
+  organizationId: string;
+  /** The permissions the API knows: a role keeps only those. */
+  permissions: readonly string[];
+}): Promise<SeedReport> {
+  const { app, owner, schema, organizationId } = options;
+  let key = 0;
+  const run = <Input extends z.ZodType, Output>(
+    db: SqlExecutor,
+    definition: CommandDefinition<Input, Output>,
+    input: z.input<Input>,
+  ) =>
+    executeCommand(db, definition, {
+      organizationId,
+      actor,
+      idempotencyKey: `demo-seed-${organizationId}-${Date.now()}-${++key}`,
+      input,
+    }).then((result) => result.output);
+
+  // Only the instance's operator, with the owner role, marks an organization as a demo.
+  await owner.query(
+    `insert into ${schema}.organization_settings (organization_id, demo) values ($1, true)
+     on conflict (organization_id) do update set demo = true, updated_at = now()`,
+    [organizationId],
+  );
+
+  return inOrganization(app, organizationId, async (db) => {
+    const report: SeedReport = { structure: 'kept', units: 0, positions: 0, people: 0, roles: 0 };
+    const { rows } = await db.query<{ count: string }>(`select count(*) from units`);
+    const positionIds = new Map<string, string>();
+    if (Number(rows[0]?.count ?? 0) === 0) {
+      report.structure = 'created';
+      const types = new Map<string, string>();
+      for (const type of kya.unitTypes) {
+        const created = await run(db, createUnitType, type);
+        types.set(type.key, created.unitTypeId);
+      }
+      const unitIds = new Map<string, string>();
+      for (const unit of kya.units) {
+        const created = await run(db, createUnit, {
+          unitTypeId: types.get(unit.type) ?? '',
+          name: unit.name,
+          startsOn,
+          ...(unit.parent ? { parentId: unitIds.get(unit.parent) ?? '' } : {}),
+          ...(unit.code ? { code: unit.code } : {}),
+          ...(unit.country ? { country: unit.country } : {}),
+        });
+        unitIds.set(unit.key, created.unitId);
+        report.units += 1;
+      }
+      for (const position of kya.positions) {
+        const created = await run(db, createPosition, {
+          unitId: unitIds.get(position.unit) ?? '',
+          title: position.title,
+          startsOn,
+          ...(position.reportsTo ? { reportsTo: positionIds.get(position.reportsTo) ?? '' } : {}),
+        });
+        positionIds.set(position.key, created.positionId);
+        report.positions += 1;
+      }
+      for (const person of kya.people) {
+        const created = await run(db, addPerson, {
+          name: person.name,
+          email: kya.demoEmail(person.name),
+          // Demo accounts never sign in: an administrator views the space as them.
+          ...(person.account ? { accountUserId: `demo_${person.key}` } : {}),
+        });
+        for (const [index, positionKey] of person.positions.entries()) {
+          await run(db, assignPerson, {
+            personId: created.personId,
+            positionId: positionIds.get(positionKey) ?? '',
+            kind: index === 0 ? 'primary' : 'interim',
+            startsOn,
+          });
+        }
+        report.people += 1;
+      }
+    } else {
+      const { rows: existing } = await db.query<{ position_id: string; title: string }>(
+        `select position_id, title from positions`,
+      );
+      for (const position of kya.positions) {
+        const found = existing.find((p) => p.title === position.title);
+        if (found && !positionIds.has(position.key))
+          positionIds.set(position.key, found.position_id);
+      }
+    }
+
+    const known = new Set(options.permissions);
+    const existingRoles = await listRoles(db);
+    for (const role of kya.roles) {
+      const permissions = role.permissions.filter((p) => known.has(p));
+      const existing = existingRoles.find((r) => r.name === role.name);
+      if (existing) {
+        await run(db, setRolePermissionsCommand, { roleId: existing.roleId, permissions });
+        continue;
+      }
+      const created = await run(db, createRole, { name: role.name, permissions });
+      for (const positionKey of role.positions) {
+        const positionId = positionIds.get(positionKey);
+        if (positionId) await run(db, grantRole, { roleId: created.roleId, positionId, startsOn });
+      }
+      report.roles += 1;
+    }
+    for (const module of moduleKeys) await run(db, setModule, { module, enabled: true });
+    return report;
+  });
+}

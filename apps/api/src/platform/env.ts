@@ -28,6 +28,19 @@ export const env = {
   get publicApiUrl() {
     return (process.env.PUBLIC_API_URL ?? '').replace(/\/$/, '');
   },
+  /** Where people open the screens: the links of e-mails point there. */
+  get publicWebUrl() {
+    return (process.env.PUBLIC_WEB_URL ?? '').replace(/\/$/, '');
+  },
+  /** `capture` keeps e-mails in the test outbox; `send` hands them to the provider (spec 010). */
+  get mailMode(): 'capture' | 'send' {
+    return process.env.KETE_MAIL_MODE === 'send' && process.env.MAILKITE_API_KEY
+      ? 'send'
+      : 'capture';
+  },
+  get mailFrom() {
+    return process.env.KETE_MAIL_FROM ?? 'Kete Enterprise <entreprise@kete.africa>';
+  },
   get port() {
     return Number(process.env.PORT ?? 3000);
   },

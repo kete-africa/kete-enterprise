@@ -31,6 +31,9 @@ export function refusal(code: string | null): string {
     not_owner: m.error_not_owner,
     not_done: m.error_not_done,
     own_action: m.error_own_action,
+    module_disabled: m.error_module_disabled,
+    view_as_forbidden: m.error_view_as_forbidden,
+    link_invalid: m.error_link_invalid,
   };
   return (messages[code ?? ''] ?? m.error_generic)();
 }

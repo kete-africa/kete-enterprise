@@ -6,7 +6,7 @@ import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import * as m from '@/paraglide/messages.js';
 
-export const Route = createFileRoute('/droits')({
+export const Route = createFileRoute('/administration/droits')({
   beforeLoad: ({ location }) => requirePerson(location.href),
   loader: () => fetchRights(),
   component: RightsPage,
@@ -14,9 +14,10 @@ export const Route = createFileRoute('/droits')({
 
 /** What the person may do and where; for administrators, roles and their grants (spec 003). */
 function RightsPage() {
+  const { me } = Route.useRouteContext();
   const screen = Route.useLoaderData();
   return (
-    <AppShell current="rights">
+    <AppShell me={me} current="rights">
       <PageTitle>{m.rights_title()}</PageTitle>
       <PageSection first title={m.rights_mine()}>
         <MyRights screen={screen} />

@@ -1,5 +1,6 @@
 import { createJobs, defineJob, type Jobs } from '@kete/jobs';
 import { dueAgents, wakeDueAgents } from './features/agents/index.js';
+import { sendQueuedMail } from './features/mail/index.js';
 import { getPool } from './platform/db.js';
 import { env } from './platform/env.js';
 
@@ -20,6 +21,16 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const reports = await wakeDueAgents(() => dueAgents(getPool()));
           if (reports.length > 0) console.log(`[worker] ${reports.length} agent(s) woken`);
+        },
+      }),
+      // E-mails queued by gestures leave every minute; in capture mode none is ever queued.
+      defineJob({
+        name: 'send-mail',
+        schedule: '* * * * *',
+        retryLimit: 0,
+        async handle() {
+          const sent = await sendQueuedMail();
+          if (sent > 0) console.log(`[worker] ${sent} e-mail(s) sent`);
         },
       }),
     ],

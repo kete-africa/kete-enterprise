@@ -1,6 +1,8 @@
 import { createServerFn } from '@tanstack/react-start';
-import { getRequest } from '@tanstack/react-start/server';
-import { callApi, SignInRequired } from '@/platform/api';
+import { deleteCookie, getRequest, setCookie } from '@tanstack/react-start/server';
+import { callApi, SignInRequired, VIEW_AS_COOKIE } from '@/platform/api';
+
+export type ModuleKey = 'surveys' | 'performance' | 'meetings' | 'compliance' | 'agents';
 
 export interface Me {
   userId: string;
@@ -8,6 +10,15 @@ export interface Me {
   email: string;
   organizationId: string;
   role: 'owner' | 'admin' | 'member' | null;
+  /** Her person in the organization, found by e-mail on her first sign-in (spec 010). */
+  personId: string | null;
+  administrator: boolean;
+  /** The permissions she holds somewhere. */
+  permissions: string[];
+  modules: Record<ModuleKey, boolean>;
+  demo: boolean;
+  /** In a demo organization: the administrator viewing the space as this person. */
+  viewedBy: string | null;
 }
 
 /** The signed-in person and her organization, as the API sees them; null without a session. */
@@ -19,3 +30,41 @@ export const fetchMe = createServerFn({ method: 'GET' }).handler(async (): Promi
     throw error;
   }
 });
+
+/** Who may open the Administration: whoever holds a part of the frame. */
+export function administers(me: Me): boolean {
+  const frame = [
+    'structure:write',
+    'rights:manage',
+    'decisions:manage',
+    'registry:review',
+    'agents:manage',
+  ];
+  return me.administrator || frame.some((p) => me.permissions.includes(p));
+}
+
+/** Whether a business tool shows: its module on, and one of its permissions held. */
+export function opens(me: Me, module: ModuleKey, permissions: string[]): boolean {
+  return (
+    me.modules[module] && (me.administrator || permissions.some((p) => me.permissions.includes(p)))
+  );
+}
+
+/** Views the space as a person of a demo organization (the API checks it), or comes back. */
+export const viewAs = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const personId = (input as { personId?: unknown } | null)?.personId;
+    if (
+      personId !== null &&
+      (typeof personId !== 'string' || !/^prs_[0-9a-f-]{8,64}$/.test(personId))
+    ) {
+      throw new Error('Unknown person.');
+    }
+    return { personId };
+  })
+  .handler(({ data }) => {
+    const options = { path: '/', httpOnly: true, sameSite: 'lax' as const, secure: true };
+    if (data.personId) setCookie(VIEW_AS_COOKIE, data.personId, options);
+    else deleteCookie(VIEW_AS_COOKIE, options);
+    return { ok: true };
+  });

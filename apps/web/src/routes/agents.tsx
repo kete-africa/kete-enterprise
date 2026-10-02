@@ -6,7 +6,7 @@ import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import * as m from '@/paraglide/messages.js';
 
-export const Route = createFileRoute('/agents')({
+export const Route = createFileRoute('/administration/agents')({
   beforeLoad: ({ location }) => requirePerson(location.href),
   loader: () => fetchAgents(),
   component: AgentsPage,
@@ -14,9 +14,10 @@ export const Route = createFileRoute('/agents')({
 
 /** The agents that act for the person (all of them for a manager), and their signals (spec 007). */
 function AgentsPage() {
+  const { me } = Route.useRouteContext();
   const screen = Route.useLoaderData();
   return (
-    <AppShell current="agents">
+    <AppShell me={me} current="agents">
       <PageTitle>{m.agents_title()}</PageTitle>
       <PageSection first>
         <AgentsView screen={screen} />
