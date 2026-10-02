@@ -4,11 +4,11 @@ A demo of Kete Enterprise for KYA-Energy Group's general management. KYA's real 
 (decision 2026-010) and indicators (KYA-KPI-01); every person and e-mail is fictitious
 (`@kya-demo.test`). Everything runs on staging; nothing touches production.
 
-| What | Where (staging) |
-| --- | --- |
-| Kete Enterprise | `https://enterprise-kete-staging.13.140.178.49.sslip.io` |
-| Support (kete-helpdesk) | `https://helpdesk-kete-staging.13.140.178.49.sslip.io` |
-| Compte Kete | `https://compte-kete-staging.13.140.178.49.sslip.io` |
+| What                    | Where (staging)                                          |
+| ----------------------- | -------------------------------------------------------- |
+| Kete Enterprise         | `https://enterprise-kete-staging.13.140.178.49.sslip.io` |
+| Support (kete-helpdesk) | `https://helpdesk-kete-staging.13.140.178.49.sslip.io`   |
+| Compte Kete             | `https://compte-kete-staging.13.140.178.49.sslip.io`     |
 
 ## What the demo proves
 
