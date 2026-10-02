@@ -1,3 +1,6 @@
 @import 'tailwindcss';
 @import '@kete/design/styles.css';
+/* The build's own output is never a source: without .git (an image), Tailwind would scan it and
+   the server and client builds would name a different stylesheet. */
+@source not '../../dist';
 @source '../../node_modules/@kete/design/src';
