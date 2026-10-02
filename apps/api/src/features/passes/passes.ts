@@ -19,13 +19,15 @@ const fingerprintOf = (token: string) => createHash('sha256').update(token).dige
 const tokenShape = /^[A-Za-z0-9_-]{43}$/;
 
 /**
- * Issues a personal link for a person and a purpose (`surveys.answer`, `performance.review`), in
- * the caller's transaction. The token is returned once — to be put in an e-mail — and never kept.
+ * Issues a personal link for a purpose (`surveys.answer`, `performance.review`) and a reference (a
+ * survey's respondent, a review), for a person of the organization or — `personId: null` — someone
+ * outside it whom the feature knows. In the caller's transaction; the token is returned once — to
+ * be put in an e-mail — and never kept. A new link for the same reference replaces the previous.
  */
 export async function issuePass(
   db: SqlExecutor,
   organizationId: string,
-  input: { personId: string; purpose: string; reference: string; expiresAt: Date },
+  input: { personId: string | null; purpose: string; reference: string; expiresAt: Date },
 ): Promise<{ passId: string; token: string; url: string }> {
   const token = randomBytes(32).toString('base64url');
   const passId = await insertPass(db, organizationId, {
@@ -35,9 +37,9 @@ export async function issuePass(
   return { passId, token, url: `${env.publicWebUrl}/lien/${token}` };
 }
 
-/** Revokes every live link of a purpose and reference: a closed survey opens no more. */
-export function revokePasses(db: SqlExecutor, purpose: string, reference: string) {
-  return revokeFor(db, purpose, reference);
+/** Revokes every live link of a purpose for these references: a closed survey opens no more. */
+export function revokePasses(db: SqlExecutor, purpose: string, references: string[]) {
+  return revokeFor(db, purpose, references);
 }
 
 /** The live link behind a token, or null: wrong, expired or revoked look the same from outside. */
@@ -72,7 +74,9 @@ export type PassContext = Context<{ Variables: PassVariables }>;
 export const passRoutes = new Hono().get('/:token', async (c) => {
   const pass = await resolvePass(c.req.param('token'));
   if (!pass) throw new GestureRefusal(404, 'link_invalid', 'This link is not valid, or no longer.');
-  const person = await transaction(pass.organizationId, (db) => findPerson(db, pass.personId));
+  const person = pass.personId
+    ? await transaction(pass.organizationId, (db) => findPerson(db, pass.personId ?? ''))
+    : null;
   return c.json({
     purpose: pass.purpose,
     reference: pass.reference,

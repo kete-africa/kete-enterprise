@@ -13,7 +13,8 @@ export function passesMigrationSql(options: { schema: string; appRole: string })
 create table ${s}.person_passes (
   pass_id text primary key,
   organization_id text not null,
-  person_id text not null,
+  -- An outside respondent (a customer answering a survey) has no person: the feature knows her.
+  person_id text,
   purpose text not null check (purpose ~ '^[a-z]+\\.[a-z_]+$'),
   reference text not null check (length(reference) between 1 and 80),
   fingerprint text not null unique check (fingerprint ~ '^[0-9a-f]{64}$'),
@@ -40,7 +41,7 @@ grant execute on function ${s}.pass_by_fingerprint(text) to ${options.appRole};
 export interface PassRow {
   organizationId: string;
   passId: string;
-  personId: string;
+  personId: string | null;
   purpose: string;
   reference: string;
 }
@@ -49,18 +50,18 @@ export async function insertPass(
   db: SqlExecutor,
   organizationId: string,
   input: {
-    personId: string;
+    personId: string | null;
     purpose: string;
     reference: string;
     fingerprint: string;
     expiresAt: Date;
   },
 ): Promise<string> {
-  // A new link for the same person and purpose replaces the previous one.
+  // A new link for the same purpose and reference replaces the previous one.
   await db.query(
     `update person_passes set revoked_at = now()
-      where person_id = $1 and purpose = $2 and reference = $3 and revoked_at is null`,
-    [input.personId, input.purpose, input.reference],
+      where purpose = $1 and reference = $2 and revoked_at is null`,
+    [input.purpose, input.reference],
   );
   const passId = newId('pss');
   await db.query(
@@ -83,13 +84,13 @@ export async function insertPass(
 export async function revokeFor(
   db: SqlExecutor,
   purpose: string,
-  reference: string,
+  references: string[],
 ): Promise<number> {
   const { rows } = await db.query(
     `update person_passes set revoked_at = now()
-      where purpose = $1 and reference = $2 and revoked_at is null
+      where purpose = $1 and reference = any($2::text[]) and revoked_at is null
       returning pass_id`,
-    [purpose, reference],
+    [purpose, references],
   );
   return rows.length;
 }
@@ -102,7 +103,7 @@ export async function passByFingerprint(
   const { rows } = await pool.query<{
     organization_id: string;
     pass_id: string;
-    person_id: string;
+    person_id: string | null;
     purpose: string;
     reference: string;
   }>(

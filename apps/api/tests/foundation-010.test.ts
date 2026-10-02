@@ -169,7 +169,7 @@ describe('a personal link', () => {
     );
     expect(await resolvePass(first.token)).toBeNull();
     expect(await resolvePass(second.token)).not.toBeNull();
-    await inOrganization(db.app, 'org_kya', (tx) => revokePasses(tx, 'surveys.answer', 'cmp_1'));
+    await inOrganization(db.app, 'org_kya', (tx) => revokePasses(tx, 'surveys.answer', ['cmp_1']));
     expect(await resolvePass(second.token)).toBeNull();
     expect((await api.request('/public/passes/not-a-token')).status).toBe(404);
   });

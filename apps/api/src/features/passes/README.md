@@ -24,8 +24,10 @@ sequenceDiagram
 - The table `person_passes` keeps a SHA-256 **fingerprint**, never the token (32 random bytes).
 - A link carries no organization: the definer function `pass_by_fingerprint` finds it from the
   fingerprint alone, and only for a live link (not expired, not revoked).
-- A new link for the same person, purpose and reference revokes the previous one;
-  `revokePasses(purpose, reference)` closes them all (a closed campaign).
+- A link is for a person of the organization or, with no person, for someone outside it whom the
+  feature knows (a customer answering a survey).
+- A new link for the same purpose and reference revokes the previous one;
+  `revokePasses(purpose, references)` closes them all (a closed campaign).
 - Wrong, expired and revoked links look the same from outside: `404 link_invalid`.
 - Gestures through a link run as the person (`actor: { kind: 'person', id: prs_… }`), in her
   organization's transaction, journaled like any other.
