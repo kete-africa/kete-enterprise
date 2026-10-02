@@ -28,6 +28,11 @@ import {
   structureRoutes,
   unlinkedPeopleWithEmail,
 } from './features/structure/index.js';
+import {
+  surveysPermissions,
+  surveysPublicRoutes,
+  surveysRoutes,
+} from './features/surveys/index.js';
 import { transaction } from './platform/db.js';
 import { GestureRefusal, runCommand } from './platform/gestures.js';
 import { requirePerson, type IdentityVariables } from './platform/identity.js';
@@ -41,6 +46,7 @@ export const permissionCatalog = [
   ...decisionsPermissions,
   ...agentsPermissions,
   ...compliancePermissions,
+  ...surveysPermissions,
 ];
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
@@ -155,10 +161,12 @@ export function createApi(): Hono {
   v1.use('/compliance/*', requireModule('compliance'));
   v1.route('/compliance', complianceRoutes);
   v1.route('/mail', mailRoutes);
+  v1.route('/surveys', surveysRoutes);
   api.route('/v1', v1);
 
   const open = new Hono();
   open.route('/passes', passRoutes);
+  open.route('/surveys', surveysPublicRoutes);
   api.route('/public', open);
   // A refused gesture says why, with a stable code the screens translate.
   api.onError((error, c) => {

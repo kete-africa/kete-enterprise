@@ -1,11 +1,14 @@
 import { KeteMark, Panel } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchLink } from '@/lib/admin';
-import { LinkPage } from '@/lib/link-pages';
+import { LinkPage, loadLinkPage } from '@/lib/link-pages';
 import * as m from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/lien/$token')({
-  loader: ({ params }) => fetchLink({ data: { token: params.token } }),
+  loader: async ({ params }) => {
+    const link = await fetchLink({ data: { token: params.token } });
+    return { link, page: link ? await loadLinkPage(link, params.token) : null };
+  },
   component: LinkRoute,
 });
 
@@ -14,7 +17,7 @@ export const Route = createFileRoute('/lien/$token')({
  * for, then goes. A wrong, expired or revoked link says so, and nothing else.
  */
 function LinkRoute() {
-  const link = Route.useLoaderData();
+  const { link, page } = Route.useLoaderData();
   const { token } = Route.useParams();
   return (
     <main className="mx-auto min-h-screen max-w-3xl px-4 py-8">
@@ -22,8 +25,8 @@ function LinkRoute() {
         <KeteMark />
         <span className="font-semibold">{m.app_name()}</span>
       </header>
-      {link ? (
-        <LinkPage link={link} token={token} />
+      {link && page ? (
+        <LinkPage page={page} token={token} />
       ) : (
         <Panel title={m.link_invalid_title()}>
           <p>{m.link_invalid()}</p>

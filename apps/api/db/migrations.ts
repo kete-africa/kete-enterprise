@@ -13,6 +13,7 @@ import {
 } from '../src/features/registry/index.js';
 import { rightsMigrationSql } from '../src/features/rights/index.js';
 import { structureMigrationSql } from '../src/features/structure/index.js';
+import { surveysMigrationSql } from '../src/features/surveys/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -67,4 +68,6 @@ export const migrations: Migration[] = [
         mailMigrationSql(context),
       ].join('\n'),
   },
+  // Questionnaires, campaigns, respondents and their forms (spec 011).
+  { name: '0011_surveys', sql: (context) => surveysMigrationSql(context) },
 ];

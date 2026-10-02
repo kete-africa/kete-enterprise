@@ -16,7 +16,9 @@ import {
   createUnit,
   createUnitType,
 } from '../../src/features/structure/index.js';
+import { saveQuestionnaire } from '../../src/features/surveys/index.js';
 import * as kya from './kya.js';
+import { questionnaires } from './kya-surveys.js';
 
 const actor: Actor = { kind: 'service', id: 'demo-seed', channel: 'script' };
 
@@ -29,6 +31,7 @@ export interface SeedReport {
   positions: number;
   people: number;
   roles: number;
+  questionnaires: number;
 }
 
 /**
@@ -67,7 +70,14 @@ export async function seedDemo(options: {
   );
 
   return inOrganization(app, organizationId, async (db) => {
-    const report: SeedReport = { structure: 'kept', units: 0, positions: 0, people: 0, roles: 0 };
+    const report: SeedReport = {
+      structure: 'kept',
+      units: 0,
+      positions: 0,
+      people: 0,
+      roles: 0,
+      questionnaires: 0,
+    };
     const { rows } = await db.query<{ count: string }>(`select count(*) from units`);
     const positionIds = new Map<string, string>();
     if (Number(rows[0]?.count ?? 0) === 0) {
@@ -145,6 +155,44 @@ export async function seedDemo(options: {
       report.roles += 1;
     }
     for (const module of moduleKeys) await run(db, setModule, { module, enabled: true });
+
+    // The questionnaires, once (spec 011): sections about units point at the demo's units.
+    const { rows: existingQuestionnaires } = await db.query<{ title: string }>(
+      `select title from questionnaires`,
+    );
+    const { rows: unitRows } = await db.query<{ unit_id: string; name: string }>(
+      `select unit_id, name from units`,
+    );
+    const unitIdOf = (key: string) => {
+      const name = kya.units.find((u) => u.key === key)?.name;
+      return unitRows.find((u) => u.name === name)?.unit_id;
+    };
+    for (const questionnaire of questionnaires) {
+      if (existingQuestionnaires.some((q) => q.title === questionnaire.title)) continue;
+      await run(db, saveQuestionnaire, {
+        title: questionnaire.title,
+        description: questionnaire.description,
+        anonymous: questionnaire.anonymous,
+        content: {
+          sections: questionnaire.sections.map((section, s) => {
+            const unitId = section.unit ? unitIdOf(section.unit) : undefined;
+            return {
+              key: `s${s + 1}`,
+              title: section.title,
+              ...(unitId ? { unitId } : {}),
+              questions: section.questions.map((q, i) => ({
+                key: `s${s + 1}_q${i + 1}`,
+                type: q.type,
+                label: q.label,
+                required: q.required ?? true,
+                allowNa: true,
+              })),
+            };
+          }),
+        },
+      });
+      report.questionnaires += 1;
+    }
     return report;
   });
 }
