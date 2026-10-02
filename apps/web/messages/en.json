@@ -698,5 +698,7 @@
   "ai_budget": "Monthly budget",
   "ai_budget_tokens": "Tokens per month",
   "ai_budget_explain": "Past it, no call is made until next month: the briefing falls back to rules.",
-  "tier_team": "My team"
+  "tier_team": "My team",
+  "reading_from": "reading from {source}: {value}",
+  "reading_take": "Take this reading"
 }

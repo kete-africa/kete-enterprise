@@ -27,7 +27,7 @@ export const Route = createFileRoute('/performance/revues/$reviewId')({
  */
 function ReviewPage() {
   const { me } = Route.useRouteContext();
-  const { review, quarter } = Route.useLoaderData();
+  const { review, quarter, readings } = Route.useLoaderData();
   const mine = me.personId === review.personId;
   const managing = me.personId === review.managerPersonId;
   const can = (p: string) => me.administrator || me.permissions.includes(p);
@@ -55,7 +55,7 @@ function ReviewPage() {
       </PageSection>
       {review.status === 'open' && quarter?.status === 'open' && can('performance:measure') && (
         <PageSection title={m.measure_title()}>
-          <MeasureForm review={review} />
+          <MeasureForm review={review} readings={readings} />
         </PageSection>
       )}
       <PageSection title={m.review_grid()}>

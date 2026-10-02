@@ -698,5 +698,7 @@
   "ai_budget": "Budget mensuel",
   "ai_budget_tokens": "Jetons par mois",
   "ai_budget_explain": "Au-delà, aucun appel n'est fait jusqu'au mois suivant : le briefing revient aux règles.",
-  "tier_team": "Mon équipe"
+  "tier_team": "Mon équipe",
+  "reading_from": "relevé {source} : {value}",
+  "reading_take": "Prendre ce relevé"
 }
