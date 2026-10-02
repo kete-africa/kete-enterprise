@@ -36,9 +36,16 @@ describe('the KYA demo', () => {
       units: kya.units.length,
       positions: kya.positions.length,
       people: kya.people.length,
+      questionnaires: 3,
     });
     const again = await seed();
-    expect(again).toMatchObject({ structure: 'kept', units: 0, people: 0, roles: 0 });
+    expect(again).toMatchObject({
+      structure: 'kept',
+      units: 0,
+      people: 0,
+      roles: 0,
+      questionnaires: 0,
+    });
     // A remote test database answers each of the seed's hundreds of gestures in turn.
   }, 600_000);
 

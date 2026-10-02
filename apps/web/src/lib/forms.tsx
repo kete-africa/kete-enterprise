@@ -34,6 +34,13 @@ export function refusal(code: string | null): string {
     module_disabled: m.error_module_disabled,
     view_as_forbidden: m.error_view_as_forbidden,
     link_invalid: m.error_link_invalid,
+    used: m.error_used,
+    not_open: m.error_not_open,
+    not_closed: m.error_not_closed,
+    submitted: m.error_submitted,
+    incomplete: m.survey_incomplete,
+    not_yours: m.error_not_yours,
+    nobody: m.error_nobody,
   };
   return (messages[code ?? ''] ?? m.error_generic)();
 }
