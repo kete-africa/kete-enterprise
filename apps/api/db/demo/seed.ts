@@ -1,8 +1,10 @@
 import { executeCommand, type Actor, type CommandDefinition } from '@kete/commands';
 import { inOrganization, type SqlExecutor } from '@kete/tenancy';
+import { readFileSync } from 'node:fs';
 import type pg from 'pg';
 import type { z } from 'zod';
 import { moduleKeys, setModule } from '../../src/features/organization/index.js';
+import { createQuarter, importReferential } from '../../src/features/performance/index.js';
 import {
   createRole,
   grantRole,
@@ -32,6 +34,7 @@ export interface SeedReport {
   people: number;
   roles: number;
   questionnaires: number;
+  profiles: number;
 }
 
 /**
@@ -77,6 +80,7 @@ export async function seedDemo(options: {
       people: 0,
       roles: 0,
       questionnaires: 0,
+      profiles: 0,
     };
     const { rows } = await db.query<{ count: string }>(`select count(*) from units`);
     const positionIds = new Map<string, string>();
@@ -192,6 +196,25 @@ export async function seedDemo(options: {
         },
       });
       report.questionnaires += 1;
+    }
+
+    // The indicators referential, once (spec 012): KYA-KPI-01 and the IT service's two profiles;
+    // positions take their profile by title. Then the quarter to review, ready to open.
+    const { rows: profileRows } = await db.query<{ count: string }>(
+      `select count(*) from job_profiles`,
+    );
+    if (Number(profileRows[0]?.count ?? 0) === 0) {
+      const referential = JSON.parse(
+        readFileSync(new URL('./kya-kpi.json', import.meta.url), 'utf8'),
+      ) as { source: string; profiles: unknown[] };
+      const imported = await run(db, importReferential, referential as never);
+      report.profiles = imported.profiles;
+      await run(db, createQuarter, {
+        label: 'T3 2026',
+        startsOn: '2026-07-01',
+        endsOn: '2026-09-30',
+        progressive: true,
+      });
     }
     return report;
   });

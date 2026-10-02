@@ -112,8 +112,18 @@ export const units: DemoUnit[] = [
 export const positions: DemoPosition[] = [
   { key: 'dg', unit: 'dg', title: 'Directeur Général' },
   { key: 'dga', unit: 'dg', title: 'Directeur Général Adjoint', reportsTo: 'dg' },
-  { key: 'assistant', unit: 'dg', title: 'Assistant(e) de Direction', reportsTo: 'dg' },
-  { key: 'driver', unit: 'dg', title: 'Chauffeur', reportsTo: 'dga' },
+  {
+    key: 'assistant',
+    unit: 'dg',
+    title: 'Assistant(e) de Direction · Assistant(e) administratif',
+    reportsTo: 'dg',
+  },
+  {
+    key: 'driver',
+    unit: 'dg',
+    title: "Chauffeur · Agent d'entretien · Agent de sécurité",
+    reportsTo: 'dga',
+  },
   {
     key: 'audit',
     unit: 'audit',
