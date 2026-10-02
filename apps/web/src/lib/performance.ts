@@ -61,6 +61,17 @@ export interface Review {
   lines: ReviewLine[];
 }
 
+export interface Reading {
+  readingId: string;
+  quarter: string;
+  indicator: string;
+  unitId: string | null;
+  value: number;
+  proof: string;
+  source: string;
+  createdAt: string;
+}
+
 export interface Quarter {
   quarterId: string;
   label: string;
@@ -127,10 +138,17 @@ export const fetchReview = createServerFn({ method: 'GET' })
     const quarters = await callApi<{ quarters: Quarter[] }>(request, '/v1/performance').catch(
       () => null,
     );
-    return {
-      review,
-      quarter: quarters?.quarters.find((q) => q.quarterId === review.quarterId) ?? null,
-    };
+    const quarter = quarters?.quarters.find((q) => q.quarterId === review.quarterId) ?? null;
+    // The readings connected apps sent for this quarter: for those who measure (spec 015).
+    const readings = quarter
+      ? await callApi<{ readings: Reading[] }>(
+          request,
+          `/v1/performance/readings?quarter=${encodeURIComponent(quarter.label)}`,
+        )
+          .then((r) => r.readings)
+          .catch(() => [] as Reading[])
+      : [];
+    return { review, quarter, readings };
   });
 
 export const fetchMyPerformance = createServerFn({ method: 'GET' }).handler(() =>
@@ -141,7 +159,7 @@ const paths = [
   /^\/quarters$/,
   /^\/quarters\/pqt_[0-9a-f-]+\/(open|close-measures|close|group)$/,
   /^\/quarters\/pqt_[0-9a-f-]+\/units\/unt_[0-9a-f-]+$/,
-  /^\/reviews\/rvw_[0-9a-f-]+\/(measures|from-survey|record|sign|validate|acknowledge)$/,
+  /^\/reviews\/rvw_[0-9a-f-]+\/(measures|from-survey|from-reading|record|sign|validate|acknowledge)$/,
   /^\/positions\/pos_[0-9a-f-]+\/profile$/,
 ];
 

@@ -9,6 +9,7 @@ import {
   performanceGesture,
   type Colour,
   type Quarter,
+  type Reading,
   type Review,
   type ReviewLine,
   type ReviewStatus,
@@ -162,7 +163,7 @@ function Alert({ error }: { error: string | null }) {
 }
 
 /** Management control enters each line's value, its colour when the target is words, its proof. */
-export function MeasureForm({ review }: { review: Review }) {
+export function MeasureForm({ review, readings = [] }: { review: Review; readings?: Reading[] }) {
   const { busy, error, run } = useGesture();
   const [draft, setDraft] = useState(
     Object.fromEntries(
@@ -188,7 +189,34 @@ export function MeasureForm({ review }: { review: Review }) {
               key={line.position}
               className="flex flex-wrap items-end gap-3 border-b border-line pb-3"
             >
-              <span className="min-w-56 flex-1 text-body-sm font-semibold">{line.name}</span>
+              <span className="min-w-56 flex-1 text-body-sm font-semibold">
+                {line.name}
+                {readings
+                  .filter((r) => r.indicator === line.name)
+                  .map((r) => (
+                    <span
+                      key={r.readingId}
+                      className="mt-1 flex flex-wrap items-center gap-2 font-normal"
+                    >
+                      <Tag tone="info">
+                        {m.reading_from({ source: r.source, value: String(r.value) })}
+                      </Tag>
+                      <button
+                        type="button"
+                        className="text-link underline"
+                        disabled={busy}
+                        onClick={() =>
+                          run(`/reviews/${review.reviewId}/from-reading`, {
+                            position: line.position,
+                            readingId: r.readingId,
+                          })
+                        }
+                      >
+                        {m.reading_take()}
+                      </button>
+                    </span>
+                  ))}
+              </span>
               <TextField
                 className="w-32"
                 label={line.kind === 'malus' ? m.measure_incidents() : m.line_value()}

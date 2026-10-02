@@ -33,6 +33,7 @@ import {
   listQuarters,
   listReviews,
 } from './infrastructure/performance.tables.js';
+import { listReadings, measureFromReading, ReadingRuleError, recordReading } from './readings.js';
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
 
@@ -63,6 +64,13 @@ async function refused<T>(work: Promise<T>): Promise<T> {
   } catch (error) {
     if (error instanceof PerformanceRuleError) {
       throw new GestureRefusal(statusOf[error.code], error.code, error.message);
+    }
+    if (error instanceof ReadingRuleError) {
+      throw new GestureRefusal(
+        error.code === 'not_found' ? 404 : error.code === 'not_open' ? 409 : 422,
+        error.code,
+        error.message,
+      );
     }
     throw error;
   }
@@ -190,6 +198,22 @@ export const performanceRoutes = new Hono<{ Variables: IdentityVariables }>()
   .post(
     '/reviews/:reviewId/from-survey',
     gesture(['performance:measure'], measureFromSurvey, 'reviewId'),
+  )
+  // A connected app sends a reading for the person it acts for (spec 015): a source, not a measure.
+  .post('/readings', async (c) =>
+    c.json(await refused(runGesture(c, recordReading, await bodyOf(c))), 201),
+  )
+  .get('/readings', async (c) => {
+    await requireAny(c, ['performance:manage', 'performance:measure', 'performance:read']);
+    const { organizationId } = c.get('identity');
+    const quarter = c.req.query('quarter') ?? '';
+    return c.json({
+      readings: await transaction(organizationId, (db) => listReadings(db, quarter)),
+    });
+  })
+  .post(
+    '/reviews/:reviewId/from-reading',
+    gesture(['performance:measure'], measureFromReading, 'reviewId'),
   )
   .post(
     '/reviews/:reviewId/validate',

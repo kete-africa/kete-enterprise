@@ -10,7 +10,10 @@ import { mailMigrationSql } from '../src/features/mail/index.js';
 import { meetingsMigrationSql } from '../src/features/meetings/index.js';
 import { organizationMigrationSql } from '../src/features/organization/index.js';
 import { passesMigrationSql } from '../src/features/passes/index.js';
-import { performanceMigrationSql } from '../src/features/performance/index.js';
+import {
+  performanceMigrationSql,
+  readingsMigrationSql,
+} from '../src/features/performance/index.js';
 import {
   registryCircuitsMigrationSql,
   registryMigrationSql,
@@ -83,4 +86,6 @@ export const migrations: Migration[] = [
   },
   // The use of models and their budgets (@kete/ai), and the morning briefings (spec 014).
   { name: '0014_assistant', sql: (context) => assistantMigrationSql(context) },
+  // Readings of indicators sent by connected apps (spec 015).
+  { name: '0015_readings', sql: (context) => readingsMigrationSql(context) },
 ];

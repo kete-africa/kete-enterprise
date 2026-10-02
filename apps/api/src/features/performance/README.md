@@ -42,3 +42,6 @@ stateDiagram-v2
   (spec 002, `reportingLines`), past vacant positions.
 - **Sources**: `measure-from-survey` takes a published survey's score (spec 011) for the section
   about the person's unit — or the nearest above — and writes the campaign as its proof.
+- **Readings** (spec 015): a connected app — `kete-helpdesk` for its tickets — sends a value of an
+  indicator for a quarter with its proof (`POST /v1/performance/readings`, append-only). It is a
+  source: management control takes it into a review's line (`measure-from-reading`), or not.
