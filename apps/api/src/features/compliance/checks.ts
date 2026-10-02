@@ -73,6 +73,55 @@ const checks: Record<string, Check> = {
     );
     return result(rows.map((r) => r.description));
   },
+  // ISO 9001 § 9.3: a management review held and recorded in the last six months (spec 013).
+  'meetings.management_review_held': async (db) => {
+    const { rows } = await db.query<{ held: boolean }>(
+      `select exists (
+         select 1 from meetings m join meeting_types t on t.type_id = m.type_id
+          where t.kind = 'quality' and m.status = 'recorded'
+            and m.recorded_at > now() - interval '6 months') as held`,
+    );
+    return result(rows[0]?.held ? [] : ['management review']);
+  },
+  // Every meeting held in the last 90 days published its record within its type's delay.
+  'meetings.records_on_time': async (db) => {
+    const { rows } = await db.query<{ title: string }>(
+      `select title from meetings
+        where held_at > now() - interval '90 days'
+          and ((status = 'recorded' and recorded_at > record_due_at)
+               or (status = 'held' and record_due_at < now()))
+        order by held_at`,
+    );
+    return result(rows.map((r) => r.title));
+  },
+  // ISO 9001 § 10.2: no action of the register past its date and still open (spec 013).
+  'actions.on_time': async (db) => {
+    const { rows } = await db.query<{ title: string }>(
+      `select title from actions where status = 'open' and due_on < current_date order by due_on`,
+    );
+    return result(rows.map((r) => r.title));
+  },
+  // ISO 9001 § 7.2: in the last closed quarter, every person's review was held (spec 012).
+  'performance.reviews_held': async (db) => {
+    const { rows } = await db.query<{ name: string }>(
+      `select pe.name from reviews r join people pe on pe.person_id = r.person_id
+        where r.status = 'missed' and r.quarter_id = (
+          select quarter_id from performance_quarters where status = 'closed'
+           order by ends_on desc limit 1)
+        order by pe.name`,
+    );
+    return result(rows.map((r) => r.name));
+  },
+  // ISO 9001 § 9.1.2: customer satisfaction measured in the last six months (spec 011).
+  'surveys.customers_heard': async (db) => {
+    const { rows } = await db.query<{ heard: boolean }>(
+      `select exists (
+         select 1 from survey_campaigns
+          where audience ->> 'kind' = 'outside' and status = 'published'
+            and published_at > now() - interval '6 months') as heard`,
+    );
+    return result(rows[0]?.heard ? [] : ['customer satisfaction']);
+  },
 };
 
 export function knownChecks(): string[] {

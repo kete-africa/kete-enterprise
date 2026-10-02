@@ -5,6 +5,7 @@ import { compliancePermissions, complianceRoutes } from './features/compliance/i
 import { decisionsPermissions, decisionsRoutes } from './features/decisions/index.js';
 import { gatewayResourceMetadata, gatewayRoutes, handleGateway } from './features/gateway/index.js';
 import { mailRoutes } from './features/mail/index.js';
+import { actionsRoutes, meetingsPermissions, meetingsRoutes } from './features/meetings/index.js';
 import {
   organizationRoutes,
   readModules,
@@ -53,6 +54,7 @@ export const permissionCatalog = [
   ...compliancePermissions,
   ...surveysPermissions,
   ...performancePermissions,
+  ...meetingsPermissions,
 ];
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
@@ -169,6 +171,8 @@ export function createApi(): Hono {
   v1.route('/mail', mailRoutes);
   v1.route('/surveys', surveysRoutes);
   v1.route('/performance', performanceRoutes);
+  v1.route('/meetings', meetingsRoutes);
+  v1.route('/actions', actionsRoutes);
   api.route('/v1', v1);
 
   const open = new Hono();
