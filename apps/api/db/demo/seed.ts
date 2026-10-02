@@ -10,6 +10,7 @@ import {
   linkControlCommand,
 } from '../../src/features/compliance/index.js';
 import { defineMeetingType } from '../../src/features/meetings/index.js';
+import { registerResource } from '../../src/features/registry/index.js';
 import { moduleKeys, setModule } from '../../src/features/organization/index.js';
 import { createQuarter, importReferential } from '../../src/features/performance/index.js';
 import {
@@ -26,7 +27,7 @@ import {
   createUnitType,
 } from '../../src/features/structure/index.js';
 import { saveQuestionnaire } from '../../src/features/surveys/index.js';
-import { iso9001, meetingTypes } from './kya-governance.js';
+import { iso9001, meetingTypes, resources } from './kya-governance.js';
 import * as kya from './kya.js';
 import { questionnaires } from './kya-surveys.js';
 
@@ -45,6 +46,7 @@ export interface SeedReport {
   profiles: number;
   meetingTypes: number;
   controls: number;
+  resources: number;
 }
 
 /**
@@ -93,6 +95,7 @@ export async function seedDemo(options: {
       profiles: 0,
       meetingTypes: 0,
       controls: 0,
+      resources: 0,
     };
     const { rows } = await db.query<{ count: string }>(`select count(*) from units`);
     const positionIds = new Map<string, string>();
@@ -283,6 +286,28 @@ export async function seedDemo(options: {
           requirementId: added.requirementId,
         });
         report.controls += 1;
+      }
+    }
+
+    // The registry's resources, open to the whole organization (spec 014), once.
+    const { rows: resourceRows } = await db.query<{ count: string }>(
+      `select count(*) from resources`,
+    );
+    if (Number(resourceRows[0]?.count ?? 0) === 0) {
+      for (const resource of resources) {
+        const created = (await run(db, registerResource, {
+          kind: resource.kind,
+          name: resource.name,
+          description: resource.description,
+          ownerName: resource.owner,
+        })) as { resourceId: string };
+        // Promoted to the whole organization by the demo's operator: a demo starts from there.
+        await db.query(
+          `update resources set tier_kind = 'organization', tier_unit_id = null,
+             address = $2 where resource_id = $1`,
+          [created.resourceId, resource.address ?? null],
+        );
+        report.resources += 1;
       }
     }
     return report;

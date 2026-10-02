@@ -127,3 +127,85 @@ export const iso9001 = {
     },
   ],
 };
+
+/**
+ * The resources the demo's registry opens to everyone (spec 014): KYA's own products and tools,
+ * the skills its business owners hold, and the MCP servers. Owners are the units that answer for
+ * them; addresses only where the real site exists.
+ */
+export const resources: {
+  kind: 'app' | 'skill' | 'mcp' | 'agent';
+  name: string;
+  description: string;
+  owner: string;
+  address?: string;
+}[] = [
+  {
+    kind: 'app',
+    name: 'KYA-SolDesign',
+    description: 'Dimensionnement des installations photovoltaïques, du site au dossier client.',
+    owner: 'Informatique & Logiciel (IT)',
+  },
+  {
+    kind: 'app',
+    name: 'KYA-Energy Market',
+    description: 'La boutique en ligne des produits KYA.',
+    owner: 'Direction du Développement & du Réseau Commercial',
+  },
+  {
+    kind: 'app',
+    name: 'KYA-RemoteControl',
+    description: 'Supervision à distance des installations des clients.',
+    owner: 'Direction Technique & Projets',
+  },
+  {
+    kind: 'app',
+    name: 'KYA-EcoLabel',
+    description: 'Étiquetage énergétique des équipements.',
+    owner: 'KYA-Energy Laboratory',
+  },
+  {
+    kind: 'app',
+    name: 'Site kya-energy.com',
+    description: 'Le site public du Groupe.',
+    owner: 'Marketing & Communication',
+    address: 'https://kya-energy.com',
+  },
+  {
+    kind: 'skill',
+    name: 'Document officiel KYA',
+    description: 'Rédiger un document officiel au ton, au format et à la charte de KYA.',
+    owner: 'Marketing & Communication',
+  },
+  {
+    kind: 'skill',
+    name: 'Relevé de décisions',
+    description: 'Du compte rendu d’une instance au relevé : décision, responsable, échéance.',
+    owner: 'Direction Générale',
+  },
+  {
+    kind: 'skill',
+    name: 'Note de décision',
+    description: 'Rédiger une note de décision du DG : objet, considérants, décision, effet.',
+    owner: 'Direction Générale',
+  },
+  {
+    kind: 'skill',
+    name: 'Fiche indicateur',
+    description: 'Écrire un indicateur avec ses six attributs, testé par deux calculateurs.',
+    owner: 'Contrôle de Gestion',
+  },
+  {
+    kind: 'skill',
+    name: 'Réponse à appel d’offres',
+    description: 'Monter le dossier technique et financier d’un appel d’offres.',
+    owner: "Grands Comptes & Appels d'offres",
+  },
+  {
+    kind: 'mcp',
+    name: 'Kete Enterprise (guichet)',
+    description:
+      'Le guichet MCP : la structure, le registre, mes décisions et ma journée, avec mes droits.',
+    owner: 'Informatique & Logiciel (IT)',
+  },
+];

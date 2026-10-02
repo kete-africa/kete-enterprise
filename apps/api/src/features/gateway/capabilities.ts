@@ -4,6 +4,7 @@ import { actingPerson } from '../../platform/acting.js';
 import { inboxFor } from '../decisions/index.js';
 import { registerInput, registerResourceForAgent, registryFor } from '../registry/index.js';
 import { chartFor } from '../structure/index.js';
+import { factsFor } from '../workspace/index.js';
 
 /** Everyone reaches the gateway; what each tool returns is what the person may see (spec 006). */
 export const GATEWAY_PERMISSION = 'gateway:use';
@@ -18,6 +19,15 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 /** What a person's copilot may do with Kete Enterprise, and how far alone. */
 export const gatewayCapabilities = [
+  defineCapability({
+    name: 'my_day',
+    description:
+      "What waits for the person and where she stands: forms to fill in, decisions to take, her open actions (overdue first), decision notes to read, her quarterly reviews with their red and orange indicators, her team's reviews if she manages people, the last meetings' decisions, and her apps. Nothing about pay.",
+    permission: GATEWAY_PERMISSION,
+    autonomy: 1,
+    input: z.object({}),
+    run: (_input, { db }) => factsFor(db, { ...person(), name: person().name }),
+  }),
   defineCapability({
     name: 'structure_chart',
     description:

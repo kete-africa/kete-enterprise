@@ -7,6 +7,8 @@ import { administers, opens, viewAs, type Me } from './me';
 export type Page =
   | 'home'
   | 'todo'
+  | 'assistant'
+  | 'resources'
   | 'surveys'
   | 'performance'
   | 'team'
@@ -21,6 +23,7 @@ export type Page =
   | 'registry'
   | 'agents'
   | 'outbox'
+  | 'ai'
   | 'demo';
 
 const adminPages: Page[] = [
@@ -33,6 +36,7 @@ const adminPages: Page[] = [
   'registry',
   'agents',
   'outbox',
+  'ai',
   'demo',
 ];
 
@@ -46,6 +50,12 @@ function SpaceNav({ me, current }: { me: Me; current: Page }) {
         </NavItem>
         <NavItem href="/a-faire" icon="check" current={current === 'todo'}>
           {m.nav_todo()}
+        </NavItem>
+        <NavItem href="/assistant" icon="agent" current={current === 'assistant'}>
+          {m.nav_assistant()}
+        </NavItem>
+        <NavItem href="/ressources" icon="library" current={current === 'resources'}>
+          {m.nav_resources()}
         </NavItem>
       </NavSection>
       <NavSection label={m.nav_tools()}>
@@ -127,6 +137,11 @@ function AdminNav({ me, current }: { me: Me; current: Page }) {
           current={current === 'outbox'}
         >
           {m.nav_outbox()}
+        </NavItem>
+      )}
+      {me.administrator && (
+        <NavItem href="/administration/ia" icon="agent" current={current === 'ai'}>
+          {m.nav_ai()}
         </NavItem>
       )}
       {me.administrator && me.demo && (

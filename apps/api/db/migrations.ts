@@ -5,6 +5,7 @@ import { complianceMigrationSql } from '../src/features/compliance/index.js';
 import { decisionsMigrationSql } from '../src/features/decisions/index.js';
 import { gatewayAppendOnlySql, gatewayMigrationSql } from '../src/features/gateway/index.js';
 import { actionsMigrationSql } from '../src/features/actions/index.js';
+import { assistantMigrationSql } from '../src/features/assistant/index.js';
 import { mailMigrationSql } from '../src/features/mail/index.js';
 import { meetingsMigrationSql } from '../src/features/meetings/index.js';
 import { organizationMigrationSql } from '../src/features/organization/index.js';
@@ -80,4 +81,6 @@ export const migrations: Migration[] = [
     name: '0013_meetings',
     sql: (context) => [actionsMigrationSql(context), meetingsMigrationSql(context)].join('\n'),
   },
+  // The use of models and their budgets (@kete/ai), and the morning briefings (spec 014).
+  { name: '0014_assistant', sql: (context) => assistantMigrationSql(context) },
 ];
