@@ -1,10 +1,14 @@
 import { AppCard, AppGrid, Icon, PageSection, PageTitle } from '@kete/design';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { fetchOutbox, fetchPeople } from '@/lib/admin';
+import { fetchAgents } from '@/lib/agents';
+import { fetchRegistry } from '@/lib/registry';
+import { fetchUsage } from '@/lib/workspace';
 import { administers } from '@/lib/me';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import * as m from '@/paraglide/messages.js';
+import { getLocale } from '@/paraglide/runtime.js';
 
 export const Route = createFileRoute('/administration')({
   beforeLoad: async ({ location }) => {
@@ -13,9 +17,14 @@ export const Route = createFileRoute('/administration')({
     return context;
   },
   loader: async ({ context }) => {
-    const [chart, outbox] = await Promise.all([
+    // What is moving is read beside the frame; a part that fails leaves the rest of the page.
+    const quiet = <T,>(read: () => Promise<T>) => read().catch(() => null);
+    const [chart, outbox, registry, agents, usage] = await Promise.all([
       fetchPeople(),
       context.me.administrator ? fetchOutbox() : Promise.resolve(null),
+      quiet(() => fetchRegistry()),
+      context.me.modules.agents ? quiet(() => fetchAgents()) : Promise.resolve(null),
+      context.me.administrator ? quiet(() => fetchUsage()) : Promise.resolve(null),
     ]);
     return {
       people: chart.people.length,
@@ -25,6 +34,15 @@ export const Route = createFileRoute('/administration')({
         (p) => !chart.assignments.some((a) => a.positionId === p.positionId),
       ).length,
       outbox: outbox?.messages.length ?? null,
+      registry: registry && {
+        resources: registry.resources.filter((r) => r.status === 'active').length,
+        pending: registry.toDecide.length,
+      },
+      agents: agents && agents.agents.filter((a) => a.status === 'active').length,
+      ai: usage && {
+        model: usage.model,
+        tokens: usage.purposes.reduce((sum, p) => sum + p.tokens, 0),
+      },
     };
   },
   component: AdminHome,
@@ -83,7 +101,14 @@ function AdminHome() {
             href="/administration/registre"
             icon={<Icon name="library" />}
             name={m.nav_registry()}
-            description={m.admin_registry()}
+            description={
+              counts.registry
+                ? m.admin_registry_counts({
+                    resources: String(counts.registry.resources),
+                    pending: String(counts.registry.pending),
+                  })
+                : m.admin_registry()
+            }
           />
           {counts.outbox !== null && (
             <AppCard
@@ -99,6 +124,41 @@ function AdminHome() {
               icon={<Icon name="learn" />}
               name={m.nav_demo()}
               description={m.admin_demo()}
+            />
+          )}
+        </AppGrid>
+      </PageSection>
+      <PageSection title={m.admin_watch()}>
+        <AppGrid layout="list">
+          {counts.agents !== null && (
+            <AppCard
+              href="/administration/agents"
+              icon={<Icon name="agent" />}
+              name={m.nav_agents()}
+              description={m.admin_agents({ active: String(counts.agents) })}
+            />
+          )}
+          {counts.ai && (
+            <AppCard
+              href="/administration/ia"
+              icon={<Icon name="agent" />}
+              name={m.nav_ai()}
+              description={
+                counts.ai.model
+                  ? m.admin_ai({
+                      model: counts.ai.model,
+                      tokens: new Intl.NumberFormat(getLocale()).format(counts.ai.tokens),
+                    })
+                  : m.admin_ai_none()
+              }
+            />
+          )}
+          {me.modules.compliance && (
+            <AppCard
+              href="/conformite"
+              icon={<Icon name="check" />}
+              name={m.nav_compliance()}
+              description={m.admin_compliance()}
             />
           )}
         </AppGrid>
