@@ -4,17 +4,26 @@ import { fetchInbox } from '@/lib/decisions';
 import { InboxView } from '@/lib/decisions-view';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
+import { fetchActions, fetchMeetings } from '@/lib/meetings';
+import { ActionList, NoteCard } from '@/lib/meetings-view';
 import { fetchMySurveys } from '@/lib/surveys';
 import * as m from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/a-faire')({
   beforeLoad: ({ location }) => requirePerson(location.href),
   loader: async ({ context }) => {
-    const [inbox, surveys] = await Promise.all([
+    const [inbox, surveys, actions, meetings] = await Promise.all([
       fetchInbox(),
       context.me.modules.surveys ? fetchMySurveys() : Promise.resolve({ surveys: [] }),
+      fetchActions({ data: { scope: 'mine' } }),
+      context.me.modules.meetings ? fetchMeetings() : Promise.resolve(null),
     ]);
-    return { inbox, surveys: surveys.surveys };
+    return {
+      inbox,
+      surveys: surveys.surveys,
+      actions: actions.actions.filter((a) => a.status === 'open'),
+      notes: (meetings?.notes ?? []).filter((n) => n.status === 'published' && !n.readByMe),
+    };
   },
   component: InboxPage,
 });
@@ -25,7 +34,7 @@ export const Route = createFileRoute('/a-faire')({
  */
 function InboxPage() {
   const { me } = Route.useRouteContext();
-  const { inbox, surveys } = Route.useLoaderData();
+  const { inbox, surveys, actions, notes } = Route.useLoaderData();
   const waiting = surveys.filter((s) => s.status !== 'submitted');
   return (
     <AppShell me={me} current="todo">
@@ -50,7 +59,35 @@ function InboxPage() {
           </AppGrid>
         </PageSection>
       )}
-      <PageSection first={waiting.length === 0} title={m.todo_decisions()}>
+      {notes.length > 0 && (
+        <PageSection
+          first={waiting.length === 0}
+          title={m.todo_notes({ count: String(notes.length) })}
+        >
+          <div className="grid gap-3">
+            {notes.map((n) => (
+              <NoteCard key={n.noteId} note={n} publishes={false} />
+            ))}
+          </div>
+        </PageSection>
+      )}
+      {actions.length > 0 && (
+        <PageSection
+          first={waiting.length === 0 && notes.length === 0}
+          title={m.todo_actions({ count: String(actions.length) })}
+        >
+          <ActionList actions={actions} personId={me.personId} manages={false} />
+          <p className="mt-2 text-body-sm">
+            <a className="text-link underline" href="/actions">
+              {m.todo_all_actions()}
+            </a>
+          </p>
+        </PageSection>
+      )}
+      <PageSection
+        first={waiting.length === 0 && notes.length === 0 && actions.length === 0}
+        title={m.todo_decisions()}
+      >
         <InboxView screen={{ ...inbox, circuits: null }} />
       </PageSection>
     </AppShell>

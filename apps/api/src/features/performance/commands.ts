@@ -1,6 +1,7 @@
 import { defineCommand } from '@kete/commands';
 import type { SqlExecutor } from '@kete/tenancy';
 import { z } from 'zod';
+import { openAction } from '../actions/index.js';
 import { queueMail, renderMail, type Locale } from '../mail/index.js';
 import { issuePass } from '../passes/index.js';
 import { findPerson, managerOfPosition } from '../structure/index.js';
@@ -382,12 +383,14 @@ export const closeMeasures = defineCommand({
   name: 'close-measures',
   input: quarterGestureInput,
   reversibility: { reversible: false },
-  async handler(input, { db }) {
+  async handler(input, { db, organizationId }) {
     const quarter = await findQuarter(db, input.quarterId, true);
     if (!quarter) notFound('The quarter');
     if (quarter.status !== 'open') throw new PerformanceRuleError('not_open', 'It is not open.');
     const reviews = await listReviews(db, { quarterId: quarter.quarterId }, true);
     let missing = 0;
+    let plans = 0;
+    const due = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
     for (const review of reviews) {
       for (const line of review.lines) {
         if (line.kind === 'malus' || line.colour) continue;
@@ -401,9 +404,26 @@ export const closeMeasures = defineCommand({
       }
       await recompute(db, review, quarter);
       if (review.status === 'open') await updateReview(db, review.reviewId, { status: 'measured' });
+      // Orange calls for an action plan, red for a corrective action (§ 1.5): one plan per review,
+      // owned by the person's manager, in the register (spec 013).
+      const reds = review.lines.filter((l) => l.kind !== 'malus' && l.colour === 'red');
+      const oranges = review.lines.filter((l) => l.kind !== 'malus' && l.colour === 'orange');
+      if (reds.length + oranges.length > 0) {
+        await openAction(db, organizationId, {
+          title: `${quarter.label} — ${review.personName} : ${reds.length} rouge(s), ${oranges.length} orange(s)`,
+          detail: [...reds, ...oranges]
+            .map((l) => `${l.colour === 'red' ? '●' : '○'} ${l.name}`)
+            .join('\n'),
+          source: 'indicator',
+          sourceRef: review.reviewId,
+          responsiblePersonId: review.managerPersonId ?? review.personId,
+          dueOn: due,
+        });
+        plans += 1;
+      }
     }
     await setQuarterStatus(db, quarter.quarterId, 'measured');
-    return { quarterId: quarter.quarterId, reviews: reviews.length, missing };
+    return { quarterId: quarter.quarterId, reviews: reviews.length, missing, plans };
   },
   summarize: (input) => `Quarter ${input.quarterId}: measures closed`,
 });

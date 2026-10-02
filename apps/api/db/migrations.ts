@@ -4,7 +4,9 @@ import { agentsMigrationSql } from '../src/features/agents/index.js';
 import { complianceMigrationSql } from '../src/features/compliance/index.js';
 import { decisionsMigrationSql } from '../src/features/decisions/index.js';
 import { gatewayAppendOnlySql, gatewayMigrationSql } from '../src/features/gateway/index.js';
+import { actionsMigrationSql } from '../src/features/actions/index.js';
 import { mailMigrationSql } from '../src/features/mail/index.js';
+import { meetingsMigrationSql } from '../src/features/meetings/index.js';
 import { organizationMigrationSql } from '../src/features/organization/index.js';
 import { passesMigrationSql } from '../src/features/passes/index.js';
 import { performanceMigrationSql } from '../src/features/performance/index.js';
@@ -73,4 +75,9 @@ export const migrations: Migration[] = [
   { name: '0011_surveys', sql: (context) => surveysMigrationSql(context) },
   // Indicators, job profiles, quarters, reviews and their frozen lines (spec 012).
   { name: '0012_performance', sql: (context) => performanceMigrationSql(context) },
+  // The one register of actions; meetings, their decisions and records; decision notes (spec 013).
+  {
+    name: '0013_meetings',
+    sql: (context) => [actionsMigrationSql(context), meetingsMigrationSql(context)].join('\n'),
+  },
 ];

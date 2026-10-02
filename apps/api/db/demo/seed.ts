@@ -3,6 +3,13 @@ import { inOrganization, type SqlExecutor } from '@kete/tenancy';
 import { readFileSync } from 'node:fs';
 import type pg from 'pg';
 import type { z } from 'zod';
+import {
+  addRequirement,
+  defineControl,
+  defineFramework,
+  linkControlCommand,
+} from '../../src/features/compliance/index.js';
+import { defineMeetingType } from '../../src/features/meetings/index.js';
 import { moduleKeys, setModule } from '../../src/features/organization/index.js';
 import { createQuarter, importReferential } from '../../src/features/performance/index.js';
 import {
@@ -19,6 +26,7 @@ import {
   createUnitType,
 } from '../../src/features/structure/index.js';
 import { saveQuestionnaire } from '../../src/features/surveys/index.js';
+import { iso9001, meetingTypes } from './kya-governance.js';
 import * as kya from './kya.js';
 import { questionnaires } from './kya-surveys.js';
 
@@ -35,6 +43,8 @@ export interface SeedReport {
   roles: number;
   questionnaires: number;
   profiles: number;
+  meetingTypes: number;
+  controls: number;
 }
 
 /**
@@ -81,6 +91,8 @@ export async function seedDemo(options: {
       roles: 0,
       questionnaires: 0,
       profiles: 0,
+      meetingTypes: 0,
+      controls: 0,
     };
     const { rows } = await db.query<{ count: string }>(`select count(*) from units`);
     const positionIds = new Map<string, string>();
@@ -215,6 +227,63 @@ export async function seedDemo(options: {
         endsOn: '2026-09-30',
         progressive: true,
       });
+    }
+
+    // The instances of § 3.1 and the ISO 9001 frame, once (spec 013).
+    const { rows: typeRows } = await db.query<{ count: string }>(
+      `select count(*) from meeting_types`,
+    );
+    if (Number(typeRows[0]?.count ?? 0) === 0) {
+      const { rows: positionRows } = await db.query<{ position_id: string; title: string }>(
+        `select position_id, title from positions`,
+      );
+      const positionOf = (key: string) => {
+        const title = kya.positions.find((p) => p.key === key)?.title;
+        return positionRows.find((p) => p.title === title)?.position_id;
+      };
+      for (const type of meetingTypes) {
+        const chair = positionOf(type.chair);
+        const secretary = type.secretary ? positionOf(type.secretary) : undefined;
+        await run(db, defineMeetingType, {
+          name: type.name,
+          kind: type.kind,
+          cadence: type.cadence,
+          durationMinutes: type.durationMinutes,
+          ...(chair ? { chairPositionId: chair } : {}),
+          ...(secretary ? { secretaryPositionId: secretary } : {}),
+          memberPositionIds: type.members.flatMap((m) => positionOf(m) ?? []),
+          ...(type.quorum ? { quorum: type.quorum } : {}),
+          recordWithinHours: type.recordWithinHours,
+        });
+        report.meetingTypes += 1;
+      }
+      const framework = (await run(db, defineFramework, {
+        code: iso9001.code,
+        name: iso9001.name,
+        edition: iso9001.edition,
+        kind: 'standard',
+      })) as { frameworkId: string };
+      const owner = positionOf('qhse');
+      for (const requirement of iso9001.requirements) {
+        const added = (await run(db, addRequirement, {
+          frameworkId: framework.frameworkId,
+          reference: requirement.reference,
+          summary: requirement.summary,
+        })) as { requirementId: string };
+        const control = await run(db, defineControl, {
+          name: requirement.control,
+          description: requirement.summary,
+          ...(owner ? { ownerPositionId: owner } : {}),
+          frequencyDays: requirement.days,
+          method: 'automatic',
+          check: requirement.check,
+        });
+        await run(db, linkControlCommand, {
+          controlId: control.controlId,
+          requirementId: added.requirementId,
+        });
+        report.controls += 1;
+      }
     }
     return report;
   });
