@@ -7,6 +7,7 @@ import { gatewayAppendOnlySql, gatewayMigrationSql } from '../src/features/gatew
 import { mailMigrationSql } from '../src/features/mail/index.js';
 import { organizationMigrationSql } from '../src/features/organization/index.js';
 import { passesMigrationSql } from '../src/features/passes/index.js';
+import { performanceMigrationSql } from '../src/features/performance/index.js';
 import {
   registryCircuitsMigrationSql,
   registryMigrationSql,
@@ -70,4 +71,6 @@ export const migrations: Migration[] = [
   },
   // Questionnaires, campaigns, respondents and their forms (spec 011).
   { name: '0011_surveys', sql: (context) => surveysMigrationSql(context) },
+  // Indicators, job profiles, quarters, reviews and their frozen lines (spec 012).
+  { name: '0012_performance', sql: (context) => performanceMigrationSql(context) },
 ];

@@ -12,6 +12,11 @@ import {
   requireModule,
 } from './features/organization/index.js';
 import { passRoutes } from './features/passes/index.js';
+import {
+  performancePermissions,
+  performancePublicRoutes,
+  performanceRoutes,
+} from './features/performance/index.js';
 import { registryPermissions, registryRoutes } from './features/registry/index.js';
 import {
   isAdministrator,
@@ -47,6 +52,7 @@ export const permissionCatalog = [
   ...agentsPermissions,
   ...compliancePermissions,
   ...surveysPermissions,
+  ...performancePermissions,
 ];
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
@@ -162,11 +168,13 @@ export function createApi(): Hono {
   v1.route('/compliance', complianceRoutes);
   v1.route('/mail', mailRoutes);
   v1.route('/surveys', surveysRoutes);
+  v1.route('/performance', performanceRoutes);
   api.route('/v1', v1);
 
   const open = new Hono();
   open.route('/passes', passRoutes);
   open.route('/surveys', surveysPublicRoutes);
+  open.route('/performance', performancePublicRoutes);
   api.route('/public', open);
   // A refused gesture says why, with a stable code the screens translate.
   api.onError((error, c) => {

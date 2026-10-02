@@ -41,6 +41,10 @@ export function refusal(code: string | null): string {
     incomplete: m.survey_incomplete,
     not_yours: m.error_not_yours,
     nobody: m.error_nobody,
+    not_reviewer: m.error_not_reviewer,
+    wrong_step: m.error_wrong_step,
+    not_measured: m.error_not_measured,
+    weights: m.error_weights,
   };
   return (messages[code ?? ''] ?? m.error_generic)();
 }
