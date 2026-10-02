@@ -5,6 +5,8 @@ import { index, rootRoute, route } from '@tanstack/virtual-file-routes';
 export const routes = rootRoute('__root.tsx', [
   index('index.tsx'),
   route('/a-faire', 'inbox.tsx'),
+  route('/assistant', 'assistant.tsx'),
+  route('/ressources', 'resources.tsx'),
   route('/enquetes', 'surveys.tsx'),
   route('/enquetes/$campaignId', 'survey-campaign.tsx'),
   route('/enquetes/repondre/$respondentId', 'survey-answer.tsx'),
@@ -25,6 +27,7 @@ export const routes = rootRoute('__root.tsx', [
   route('/administration/registre', 'registry.tsx'),
   route('/administration/agents', 'agents.tsx'),
   route('/administration/boite-de-test', 'outbox.tsx'),
+  route('/administration/ia', 'admin-ai.tsx'),
   route('/administration/demo', 'demo.tsx'),
   route('/lien/$token', 'link.tsx'),
   route('/auth/connexion', 'auth/sign-in.ts'),

@@ -28,6 +28,22 @@ const registry = createCapabilityRegistry(gatewayCapabilities, {
   transaction,
 });
 
+/**
+ * The person's capabilities as model tools, for Kete's own assistant (spec 014): the same registry,
+ * the same rights, an agent acting on her behalf. Call it, and the tools, inside `asPerson`.
+ */
+export function toolsForPerson(identity: { organizationId: string; userId: string }) {
+  return registry.tools({
+    organizationId: identity.organizationId,
+    actor: {
+      kind: 'agent',
+      id: 'agt_assistant',
+      channel: 'chat',
+      onBehalfOf: { kind: 'person', id: identity.userId },
+    },
+  });
+}
+
 /** Where the gateway answers, as copilots reach it. */
 function resourceUrl(request: Request): string {
   return `${env.publicApiUrl || new URL(request.url).origin}/mcp`;

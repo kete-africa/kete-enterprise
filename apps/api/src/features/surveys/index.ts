@@ -4,7 +4,7 @@ import { findCampaign, submittedForms } from './infrastructure/surveys.tables.js
 import { computeResults, type Results } from './scores.js';
 
 export { answerPurpose, saveQuestionnaire, SurveyRuleError } from './commands.js';
-export { surveysMigrationSql } from './infrastructure/surveys.tables.js';
+export { respondentsOfPerson, surveysMigrationSql } from './infrastructure/surveys.tables.js';
 export { surveysPermissions, surveysPublicRoutes, surveysRoutes } from './routes.js';
 export { scoreOf, type Results } from './scores.js';
 export type { FormContent, Questionnaire } from './surveys.record.js';

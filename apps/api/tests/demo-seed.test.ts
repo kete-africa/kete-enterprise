@@ -40,6 +40,7 @@ describe('the KYA demo', () => {
       profiles: 48,
       meetingTypes: 5,
       controls: 5,
+      resources: 11,
     });
     const again = await seed();
     expect(again).toMatchObject({
@@ -51,6 +52,7 @@ describe('the KYA demo', () => {
       profiles: 0,
       meetingTypes: 0,
       controls: 0,
+      resources: 0,
     });
     // A remote test database answers each of the seed's hundreds of gestures in turn.
   }, 600_000);

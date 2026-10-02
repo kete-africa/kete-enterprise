@@ -1,6 +1,7 @@
 import { healthHandler, manifestHandler } from '@kete/sdk';
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
+import { assistantRoutes } from './features/assistant/index.js';
 import { compliancePermissions, complianceRoutes } from './features/compliance/index.js';
 import { decisionsPermissions, decisionsRoutes } from './features/decisions/index.js';
 import { gatewayResourceMetadata, gatewayRoutes, handleGateway } from './features/gateway/index.js';
@@ -43,6 +44,7 @@ import { transaction } from './platform/db.js';
 import { GestureRefusal, runCommand } from './platform/gestures.js';
 import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
+import { factsFor } from './features/workspace/index.js';
 
 /** Every permission a role may allow: each feature declares its own (spec 003). */
 export const permissionCatalog = [
@@ -173,6 +175,12 @@ export function createApi(): Hono {
   v1.route('/performance', performanceRoutes);
   v1.route('/meetings', meetingsRoutes);
   v1.route('/actions', actionsRoutes);
+  v1.route('/assistant', assistantRoutes);
+  // What waits for the person, and where she stands: the home page reads it (spec 014).
+  v1.get('/workspace', async (c) => {
+    const identity = c.get('identity');
+    return c.json(await transaction(identity.organizationId, (db) => factsFor(db, identity)));
+  });
   api.route('/v1', v1);
 
   const open = new Hono();
