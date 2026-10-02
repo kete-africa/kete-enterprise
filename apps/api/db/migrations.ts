@@ -4,6 +4,9 @@ import { agentsMigrationSql } from '../src/features/agents/index.js';
 import { complianceMigrationSql } from '../src/features/compliance/index.js';
 import { decisionsMigrationSql } from '../src/features/decisions/index.js';
 import { gatewayAppendOnlySql, gatewayMigrationSql } from '../src/features/gateway/index.js';
+import { mailMigrationSql } from '../src/features/mail/index.js';
+import { organizationMigrationSql } from '../src/features/organization/index.js';
+import { passesMigrationSql } from '../src/features/passes/index.js';
 import {
   registryCircuitsMigrationSql,
   registryMigrationSql,
@@ -54,4 +57,14 @@ export const migrations: Migration[] = [
   // actions and certificates (spec 008).
   { name: '0008_compliance', sql: (context) => complianceMigrationSql(context) },
   { name: '0009_gateway_append_only', sql: (context) => gatewayAppendOnlySql(context) },
+  // Modules and settings per organization, personal links, e-mails and the test outbox (spec 010).
+  {
+    name: '0010_foundation',
+    sql: (context) =>
+      [
+        organizationMigrationSql(context),
+        passesMigrationSql(context),
+        mailMigrationSql(context),
+      ].join('\n'),
+  },
 ];

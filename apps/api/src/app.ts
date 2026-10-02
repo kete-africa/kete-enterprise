@@ -1,13 +1,35 @@
 import { healthHandler, manifestHandler } from '@kete/sdk';
-import { Hono } from 'hono';
+import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
 import { compliancePermissions, complianceRoutes } from './features/compliance/index.js';
 import { decisionsPermissions, decisionsRoutes } from './features/decisions/index.js';
 import { gatewayResourceMetadata, gatewayRoutes, handleGateway } from './features/gateway/index.js';
+import { mailRoutes } from './features/mail/index.js';
+import {
+  organizationRoutes,
+  readModules,
+  readSettings,
+  requireModule,
+} from './features/organization/index.js';
+import { passRoutes } from './features/passes/index.js';
 import { registryPermissions, registryRoutes } from './features/registry/index.js';
-import { rightsPermissions, rightsRoutes } from './features/rights/index.js';
-import { structurePermissions, structureRoutes } from './features/structure/index.js';
-import { GestureRefusal } from './platform/gestures.js';
+import {
+  isAdministrator,
+  reach,
+  reachesAnything,
+  rightsPermissions,
+  rightsRoutes,
+} from './features/rights/index.js';
+import {
+  findPerson,
+  linkAccountByEmail,
+  personOfAccount,
+  structurePermissions,
+  structureRoutes,
+  unlinkedPeopleWithEmail,
+} from './features/structure/index.js';
+import { transaction } from './platform/db.js';
+import { GestureRefusal, runCommand } from './platform/gestures.js';
 import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
 
@@ -21,9 +43,92 @@ export const permissionCatalog = [
   ...compliancePermissions,
 ];
 
+type Ctx = Context<{ Variables: IdentityVariables }>;
+
+/**
+ * « View as » (spec 010): in a demo organization only, an administrator sees and acts in another
+ * person's space with that person's rights — never more. Elsewhere the header is refused.
+ */
+const viewAs: MiddlewareHandler<{ Variables: IdentityVariables }> = async (c, next) => {
+  const target = c.req.header('kete-view-as');
+  if (!target) return next();
+  const identity = c.get('identity');
+  if (!isAdministrator(identity)) {
+    throw new GestureRefusal(403, 'view_as_forbidden', 'Only administrators view as someone.');
+  }
+  const { demo, person } = await transaction(identity.organizationId, async (db) => ({
+    demo: (await readSettings(db)).demo,
+    person: await findPerson(db, target),
+  }));
+  if (!demo) {
+    throw new GestureRefusal(403, 'view_as_forbidden', 'Only a demo organization allows it.');
+  }
+  if (!person?.accountUserId) {
+    throw new GestureRefusal(404, 'not_found', 'This person has no account to view as.');
+  }
+  c.set('viewedBy', identity.userId);
+  c.set('identity', {
+    ...identity,
+    userId: person.accountUserId,
+    name: person.name,
+    email: person.email ?? identity.email,
+    role: 'member',
+  });
+  return next();
+};
+
+/**
+ * Who is calling, as the screens need it first: her person in the organization (found by e-mail on
+ * her first sign-in), what she may do anywhere, and which modules are on.
+ */
+async function me(c: Ctx) {
+  const identity = c.get('identity');
+  const { organizationId, userId } = identity;
+  const viewedBy = c.get('viewedBy') ?? null;
+  if (!viewedBy && identity.email) {
+    const linked = await transaction(organizationId, (db) => personOfAccount(db, userId));
+    if (!linked) {
+      const candidates = await transaction(organizationId, (db) =>
+        unlinkedPeopleWithEmail(db, identity.email),
+      );
+      const candidate = candidates.length === 1 ? candidates[0] : undefined;
+      if (candidate) {
+        await runCommand(
+          organizationId,
+          { kind: 'person', id: userId, channel: 'web' },
+          `link-account:${userId}:${candidate.personId}`,
+          linkAccountByEmail,
+          { accountUserId: userId, email: identity.email },
+        );
+      }
+    }
+  }
+  return transaction(organizationId, async (db) => {
+    const person = await personOfAccount(db, userId);
+    const held: string[] = [];
+    for (const permission of permissionCatalog) {
+      if (reachesAnything(await reach(db, identity, permission))) held.push(permission);
+    }
+    return {
+      userId,
+      name: identity.name,
+      email: identity.email,
+      organizationId,
+      role: identity.role,
+      personId: person?.personId ?? null,
+      administrator: isAdministrator(identity),
+      permissions: held,
+      modules: await readModules(db),
+      demo: (await readSettings(db)).demo,
+      viewedBy,
+    };
+  });
+}
+
 /**
  * The API (doctrine D-029): framework-free building blocks from kete-core (`Request → Response`),
- * served by Hono. Each feature adds its routes under /v1, behind a person's token.
+ * served by Hono. Each feature adds its routes under /v1, behind a person's token; personal links
+ * open their own routes under /public, without an account (spec 010).
  */
 export function createApi(): Hono {
   const api = new Hono();
@@ -35,19 +140,26 @@ export function createApi(): Hono {
 
   const v1 = new Hono<{ Variables: IdentityVariables }>();
   v1.use('*', requirePerson);
-  // Who is calling, and in which organization: the first thing the screens ask.
-  v1.get('/me', (c) => {
-    const { userId, name, email, organizationId, role } = c.get('identity');
-    return c.json({ userId, name, email, organizationId, role });
-  });
+  v1.use('*', viewAs);
+  v1.get('/me', async (c) => c.json(await me(c)));
+  v1.route('/organization', organizationRoutes);
   v1.route('/structure', structureRoutes);
   v1.route('/rights', rightsRoutes(permissionCatalog));
   v1.route('/registry', registryRoutes);
   v1.route('/decisions', decisionsRoutes);
   v1.route('/gateway', gatewayRoutes);
+  v1.use('/agents', requireModule('agents'));
+  v1.use('/agents/*', requireModule('agents'));
   v1.route('/agents', agentsRoutes(permissionCatalog));
+  v1.use('/compliance', requireModule('compliance'));
+  v1.use('/compliance/*', requireModule('compliance'));
   v1.route('/compliance', complianceRoutes);
+  v1.route('/mail', mailRoutes);
   api.route('/v1', v1);
+
+  const open = new Hono();
+  open.route('/passes', passRoutes);
+  api.route('/public', open);
   // A refused gesture says why, with a stable code the screens translate.
   api.onError((error, c) => {
     if (error instanceof GestureRefusal) {

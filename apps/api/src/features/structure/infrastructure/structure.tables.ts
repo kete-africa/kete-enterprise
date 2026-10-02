@@ -464,3 +464,97 @@ export async function unitOfAssignment(
   );
   return rows[0]?.unit_id ?? null;
 }
+
+export async function findPerson(db: SqlExecutor, personId: string): Promise<Person | null> {
+  const { rows } = await db.query<PersonRow>(
+    `select person_id, name, email, phone, account_user_id from people where person_id = $1`,
+    [personId],
+  );
+  return rows[0] ? toPerson(rows[0]) : null;
+}
+
+/** The person whose account this is, if any. */
+export async function personOfAccount(
+  db: SqlExecutor,
+  accountUserId: string,
+): Promise<Person | null> {
+  const { rows } = await db.query<PersonRow>(
+    `select person_id, name, email, phone, account_user_id from people where account_user_id = $1`,
+    [accountUserId],
+  );
+  return rows[0] ? toPerson(rows[0]) : null;
+}
+
+/** The people without an account who carry this e-mail (case does not count). */
+export async function unlinkedPeopleWithEmail(db: SqlExecutor, email: string): Promise<Person[]> {
+  const { rows } = await db.query<PersonRow>(
+    `select person_id, name, email, phone, account_user_id from people
+      where lower(email) = lower($1) and account_user_id is null`,
+    [email],
+  );
+  return rows.map(toPerson);
+}
+
+export async function setPersonAccount(
+  db: SqlExecutor,
+  personId: string,
+  accountUserId: string | null,
+): Promise<void> {
+  await db.query(`update people set account_user_id = $2 where person_id = $1`, [
+    personId,
+    accountUserId,
+  ]);
+}
+
+export async function updatePersonRow(
+  db: SqlExecutor,
+  personId: string,
+  input: {
+    name?: string | undefined;
+    email?: string | null | undefined;
+    phone?: string | null | undefined;
+  },
+): Promise<Person> {
+  const { rows } = await db.query<PersonRow>(
+    `update people set
+       name = coalesce($2, name),
+       email = case when $3::boolean then $4 else email end,
+       phone = case when $5::boolean then $6 else phone end
+     where person_id = $1
+     returning person_id, name, email, phone, account_user_id`,
+    [
+      personId,
+      input.name ?? null,
+      input.email !== undefined,
+      input.email ?? null,
+      input.phone !== undefined,
+      input.phone ?? null,
+    ],
+  );
+  return toPerson(rows[0] as PersonRow);
+}
+
+/** The positions and their holders at a date, to find who reports to whom. */
+export async function holdersAt(
+  db: SqlExecutor,
+  asOf: string,
+): Promise<{ positionId: string; reportsTo: string | null; personId: string | null }[]> {
+  const { rows } = await db.query<{
+    position_id: string;
+    reports_to: string | null;
+    person_id: string | null;
+  }>(
+    `select p.position_id, p.reports_to, a.person_id
+       from positions p
+       left join assignments a on a.position_id = p.position_id
+        and a.starts_on <= $1::date and (a.ends_on is null or a.ends_on >= $1::date)
+        and a.kind in ('primary', 'interim')
+      where p.starts_on <= $1::date and (p.ends_on is null or p.ends_on >= $1::date)`,
+    [asOf],
+  );
+  return rows.map((r) => ({
+    positionId: r.position_id,
+    reportsTo: r.reports_to,
+    personId: r.person_id,
+  }));
+}

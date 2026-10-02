@@ -18,9 +18,10 @@ export const Route = createFileRoute('/conformite')({
  * only an accredited body certifies.
  */
 function CompliancePage() {
+  const { me } = Route.useRouteContext();
   const screen = Route.useLoaderData();
   return (
-    <AppShell current="compliance">
+    <AppShell me={me} current="compliance">
       <PageTitle>{m.compliance_title()}</PageTitle>
       {!screen ? (
         <PageSection first>

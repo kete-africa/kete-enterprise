@@ -29,23 +29,33 @@ export class GestureRefusal extends Error {
   }
 }
 
-/**
- * Runs a named command for the person of the request, in her organization's transaction: the change
- * and its journal entry commit together, and the same `Idempotency-Key` never runs it twice.
- */
+/** Runs a named command for the person of the request, in her organization's transaction. */
 export async function runGesture<Input extends z.ZodType, Output>(
   c: Context<{ Variables: IdentityVariables }>,
   definition: CommandDefinition<Input, Output>,
   input: unknown,
 ): Promise<Output> {
-  const idempotencyKey = c.req.header('idempotency-key');
+  const { organizationId } = c.get('identity');
+  return runCommand(organizationId, actorOf(c), c.req.header('idempotency-key'), definition, input);
+}
+
+/**
+ * Runs a named command for an actor of an organization (a person, or someone holding a personal
+ * link): the change and its journal entry commit together, and the same key never runs it twice.
+ */
+export async function runCommand<Input extends z.ZodType, Output>(
+  organizationId: string,
+  actor: Actor,
+  idempotencyKey: string | undefined,
+  definition: CommandDefinition<Input, Output>,
+  input: unknown,
+): Promise<Output> {
   if (!idempotencyKey) {
     throw new GestureRefusal(422, 'idempotency_key_required', 'Send an Idempotency-Key header.');
   }
-  const { organizationId } = c.get('identity');
   try {
     const result = await transaction(organizationId, (db) =>
-      executeCommand(db, definition, { organizationId, actor: actorOf(c), idempotencyKey, input }),
+      executeCommand(db, definition, { organizationId, actor, idempotencyKey, input }),
     );
     return result.output;
   } catch (error) {

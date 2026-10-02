@@ -9,6 +9,27 @@ export class SignInRequired extends Error {
   }
 }
 
+/** The cookie that holds the person a demo's administrator views the space as (spec 010). */
+export const VIEW_AS_COOKIE = 'kete_view_as';
+
+function viewedPerson(request: Request): string | null {
+  const cookies = request.headers.get('cookie') ?? '';
+  const match = new RegExp(`(?:^|;\\s*)${VIEW_AS_COOKIE}=(prs_[0-9a-f-]{8,64})`).exec(cookies);
+  return match?.[1] ?? null;
+}
+
+/** The person's token, and the person she views the space as when there is one. */
+async function headersFor(request: Request): Promise<Record<string, string>> {
+  const token = await getSignIn().accessToken(request);
+  if (!token) throw new SignInRequired();
+  const viewed = viewedPerson(request);
+  return {
+    authorization: `Bearer ${token}`,
+    accept: 'application/json',
+    ...(viewed ? { 'kete-view-as': viewed } : {}),
+  };
+}
+
 /**
  * Calls Kete Enterprise's API as the person of this request, with her token (server-side only).
  * Without a session, or with a token the API refuses, the person signs in again.
@@ -18,11 +39,9 @@ export async function callApi<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const token = await getSignIn().accessToken(request);
-  if (!token) throw new SignInRequired();
   const response = await fetch(`${env.apiUrl}${path}`, {
     ...init,
-    headers: { ...init.headers, authorization: `Bearer ${token}`, accept: 'application/json' },
+    headers: { ...init.headers, ...(await headersFor(request)) },
   });
   if (response.status === 401) throw new SignInRequired();
   if (!response.ok) throw new Error(`API ${init.method ?? 'GET'} ${path}: ${response.status}`);
@@ -42,20 +61,39 @@ export async function sendGesture<T>(
   body: unknown,
   idempotencyKey: string,
 ): Promise<GestureAnswer<T>> {
-  const token = await getSignIn().accessToken(request);
-  if (!token) throw new SignInRequired();
   const response = await fetch(`${env.apiUrl}${path}`, {
     method: 'POST',
     headers: {
-      authorization: `Bearer ${token}`,
+      ...(await headersFor(request)),
       'content-type': 'application/json',
-      accept: 'application/json',
       'idempotency-key': idempotencyKey,
       'kete-channel': 'web',
     },
     body: JSON.stringify(body),
   });
   if (response.status === 401) throw new SignInRequired();
+  const answer = (await response.json().catch(() => ({}))) as { error?: string };
+  if (!response.ok) return { ok: false, error: answer.error ?? 'internal' };
+  return { ok: true, data: answer as T };
+}
+
+/**
+ * A personal link's call (spec 010): no account, no token — the link itself opens its purpose.
+ * A refusal comes back as its code.
+ */
+export async function callPublic<T>(
+  path: string,
+  init: { method?: 'GET' | 'POST'; body?: unknown; idempotencyKey?: string } = {},
+): Promise<GestureAnswer<T>> {
+  const response = await fetch(`${env.apiUrl}/public${path}`, {
+    method: init.method ?? 'GET',
+    headers: {
+      accept: 'application/json',
+      ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),
+      ...(init.idempotencyKey ? { 'idempotency-key': init.idempotencyKey } : {}),
+    },
+    ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
+  });
   const answer = (await response.json().catch(() => ({}))) as { error?: string };
   if (!response.ok) return { ok: false, error: answer.error ?? 'internal' };
   return { ok: true, data: answer as T };

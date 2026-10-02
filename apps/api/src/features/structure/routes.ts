@@ -16,8 +16,11 @@ import {
   createUnit,
   createUnitType,
   endAssignmentCommand,
+  importPeople,
+  linkPersonAccount,
   moveUnit,
   StructureRuleError,
+  updatePerson,
 } from './commands.js';
 import { unitOfAssignment, unitOfPosition } from './infrastructure/structure.tables.js';
 import { day } from './structure.record.js';
@@ -106,6 +109,20 @@ export const structureRoutes = new Hono<{ Variables: IdentityVariables }>()
     const scope = await writeReach(c);
     const input = await bodyOf(c);
     return change(c, addPerson, input, () => (reachesAnything(scope) ? [] : [null]));
+  })
+  .post('/people/import', async (c) => {
+    const scope = await writeReach(c);
+    return change(c, importPeople, await bodyOf(c), () => (scope.everywhere ? [] : [null]));
+  })
+  .post('/people/:personId', async (c) => {
+    const scope = await writeReach(c);
+    const input = { ...(await body(c)), personId: c.req.param('personId') };
+    return change(c, updatePerson, input, () => (reachesAnything(scope) ? [] : [null]));
+  })
+  // Linking an account decides who acts as whom: the organization's administrators only.
+  .post('/people/:personId/account', async (c) => {
+    const input = { ...(await body(c)), personId: c.req.param('personId') };
+    return change(c, linkPersonAccount, input, () => [null]);
   })
   .post('/assignments', async (c) => {
     const input = await bodyOf(c);

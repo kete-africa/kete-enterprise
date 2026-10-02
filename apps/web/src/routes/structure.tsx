@@ -11,7 +11,7 @@ import * as m from '@/paraglide/messages.js';
 const isDay = (value: unknown): value is string =>
   typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
-export const Route = createFileRoute('/structure')({
+export const Route = createFileRoute('/administration/organisation')({
   validateSearch: (search: Record<string, unknown>): { asOf?: string } =>
     isDay(search['asOf']) ? { asOf: search['asOf'] } : {},
   beforeLoad: ({ location }) => requirePerson(location.href),
@@ -28,10 +28,11 @@ export const Route = createFileRoute('/structure')({
 
 /** The organization at a date as the person may see it, and the forms for whoever may draw it. */
 function StructurePage() {
+  const { me } = Route.useRouteContext();
   const { chart, canDraw } = Route.useLoaderData();
-  const navigate = useNavigate({ from: '/structure' });
+  const navigate = useNavigate({ from: '/administration/organisation' });
   return (
-    <AppShell current="structure">
+    <AppShell me={me} current="organization">
       <PageTitle>{m.structure_title()}</PageTitle>
       <PageSection first>
         <TextField

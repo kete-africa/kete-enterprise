@@ -86,7 +86,7 @@ function Decide({ request }: { request: InboxRequest }) {
 type StepDraft = { rule: Rule['rule']; target: string; minMeasure: string };
 
 /** The circuits, and the form to describe one (a new one replaces the active one of its subject). */
-function Circuits({ circuits }: { circuits: NonNullable<InboxScreen['circuits']> }) {
+export function Circuits({ circuits }: { circuits: NonNullable<InboxScreen['circuits']> }) {
   const [draft, setDraft] = useState({
     subject: circuits.subjects[0] ?? '',
     name: '',

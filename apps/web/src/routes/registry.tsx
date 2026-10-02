@@ -6,7 +6,7 @@ import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import * as m from '@/paraglide/messages.js';
 
-export const Route = createFileRoute('/registre')({
+export const Route = createFileRoute('/administration/registre')({
   beforeLoad: ({ location }) => requirePerson(location.href),
   loader: () => fetchRegistry(),
   component: RegistryPage,
@@ -14,9 +14,10 @@ export const Route = createFileRoute('/registre')({
 
 /** The company's apps, skills, MCP servers and agents, as the person may see them (spec 004). */
 function RegistryPage() {
+  const { me } = Route.useRouteContext();
   const screen = Route.useLoaderData();
   return (
-    <AppShell current="registry">
+    <AppShell me={me} current="registry">
       <PageTitle>{m.registry_title()}</PageTitle>
       <PageSection first>
         <RegistryView screen={screen} />
