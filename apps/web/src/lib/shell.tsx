@@ -1,4 +1,4 @@
-import { Button, NavItem, NavSection, Shell } from '@kete/design';
+import { Button, Icon, Menu, NavItem, NavSection, Shell } from '@kete/design';
 import type { ReactNode } from 'react';
 import * as m from '@/paraglide/messages.js';
 import { administers, opens, viewAs, type Me } from './me';
@@ -9,6 +9,7 @@ export type Page =
   | 'todo'
   | 'assistant'
   | 'resources'
+  | 'my_agents'
   | 'surveys'
   | 'performance'
   | 'team'
@@ -54,6 +55,11 @@ function SpaceNav({ me, current }: { me: Me; current: Page }) {
         <NavItem href="/assistant" icon="agent" current={current === 'assistant'}>
           {m.nav_assistant()}
         </NavItem>
+        {me.modules.agents && (
+          <NavItem href="/mes-agents" icon="learn" current={current === 'my_agents'}>
+            {m.nav_my_agents()}
+          </NavItem>
+        )}
         <NavItem href="/ressources" icon="library" current={current === 'resources'}>
           {m.nav_resources()}
         </NavItem>
@@ -94,8 +100,31 @@ function SpaceNav({ me, current }: { me: Me; current: Page }) {
   );
 }
 
+/** The team's apps from the registry: each opens the app itself (spec 016). */
+function AppsNav({ me }: { me: Me }) {
+  if (me.apps.length === 0) return null;
+  return (
+    <NavSection label={m.nav_team_apps()}>
+      {me.apps.map((app) => (
+        <NavItem key={app.resourceId} href={app.address} icon="apps">
+          {app.name}
+        </NavItem>
+      ))}
+    </NavSection>
+  );
+}
+
 /** The Administration: the frame only — never a survey or a grid (spec 010). */
 function AdminNav({ me, current }: { me: Me; current: Page }) {
+  if (!adminPages.includes(current)) {
+    return (
+      <NavSection label={m.nav_administration()}>
+        <NavItem href="/administration" icon="check">
+          {m.nav_admin_home()}
+        </NavItem>
+      </NavSection>
+    );
+  }
   return (
     <NavSection label={m.nav_administration()}>
       <NavItem href="/administration" icon="apps" current={current === 'admin'}>
@@ -182,7 +211,6 @@ export function AppShell({
   current: Page;
   children: ReactNode;
 }) {
-  const inAdmin = adminPages.includes(current);
   return (
     <Shell
       brand={m.app_name()}
@@ -190,24 +218,31 @@ export function AppShell({
       showNavLabel={m.nav_show()}
       hideNavLabel={m.nav_hide()}
       nav={
-        inAdmin ? <AdminNav me={me} current={current} /> : <SpaceNav me={me} current={current} />
+        <>
+          <SpaceNav me={me} current={current} />
+          <AppsNav me={me} />
+          {administers(me) && <AdminNav me={me} current={current} />}
+        </>
       }
       toolbar={
-        <div className="flex flex-wrap items-center gap-4 text-body-sm">
-          {inAdmin ? (
-            <a href="/" className="text-link underline">
-              {m.nav_to_space()}
-            </a>
-          ) : (
-            administers(me) && (
-              <a href="/administration" className="text-link underline">
-                {m.nav_to_admin()}
-              </a>
-            )
-          )}
-          <a href="/auth/sortie" className="text-link underline">
-            {m.nav_sign_out()}
+        <div className="flex items-center gap-2">
+          <a
+            href="/assistant"
+            aria-label={m.nav_assistant()}
+            title={m.nav_assistant()}
+            className="inline-flex size-(--icon-button-size) items-center justify-center rounded-control text-fg hover:bg-surface-hover"
+          >
+            <Icon name="agent" />
           </a>
+          <a
+            href="/a-faire"
+            aria-label={m.nav_todo()}
+            title={m.nav_todo()}
+            className="inline-flex size-(--icon-button-size) items-center justify-center rounded-control text-fg hover:bg-surface-hover"
+          >
+            <Icon name="bell" />
+          </a>
+          <Menu label={me.name} items={[{ label: m.nav_sign_out(), href: '/auth/sortie' }]} />
         </div>
       }
     >

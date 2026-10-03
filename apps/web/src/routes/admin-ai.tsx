@@ -1,4 +1,4 @@
-import { Button, PageSection, PageTitle, Panel, TextField } from '@kete/design';
+import { Button, PageSection, PageHeader, Panel, TextField } from '@kete/design';
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { refusal } from '@/lib/forms';
@@ -33,7 +33,11 @@ function AiPage() {
   const total = usage.purposes.reduce((s, p) => s + p.tokens, 0);
   return (
     <AppShell me={me} current="ai">
-      <PageTitle>{m.nav_ai()}</PageTitle>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_administration(), href: '/administration' }]}
+        title={m.nav_ai()}
+      />
       <PageSection first title={m.ai_model()}>
         <Panel>
           <p>

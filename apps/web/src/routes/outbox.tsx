@@ -1,4 +1,4 @@
-import { Button, PageSection, PageTitle, Panel, Tag } from '@kete/design';
+import { Button, PageSection, PageHeader, Panel, Tag } from '@kete/design';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchOutbox, fetchOutboxMessage } from '@/lib/admin';
@@ -30,7 +30,11 @@ function OutboxPage() {
   const format = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
   return (
     <AppShell me={me} current="outbox">
-      <PageTitle>{m.nav_outbox()}</PageTitle>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_administration(), href: '/administration' }]}
+        title={m.nav_outbox()}
+      />
       <p className="text-fg-muted">
         {outbox.mode === 'capture' ? m.outbox_capture() : m.outbox_send()}
       </p>

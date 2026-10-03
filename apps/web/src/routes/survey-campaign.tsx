@@ -1,4 +1,4 @@
-import { Button, PageSection, PageTitle, Panel, Tag } from '@kete/design';
+import { Button, PageSection, PageHeader, Panel, Tag } from '@kete/design';
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { refusal } from '@/lib/forms';
@@ -50,7 +50,11 @@ function CampaignPage() {
   const started = respondents.filter((r) => r.status === 'started').length;
   return (
     <AppShell me={me} current="surveys">
-      <PageTitle>{campaign.title}</PageTitle>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_surveys(), href: '/enquetes' }]}
+        title={campaign.title}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <Tag>{campaign.period}</Tag>
         <Tag tone={campaign.status === 'open' ? 'info' : 'neutral'}>

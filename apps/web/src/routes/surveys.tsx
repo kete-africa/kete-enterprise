@@ -1,4 +1,4 @@
-import { Button, EmptyState, PageSection, PageTitle, Panel, Tag } from '@kete/design';
+import { Button, EmptyState, PageSection, PageHeader, Panel, Tag } from '@kete/design';
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchPeople } from '@/lib/admin';
@@ -35,8 +35,7 @@ function SurveysPage() {
   const [preparing, setPreparing] = useState(false);
   return (
     <AppShell me={me} current="surveys">
-      <PageTitle>{m.nav_surveys()}</PageTitle>
-      <p className="text-fg-muted">{m.surveys_explain()}</p>
+      <PageHeader title={m.nav_surveys()} description={m.surveys_explain()} />
       <PageSection first title={m.surveys_campaigns()}>
         {campaigns.length === 0 ? (
           <EmptyState title={m.surveys_no_campaign()} />

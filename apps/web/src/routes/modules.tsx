@@ -1,4 +1,4 @@
-import { Button, PageSection, PageTitle, Panel, Tag } from '@kete/design';
+import { Button, PageSection, PageHeader, Panel, Tag } from '@kete/design';
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { administer, fetchOrganization } from '@/lib/admin';
@@ -45,8 +45,12 @@ function ModulesPage() {
   };
   return (
     <AppShell me={me} current="modules">
-      <PageTitle>{m.nav_modules()}</PageTitle>
-      <p className="text-fg-muted">{m.modules_explain()}</p>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_administration(), href: '/administration' }]}
+        title={m.nav_modules()}
+        description={m.modules_explain()}
+      />
       <PageSection first>
         <div className="grid gap-4">
           {modules.map((module) => {

@@ -1,4 +1,4 @@
-import { Button, PageSection, PageTitle, Panel, Tag, TextField } from '@kete/design';
+import { Button, PageSection, PageHeader, Panel, Tag, TextField } from '@kete/design';
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchPeople } from '@/lib/admin';
@@ -59,7 +59,11 @@ function QuarterPage() {
   const reds = (r: (typeof reviews)[number]) => r.lines.filter((l) => l.colour === 'red').length;
   return (
     <AppShell me={me} current="performance">
-      <PageTitle>{quarter.label}</PageTitle>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_performance(), href: '/performance' }]}
+        title={quarter.label}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <Tag tone={quarter.status === 'open' ? 'info' : 'neutral'}>
           {quarterStatusLabel(quarter.status)}

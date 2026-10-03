@@ -19,6 +19,8 @@ export interface Me {
   demo: boolean;
   /** In a demo organization: the administrator viewing the space as this person. */
   viewedBy: string | null;
+  /** The team's apps she may open, from the registry (spec 016). */
+  apps: { resourceId: string; name: string; address: string }[];
 }
 
 /** The signed-in person and her organization, as the API sees them; null without a session. */

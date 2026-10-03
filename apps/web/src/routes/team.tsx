@@ -1,4 +1,4 @@
-import { EmptyState, PageSection, PageTitle } from '@kete/design';
+import { EmptyState, PageSection, PageHeader } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchMyPerformance } from '@/lib/performance';
 import { ReviewCards } from '@/lib/review-view';
@@ -22,8 +22,7 @@ function TeamPage() {
   const toWrite = team.filter((r) => r.status === 'measured');
   return (
     <AppShell me={me} current="team">
-      <PageTitle>{m.nav_team()}</PageTitle>
-      <p className="text-fg-muted">{m.team_explain()}</p>
+      <PageHeader title={m.nav_team()} description={m.team_explain()} />
       <PageSection first title={m.team_to_write({ count: String(toWrite.length) })}>
         {toWrite.length === 0 ? (
           <EmptyState title={m.team_nothing()} />

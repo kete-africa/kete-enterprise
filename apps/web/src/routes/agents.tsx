@@ -1,4 +1,4 @@
-import { PageSection, PageTitle } from '@kete/design';
+import { PageSection, PageHeader } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchAgents } from '@/lib/agents';
 import { AgentsView } from '@/lib/agents-view';
@@ -18,7 +18,11 @@ function AgentsPage() {
   const screen = Route.useLoaderData();
   return (
     <AppShell me={me} current="agents">
-      <PageTitle>{m.agents_title()}</PageTitle>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_administration(), href: '/administration' }]}
+        title={m.agents_title()}
+      />
       <PageSection first>
         <AgentsView screen={screen} />
       </PageSection>
