@@ -75,7 +75,17 @@ function ResourcesPage() {
       <PageHeader
         title={m.nav_resources()}
         description={m.resources_explain()}
-        actions={<Button onClick={() => setRegistering(true)}>{m.registry_register()}</Button>}
+        actions={
+          <>
+            <a
+              href="/ressources/demandes"
+              className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
+            >
+              {m.apr_title()}
+            </a>
+            <Button onClick={() => setRegistering(true)}>{m.registry_register()}</Button>
+          </>
+        }
       />
       <Tabs
         label={m.nav_resources()}

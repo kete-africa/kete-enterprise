@@ -51,6 +51,8 @@ export function refusal(code: string | null): string {
     signed_out: m.error_signed_out,
     already_decided: m.error_decided,
     not_allowed: m.error_forbidden,
+    factory_not_configured: m.error_factory_not_configured,
+    factory_unreachable: m.error_factory_unreachable,
   };
   return (messages[code ?? ''] ?? m.error_generic)();
 }

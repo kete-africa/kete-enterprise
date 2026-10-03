@@ -119,6 +119,18 @@ export const appRequestRoutes = new Hono<{ Variables: IdentityVariables }>()
       })),
     );
   })
+  // One request: for the person who asked, and for IT.
+  .get('/:requestId', async (c) => {
+    const { organizationId, userId } = c.get('identity');
+    const request = await transaction(organizationId, (db) =>
+      findAppRequest(db, c.req.param('requestId')),
+    );
+    const reviews = await holds(c, REVIEW);
+    if (!request || (request.requesterUserId !== userId && !reviews)) {
+      throw new GestureRefusal(404, 'not_found', 'No such request.');
+    }
+    return c.json({ request, reviews, factory: factory() !== null });
+  })
   .post('/', async (c) => {
     const body = (await bodyOf(c)) as object;
     const output = await refused(
