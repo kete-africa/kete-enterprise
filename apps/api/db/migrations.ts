@@ -10,6 +10,7 @@ import { actionsMigrationSql } from '../src/features/actions/index.js';
 import { draftsMigrationSql } from '@kete/drafts';
 import {
   assistantMigrationSql,
+  chatMigrationSql,
   conversationsMigrationSql,
 } from '../src/features/assistant/index.js';
 import { mailMigrationSql } from '../src/features/mail/index.js';
@@ -115,4 +116,6 @@ export const migrations: Migration[] = [
   { name: '0020_app_decisions', sql: (context) => appDecisionsMigrationSql(context) },
   // Each person's own AI connection, and who pays for the models (spec 026).
   { name: '0021_ai_connections', sql: (context) => aiConnectionsMigrationSql(context) },
+  // The chat of the current era: attachments, sources, canvas (spec 027).
+  { name: '0022_assistant_chat', sql: (context) => chatMigrationSql(context) },
 ];

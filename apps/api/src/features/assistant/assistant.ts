@@ -16,6 +16,7 @@ import { getPool, transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { modelChoiceFor } from '../ai/index.js';
+import { colleagueCard } from '../directory/index.js';
 import { appToolsFor, decideDraft, draftsFor, toolsForPerson } from '../gateway/index.js';
 import { isAdministrator } from '../rights/index.js';
 import { personOfAccount } from '../structure/index.js';
@@ -28,6 +29,19 @@ import {
   startConversation,
   type ToolUse,
 } from './conversations.js';
+import {
+  AttachmentError,
+  MAX_ATTACHMENT_BYTES,
+  saveAttachment,
+  takeAttachments,
+} from './attachments.js';
+import {
+  canvasTool,
+  commandInstructions,
+  readDirectives,
+  sourcesOf,
+  type Source,
+} from './chat-tools.js';
 import { assistantWords } from './words.js';
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
@@ -319,6 +333,27 @@ export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
   // The chat, streamed line by line (NDJSON): the conversation, the text as it comes, each tool
   // called and the drafts prepared, then the end. Stopping the request stops the model.
   .post('/chat/stream', (c: Ctx) => streamChat(c))
+  // A file attached to the chat (spec 027): read now, sent with her next message.
+  .post('/attachments', async (c: Ctx) => {
+    const parsed = attachmentInput.safeParse(await bodyOf(c));
+    if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'A file is expected.');
+    const { organizationId, userId } = c.get('identity');
+    try {
+      const saved = await transaction(organizationId, (db) =>
+        saveAttachment(db, organizationId, userId, {
+          name: parsed.data.name,
+          contentType: parsed.data.contentType,
+          data: Buffer.from(parsed.data.data, 'base64'),
+        }),
+      );
+      return c.json(saved, 201);
+    } catch (error) {
+      if (error instanceof AttachmentError) {
+        throw new GestureRefusal(422, error.code, error.message);
+      }
+      throw error;
+    }
+  })
   // The drafts prepared for the person, and her decision (spec 017).
   .get('/drafts', async (c) => {
     const identity = c.get('identity');
@@ -396,6 +431,21 @@ const streamInput = z.object({
     .regex(/^cnv_[0-9a-f-]{8,64}$/)
     .optional(),
   message: z.string().trim().min(1).max(4000),
+  /** Files attached to this message (spec 027), read when they were attached. */
+  attachments: z
+    .array(z.string().regex(/^att_[0-9a-f-]{8,64}$/))
+    .max(10)
+    .default([]),
+});
+
+const attachmentInput = z.object({
+  name: z.string().trim().min(1).max(200),
+  contentType: z.string().min(3).max(120),
+  /** The file, in base64. */
+  data: z
+    .string()
+    .min(1)
+    .max(Math.ceil((MAX_ATTACHMENT_BYTES * 4) / 3) + 8),
 });
 
 /** A draft as a tool returned it: its review, for the thread to show and the person to decide. */
@@ -412,7 +462,8 @@ async function streamChat(c: Ctx): Promise<Response> {
   const parsed = streamInput.safeParse(await bodyOf(c));
   if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'A message is required.');
   const { organizationId, userId } = identity;
-  const { conversationId, history, organization } = await transaction(
+  const mentioned = readDirectives(parsed.data.message);
+  const { conversationId, history, organization, files, people } = await transaction(
     organizationId,
     async (db) => {
       const id =
@@ -420,11 +471,35 @@ async function streamChat(c: Ctx): Promise<Response> {
         (await startConversation(db, organizationId, userId, parsed.data.message));
       const found = await readConversation(db, userId, id);
       if (!found) throw new GestureRefusal(404, 'not_found', 'No such conversation.');
-      await appendMessage(db, organizationId, id, { role: 'user', content: parsed.data.message });
+      const files = await takeAttachments(db, userId, id, parsed.data.attachments);
+      await appendMessage(db, organizationId, id, {
+        role: 'user',
+        content: parsed.data.message,
+        attachments: files.map((f) => ({
+          attachmentId: f.attachmentId,
+          name: f.name,
+          kind: f.kind,
+          pages: f.pages,
+        })),
+      });
+      // People she mentions (@), as the directory shows them to her — never more.
+      const people: string[] = [];
+      for (const d of mentioned.directives.filter((x) => x.type === 'person' && x.id)) {
+        const card = await colleagueCard(db, identity, d.id as string);
+        if (card) {
+          people.push(
+            `${card.name} : ${card.positions.map((p) => `${p.title} (${p.unitName})`).join(', ') || 'sans poste'} ; responsable : ${card.managers.map((x) => x.name).join(', ') || '—'}.`,
+          );
+        }
+      }
       return {
         conversationId: id,
-        history: found.messages.slice(-20).map((m) => ({ role: m.role, content: m.content })),
+        history: found.messages
+          .slice(-20)
+          .map((m) => ({ role: m.role, content: readDirectives(m.content).plain })),
         organization: await organizationName(db),
+        files,
+        people,
       };
     },
   );
@@ -435,6 +510,33 @@ async function streamChat(c: Ctx): Promise<Response> {
   const token = /^Bearer (.+)$/.exec(c.req.header('authorization') ?? '')?.[1];
   const apps =
     token && !c.get('viewedBy') ? await appToolsFor(identity, token).catch(() => null) : null;
+  const named = mentioned.directives.filter((d) => d.type === 'app').map((d) => `[${d.label}]`);
+  const appTools = (apps?.tools ?? []).filter(
+    (t) => named.length === 0 || named.some((n) => t.description.startsWith(n)),
+  );
+  // Her message as the model reads it: her words, what each command asks, the files' text, the
+  // images themselves, and the people she mentioned.
+  const instructions = commandInstructions(mentioned.directives);
+  const content = [
+    {
+      type: 'text' as const,
+      text: [
+        mentioned.plain || parsed.data.message,
+        ...instructions,
+        ...(people.length ? [`Personnes mentionnées :\n${people.join('\n')}`] : []),
+        ...files
+          .filter((f) => f.kind === 'text')
+          .map((f) => `Pièce jointe « ${f.name} » :\n${f.text}`),
+      ].join('\n\n'),
+    },
+    ...files
+      .filter((f) => f.kind === 'image' && f.data)
+      .map((f) => ({
+        type: 'image' as const,
+        image: new Uint8Array(f.data as Buffer),
+        mediaType: f.contentType,
+      })),
+  ];
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (event: object) =>
@@ -443,13 +545,15 @@ async function streamChat(c: Ctx): Promise<Response> {
       let text = '';
       const tools: ToolUse[] = [];
       const drafts: unknown[] = [];
+      const sources: Source[] = [];
+      let canvas: { title: string; content: string } | null = null;
       try {
         await asPerson(identity, async () => {
           const result = await askStream({
             model: choice.model,
             system: system(organization, identity.name),
-            messages: [...history, { role: 'user', content: parsed.data.message }],
-            tools: [...(await toolsForPerson(identity)), ...(apps?.tools ?? [])],
+            messages: [...history, { role: 'user', content }],
+            tools: [...(await toolsForPerson(identity)), canvasTool, ...appTools],
             maxSteps: 6,
             abortSignal: signal,
             metering: {
@@ -486,6 +590,19 @@ async function streamChat(c: Ctx): Promise<Response> {
                 : null;
               if (draft) drafts.push(draft);
               send({ type: 'tool', name: part['toolName'], state, ...(draft ? { draft } : {}) });
+              const result = (output as { output?: unknown } | null)?.output;
+              if (part['toolName'] === 'canvas_write' && result) {
+                // The document goes to the canvas, beside the conversation.
+                canvas = result as { title: string; content: string };
+                send({ type: 'canvas', ...canvas });
+              } else {
+                for (const source of sourcesOf(result)) {
+                  if (sources.length < 8 && !sources.some((x) => x.href === source.href)) {
+                    sources.push(source);
+                    send({ type: 'source', ...source });
+                  }
+                }
+              }
             } else if (part['type'] === 'error') {
               throw part['error'] instanceof Error ? part['error'] : new Error('model error');
             }
@@ -500,13 +617,15 @@ async function streamChat(c: Ctx): Promise<Response> {
         }
       } finally {
         // What was said is kept, even when the person stopped the answer.
-        if (text.trim() || tools.length) {
+        if (text.trim() || tools.length || canvas) {
           await transaction(organizationId, (db) =>
             appendMessage(db, organizationId, conversationId, {
               role: 'assistant',
               content: text,
               tools,
               drafts,
+              sources,
+              canvas,
             }),
           ).catch(() => undefined);
         }

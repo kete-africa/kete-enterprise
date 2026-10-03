@@ -56,6 +56,9 @@ export function refusal(code: string | null): string {
     invalid_key: m.error_invalid_key,
     provider_unreachable: m.error_provider_unreachable,
     personal_off: m.error_personal_off,
+    unsupported_file: m.error_unsupported_file,
+    file_too_large: m.error_file_too_large,
+    unreadable_file: m.error_unreadable_file,
     secrets_off: m.ai_connection_unavailable,
   };
   return (messages[code ?? ''] ?? m.error_generic)();
