@@ -45,6 +45,7 @@ import { GestureRefusal, runCommand } from './platform/gestures.js';
 import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
 import { appTasksRoutes, factsFor } from './features/workspace/index.js';
+import { appRequestRoutes, factoryReportRoutes } from './features/app-requests/index.js';
 
 /** Every permission a role may allow: each feature declares its own (spec 003). */
 export const permissionCatalog = [
@@ -182,6 +183,8 @@ export function createApi(): Hono {
   v1.route('/assistant', assistantRoutes);
   // Tasks the team's apps put in a person's To do, with her own token (spec 018).
   v1.route('/workspace/tasks', appTasksRoutes);
+  // A person asks for an app, IT decides, the factory creates it (spec 021).
+  v1.route('/app-requests', appRequestRoutes);
   // What waits for the person, and where she stands: the home page reads it (spec 014).
   v1.get('/workspace', async (c) => {
     const identity = c.get('identity');
@@ -193,6 +196,8 @@ export function createApi(): Hono {
   open.route('/passes', passRoutes);
   open.route('/surveys', surveysPublicRoutes);
   open.route('/performance', performancePublicRoutes);
+  // The factory's signed reports (spec 021).
+  open.route('/factory', factoryReportRoutes);
   api.route('/public', open);
   // A refused gesture says why, with a stable code the screens translate.
   api.onError((error, c) => {

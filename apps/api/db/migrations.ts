@@ -26,6 +26,7 @@ import { rightsMigrationSql } from '../src/features/rights/index.js';
 import { structureMigrationSql } from '../src/features/structure/index.js';
 import { surveysMigrationSql } from '../src/features/surveys/index.js';
 import { appTasksMigrationSql } from '../src/features/workspace/index.js';
+import { appRequestsMigrationSql } from '../src/features/app-requests/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -104,4 +105,6 @@ export const migrations: Migration[] = [
   },
   // Tasks the team's apps put in a person's To do (spec 018).
   { name: '0017_app_tasks', sql: (context) => appTasksMigrationSql(context) },
+  // App requests: a person asks, IT decides, the factory creates (spec 021).
+  { name: '0018_app_requests', sql: (context) => appRequestsMigrationSql(context) },
 ];
