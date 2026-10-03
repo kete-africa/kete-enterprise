@@ -189,7 +189,18 @@ function AssistantPage() {
 
   return (
     <AppShell me={me} current="assistant">
-      <PageHeader title={m.nav_assistant()} description={m.assistant_explain()} />
+      <PageHeader
+        title={m.nav_assistant()}
+        description={m.assistant_explain()}
+        actions={
+          <a
+            href="/assistant/connexion"
+            className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
+          >
+            {m.assistant_connection_link()}
+          </a>
+        }
+      />
       {!assistant.available ? (
         <EmptyState title={m.assistant_unavailable()} />
       ) : (

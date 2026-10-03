@@ -1,7 +1,8 @@
 import { PageSection, PageHeader, Panel, TextField } from '@kete/design';
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
-import { DialogForm, refusal } from '@/lib/forms';
+import { fetchConnection, setPersonalPolicy, type PersonalPolicy } from '@/lib/ai';
+import { DialogForm, refusal, Select } from '@/lib/forms';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import { fetchUsage, setBudget } from '@/lib/workspace';
@@ -13,7 +14,10 @@ export const Route = createFileRoute('/administration/ia')({
     if (!context.me.administrator) throw redirect({ to: '/administration' });
     return context;
   },
-  loader: () => fetchUsage(),
+  loader: async () => {
+    const [usage, connection] = await Promise.all([fetchUsage(), fetchConnection()]);
+    return { ...usage, policy: connection.policy, secrets: connection.available };
+  },
   component: AiPage,
 });
 
@@ -31,6 +35,13 @@ function AiPage() {
   );
   const [error, setError] = useState<string | null>(null);
   const total = usage.purposes.reduce((s, p) => s + p.tokens, 0);
+  const [policy, setPolicyDraft] = useState<PersonalPolicy>(usage.policy);
+  const purposeLabel = (purpose: string) => {
+    const [base, payer] = purpose.split(':');
+    const label =
+      base === 'chat' ? m.ai_purpose_chat() : base === 'briefing' ? m.ai_purpose_briefing() : base;
+    return payer === 'personal' ? m.ai_purpose_personal({ purpose: label ?? '' }) : label;
+  };
   return (
     <AppShell me={me} current="ai">
       <PageHeader
@@ -53,19 +64,50 @@ function AiPage() {
           <ul className="grid gap-1 text-body-sm">
             {usage.purposes.map((p) => (
               <li key={p.purpose} className="flex justify-between gap-3">
-                <span>
-                  {p.purpose === 'chat'
-                    ? m.ai_purpose_chat()
-                    : p.purpose === 'briefing'
-                      ? m.ai_purpose_briefing()
-                      : p.purpose}
-                </span>
+                <span>{purposeLabel(p.purpose)}</span>
                 <span className="font-number">
                   {m.ai_purpose_line({ calls: String(p.calls), tokens: p.tokens.toLocaleString() })}
                 </span>
               </li>
             ))}
           </ul>
+        </Panel>
+      </PageSection>
+      <PageSection title={m.ai_policy()}>
+        <Panel>
+          <p className="mb-3">
+            {usage.policy === 'off'
+              ? m.ai_policy_off()
+              : usage.policy === 'required'
+                ? m.ai_policy_required()
+                : m.ai_policy_allowed()}
+          </p>
+          <DialogForm
+            title={m.ai_policy()}
+            ready
+            onSubmit={() => {
+              setError(null);
+              void setPersonalPolicy({ data: { personal: policy } }).then(async (answer) => {
+                if (!answer.ok) return setError(refusal(answer.error));
+                await router.invalidate();
+              });
+            }}
+          >
+            <Select
+              label={m.ai_policy()}
+              value={policy}
+              onChange={(e) => setPolicyDraft(e.target.value as PersonalPolicy)}
+            >
+              <option value="allowed">{m.ai_policy_allowed()}</option>
+              <option value="required">{m.ai_policy_required()}</option>
+              <option value="off">{m.ai_policy_off()}</option>
+            </Select>
+          </DialogForm>
+          {!usage.secrets && (
+            <p className="mt-2 text-body-sm text-state-verify-fg">
+              {m.ai_connection_unavailable()}
+            </p>
+          )}
         </Panel>
       </PageSection>
       <PageSection title={m.ai_budget()}>

@@ -53,6 +53,10 @@ export function refusal(code: string | null): string {
     not_allowed: m.error_forbidden,
     factory_not_configured: m.error_factory_not_configured,
     factory_unreachable: m.error_factory_unreachable,
+    invalid_key: m.error_invalid_key,
+    provider_unreachable: m.error_provider_unreachable,
+    personal_off: m.error_personal_off,
+    secrets_off: m.ai_connection_unavailable,
   };
   return (messages[code ?? ''] ?? m.error_generic)();
 }

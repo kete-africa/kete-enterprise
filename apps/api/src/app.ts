@@ -1,6 +1,7 @@
 import { healthHandler, manifestHandler } from '@kete/sdk';
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
+import { aiRoutes } from './features/ai/index.js';
 import { assistantRoutes } from './features/assistant/index.js';
 import { compliancePermissions, complianceRoutes } from './features/compliance/index.js';
 import { decisionsPermissions, decisionsRoutes } from './features/decisions/index.js';
@@ -185,6 +186,8 @@ export function createApi(): Hono {
   v1.route('/meetings', meetingsRoutes);
   v1.route('/actions', actionsRoutes);
   v1.route('/assistant', assistantRoutes);
+  // Each person's own AI connection, and the organization's policy (spec 026).
+  v1.route('/ai', aiRoutes);
   // What the team's apps ask with the person's token: her grants for one app (spec 022).
   v1.route('/apps', appRoutes);
   // Tasks the team's apps put in a person's To do, with her own token (spec 018).
