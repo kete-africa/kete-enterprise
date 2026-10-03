@@ -8,6 +8,7 @@ import { transaction } from '../../platform/db.js';
 import { env } from '../../platform/env.js';
 import { identityOf } from '../../platform/identity.js';
 import { VERSION } from '../../platform/service.js';
+import { reach, reachesAnything } from '../rights/index.js';
 import { GATEWAY_PERMISSION, gatewayCapabilities } from './capabilities.js';
 import { recordCall } from './infrastructure/gateway.tables.js';
 
@@ -18,22 +19,30 @@ import { recordCall } from './infrastructure/gateway.tables.js';
 const registry = createCapabilityRegistry(gatewayCapabilities, {
   authorize: async (caller, permission) => {
     const acting = actingPerson();
-    return (
-      permission === GATEWAY_PERMISSION &&
-      acting !== null &&
-      acting.organizationId === caller.organizationId &&
-      caller.actor.onBehalfOf?.id === acting.userId
+    if (!acting || acting.organizationId !== caller.organizationId) return false;
+    // The person herself (deciding a draft), or an agent acting for her.
+    const forHer =
+      caller.actor.onBehalfOf?.id === acting.userId ||
+      (caller.actor.kind === 'person' && caller.actor.id === acting.userId);
+    if (!forHer) return false;
+    if (permission === GATEWAY_PERMISSION) return true;
+    // A business permission: the agent holds it only where the person does (spec 017).
+    return transaction(caller.organizationId, async (db) =>
+      reachesAnything(await reach(db, acting, permission)),
     );
   },
   transaction,
 });
 
+/** The drafts an agent may hold open for one person at once: beyond, it waits (D-028). */
+export const DRAFT_BUDGET = 10;
+
 /**
  * The person's capabilities as model tools, for Kete's own assistant (spec 014): the same registry,
  * the same rights, an agent acting on her behalf. Call it, and the tools, inside `asPerson`.
  */
-export function toolsForPerson(identity: { organizationId: string; userId: string }) {
-  return registry.tools({
+export async function toolsForPerson(identity: { organizationId: string; userId: string }) {
+  const tools = await registry.tools({
     organizationId: identity.organizationId,
     actor: {
       kind: 'agent',
@@ -42,6 +51,66 @@ export function toolsForPerson(identity: { organizationId: string; userId: strin
       onBehalfOf: { kind: 'person', id: identity.userId },
     },
   });
+  // A draft beyond the budget is not prepared: too many validations and people stop reading.
+  return tools.map((tool) =>
+    tool.autonomy < 3
+      ? tool
+      : {
+          ...tool,
+          execute: async (input: unknown) =>
+            (await openDraftsFor(identity)) >= DRAFT_BUDGET
+              ? // Beyond the budget the agent is not allowed to prepare more: it waits for her decisions.
+                ({ status: 'refused', reason: 'not_allowed' } as const)
+              : tool.execute(input),
+        },
+  );
+}
+
+async function openDraftsFor(identity: { organizationId: string; userId: string }) {
+  return transaction(identity.organizationId, async (db) => {
+    const { rows } = await db.query<{ count: string }>(
+      `select count(*) from kete_drafts
+        where status = 'prepared' and on_behalf_of_id = $1 and prepared_by_id = 'agt_assistant'`,
+      [identity.userId],
+    );
+    return Number(rows[0]?.count ?? 0);
+  });
+}
+
+function personCaller(identity: { organizationId: string; userId: string }) {
+  return {
+    organizationId: identity.organizationId,
+    actor: { kind: 'person' as const, id: identity.userId, channel: 'web' as const },
+  };
+}
+
+/** The drafts prepared for this person, waiting for her decision, as she reviews them. */
+export async function draftsFor(identity: { organizationId: string; userId: string }) {
+  const ids = await transaction(identity.organizationId, async (db) => {
+    const { rows } = await db.query<{ draft_id: string }>(
+      `select draft_id from kete_drafts
+        where status = 'prepared' and on_behalf_of_id = $1 order by created_at desc limit 50`,
+      [identity.userId],
+    );
+    return rows.map((r) => r.draft_id);
+  });
+  const caller = personCaller(identity);
+  const reviews = await Promise.all(ids.map((id) => registry.review(caller, id)));
+  return reviews.filter((r) => r !== null);
+}
+
+/** The person decides a draft from her screen: the same command, journaled with her as actor. */
+export function decideDraft(
+  identity: { organizationId: string; userId: string },
+  draftId: string,
+  decision: { action: 'validate' | 'refuse'; reason?: string | undefined },
+) {
+  const base = { ...personCaller(identity), draftId, idempotencyKey: `draft-${draftId}` };
+  return registry.decide(
+    decision.action === 'validate'
+      ? { ...base, action: 'validate' }
+      : { ...base, action: 'refuse', reason: decision.reason ?? 'refused' },
+  );
 }
 
 /** Where the gateway answers, as copilots reach it. */

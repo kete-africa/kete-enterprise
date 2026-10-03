@@ -5,7 +5,11 @@ import { complianceMigrationSql } from '../src/features/compliance/index.js';
 import { decisionsMigrationSql } from '../src/features/decisions/index.js';
 import { gatewayAppendOnlySql, gatewayMigrationSql } from '../src/features/gateway/index.js';
 import { actionsMigrationSql } from '../src/features/actions/index.js';
-import { assistantMigrationSql } from '../src/features/assistant/index.js';
+import { draftsMigrationSql } from '@kete/drafts';
+import {
+  assistantMigrationSql,
+  conversationsMigrationSql,
+} from '../src/features/assistant/index.js';
 import { mailMigrationSql } from '../src/features/mail/index.js';
 import { meetingsMigrationSql } from '../src/features/meetings/index.js';
 import { organizationMigrationSql } from '../src/features/organization/index.js';
@@ -88,4 +92,13 @@ export const migrations: Migration[] = [
   { name: '0014_assistant', sql: (context) => assistantMigrationSql(context) },
   // Readings of indicators sent by connected apps (spec 015).
   { name: '0015_readings', sql: (context) => readingsMigrationSql(context) },
+  // Drafts prepared by agents, decided by people; the assistant's conversations (spec 017).
+  {
+    name: '0016_drafts_and_conversations',
+    sql: (context) =>
+      [
+        draftsMigrationSql({ schema: context.schema, appRole: context.appRole }),
+        conversationsMigrationSql(context),
+      ].join('\n'),
+  },
 ];

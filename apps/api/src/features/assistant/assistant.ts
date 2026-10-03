@@ -1,6 +1,7 @@
 import {
   aiMigrationSql,
   ask,
+  askStream,
   BudgetExceededError,
   languageModel,
   modelConfigFromEnv,
@@ -14,10 +15,18 @@ import { asPerson } from '../../platform/acting.js';
 import { getPool, transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
-import { toolsForPerson } from '../gateway/index.js';
+import { decideDraft, draftsFor, toolsForPerson } from '../gateway/index.js';
 import { isAdministrator } from '../rights/index.js';
 import { personOfAccount } from '../structure/index.js';
 import { factsFor, type Facts } from '../workspace/index.js';
+import {
+  appendMessage,
+  explainDraft,
+  listConversations,
+  readConversation,
+  startConversation,
+  type ToolUse,
+} from './conversations.js';
 import { assistantWords } from './words.js';
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
@@ -79,7 +88,8 @@ const system = (organization: string, name: string) =>
     'Tu prépares, tu expliques, tu proposes ; tu ne décides jamais à sa place. Une décision, une signature ou une validation se font dans Kete Enterprise, par elle.',
     'Tu n’as aucune donnée de paie ni de salaire, et tu ne les inventes pas.',
     'Quand tu t’appuies sur un outil, dis d’où vient l’information (par exemple : « d’après vos actions ouvertes »).',
-    'Réponds en français, brièvement, avec des listes courtes quand c’est utile.',
+    'Pour créer une action ou une mesure, utilise l’outil qui en prépare le brouillon : elle le valide, toi jamais.',
+    'Réponds en français, brièvement, en Markdown (listes courtes, tableaux quand c’est utile).',
   ].join('\n');
 
 async function organizationName(db: SqlExecutor): Promise<string> {
@@ -259,6 +269,50 @@ export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
       throw error;
     }
   })
+  // The conversations of the person, as in any assistant (spec 017).
+  .get('/conversations', async (c) => {
+    const identity = c.get('identity');
+    return c.json({
+      conversations: await transaction(identity.organizationId, (db) =>
+        listConversations(db, identity.userId),
+      ),
+    });
+  })
+  .get('/conversations/:conversationId', async (c) => {
+    const identity = c.get('identity');
+    const found = await transaction(identity.organizationId, (db) =>
+      readConversation(db, identity.userId, c.req.param('conversationId')),
+    );
+    if (!found) throw new GestureRefusal(404, 'not_found', 'No such conversation.');
+    return c.json(found);
+  })
+  // The chat, streamed line by line (NDJSON): the conversation, the text as it comes, each tool
+  // called and the drafts prepared, then the end. Stopping the request stops the model.
+  .post('/chat/stream', (c: Ctx) => streamChat(c))
+  // The drafts prepared for the person, and her decision (spec 017).
+  .get('/drafts', async (c) => {
+    const identity = c.get('identity');
+    const drafts = await asPerson(identity, () => draftsFor(identity));
+    return c.json({
+      drafts: await transaction(identity.organizationId, (db) =>
+        Promise.all(drafts.map((d) => explainDraft(db, d))),
+      ),
+    });
+  })
+  .post('/drafts/:draftId/decide', async (c) => {
+    const identity = c.get('identity');
+    const parsed = decideInput.safeParse(await bodyOf(c));
+    if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'A decision is required.');
+    const result = await asPerson(identity, () =>
+      decideDraft(identity, c.req.param('draftId'), parsed.data),
+    );
+    if (result.status === 'not_possible') {
+      const code =
+        result.reason === 'not_allowed' ? 403 : result.reason === 'not_found' ? 404 : 409;
+      throw new GestureRefusal(code, result.reason, 'This draft cannot be decided.');
+    }
+    return c.json({ status: result.status });
+  })
   // The organization's use of models this month, and its budget: for administrators.
   .get('/usage', async (c) => {
     const identity = c.get('identity');
@@ -300,3 +354,132 @@ export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
     );
     return c.json({ monthlyTokens: parsed.data.monthlyTokens }, 201);
   });
+
+const decideInput = z.object({
+  action: z.enum(['validate', 'refuse']),
+  reason: z.string().trim().min(1).max(600).optional(),
+});
+
+const streamInput = z.object({
+  conversationId: z
+    .string()
+    .regex(/^cnv_[0-9a-f-]{8,64}$/)
+    .optional(),
+  message: z.string().trim().min(1).max(4000),
+});
+
+/** A draft as a tool returned it: its review, for the thread to show and the person to decide. */
+function draftOf(output: unknown): unknown {
+  const value = output as { status?: string; review?: unknown } | null;
+  return value?.status === 'draft' ? (value.review ?? null) : null;
+}
+
+async function streamChat(c: Ctx): Promise<Response> {
+  const chosen = model();
+  if (!chosen)
+    throw new GestureRefusal(409, 'assistant_unavailable', 'No model is configured here.');
+  const parsed = streamInput.safeParse(await bodyOf(c));
+  if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'A message is required.');
+  const identity = c.get('identity');
+  const { organizationId, userId } = identity;
+  const { conversationId, history, organization } = await transaction(
+    organizationId,
+    async (db) => {
+      const id =
+        parsed.data.conversationId ??
+        (await startConversation(db, organizationId, userId, parsed.data.message));
+      const found = await readConversation(db, userId, id);
+      if (!found) throw new GestureRefusal(404, 'not_found', 'No such conversation.');
+      await appendMessage(db, organizationId, id, { role: 'user', content: parsed.data.message });
+      return {
+        conversationId: id,
+        history: found.messages.slice(-20).map((m) => ({ role: m.role, content: m.content })),
+        organization: await organizationName(db),
+      };
+    },
+  );
+  const encoder = new TextEncoder();
+  const signal = c.req.raw.signal;
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (event: object) =>
+        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      send({ type: 'conversation', conversationId });
+      let text = '';
+      const tools: ToolUse[] = [];
+      const drafts: unknown[] = [];
+      try {
+        await asPerson(identity, async () => {
+          const result = await askStream({
+            model: chosen,
+            system: system(organization, identity.name),
+            messages: [...history, { role: 'user', content: parsed.data.message }],
+            tools: await toolsForPerson(identity),
+            maxSteps: 6,
+            abortSignal: signal,
+            metering: {
+              store: budgets(),
+              context: {
+                organizationId,
+                actor: {
+                  kind: 'agent',
+                  id: 'agt_assistant',
+                  channel: 'chat',
+                  onBehalfOf: { kind: 'person', id: userId },
+                },
+                purpose: 'chat',
+                model: '',
+              },
+            },
+          });
+          for await (const part of result.fullStream as AsyncIterable<Record<string, unknown>>) {
+            if (part['type'] === 'text-delta') {
+              const delta = String(part['text'] ?? part['delta'] ?? '');
+              text += delta;
+              send({ type: 'text', delta });
+            } else if (part['type'] === 'tool-call') {
+              send({ type: 'tool', name: part['toolName'], state: 'running' });
+            } else if (part['type'] === 'tool-result') {
+              const output = part['output'] as { status?: string } | null;
+              const state = output?.status === 'refused' ? 'refused' : 'done';
+              tools.push({ name: String(part['toolName']), state });
+              const prepared = draftOf(output);
+              const draft = prepared
+                ? await transaction(organizationId, (db) =>
+                    explainDraft(db, prepared as { values: Record<string, unknown> }),
+                  )
+                : null;
+              if (draft) drafts.push(draft);
+              send({ type: 'tool', name: part['toolName'], state, ...(draft ? { draft } : {}) });
+            } else if (part['type'] === 'error') {
+              throw part['error'] instanceof Error ? part['error'] : new Error('model error');
+            }
+          }
+        });
+        send({ type: 'done' });
+      } catch (error) {
+        if (error instanceof BudgetExceededError) send({ type: 'error', code: 'budget_spent' });
+        else if (!signal.aborted) {
+          console.error('[chat]', (error as Error).message);
+          send({ type: 'error', code: 'model_failed' });
+        }
+      } finally {
+        // What was said is kept, even when the person stopped the answer.
+        if (text.trim() || tools.length) {
+          await transaction(organizationId, (db) =>
+            appendMessage(db, organizationId, conversationId, {
+              role: 'assistant',
+              content: text,
+              tools,
+              drafts,
+            }),
+          ).catch(() => undefined);
+        }
+        controller.close();
+      }
+    },
+  });
+  return new Response(body, {
+    headers: { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store' },
+  });
+}
