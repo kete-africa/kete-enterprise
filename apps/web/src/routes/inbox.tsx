@@ -1,6 +1,8 @@
 import { AppCard, AppGrid, Icon, PageSection, PageHeader } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchInbox } from '@/lib/decisions';
+import { DraftCard } from '@/lib/draft-card';
+import { fetchDrafts } from '@/lib/workspace';
 import { InboxView } from '@/lib/decisions-view';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
@@ -12,13 +14,15 @@ import * as m from '@/paraglide/messages.js';
 export const Route = createFileRoute('/a-faire')({
   beforeLoad: ({ location }) => requirePerson(location.href),
   loader: async ({ context }) => {
-    const [inbox, surveys, actions, meetings] = await Promise.all([
+    const [drafts, inbox, surveys, actions, meetings] = await Promise.all([
+      fetchDrafts().catch(() => ({ drafts: [] })),
       fetchInbox(),
       context.me.modules.surveys ? fetchMySurveys() : Promise.resolve({ surveys: [] }),
       fetchActions({ data: { scope: 'mine' } }),
       context.me.modules.meetings ? fetchMeetings() : Promise.resolve(null),
     ]);
     return {
+      drafts: drafts.drafts,
       inbox,
       surveys: surveys.surveys,
       actions: actions.actions.filter((a) => a.status === 'open'),
@@ -34,13 +38,26 @@ export const Route = createFileRoute('/a-faire')({
  */
 function InboxPage() {
   const { me } = Route.useRouteContext();
-  const { inbox, surveys, actions, notes } = Route.useLoaderData();
+  const { drafts, inbox, surveys, actions, notes } = Route.useLoaderData();
   const waiting = surveys.filter((s) => s.status !== 'submitted');
   return (
     <AppShell me={me} current="todo">
       <PageHeader title={m.inbox_title()} />
+      {drafts.length > 0 && (
+        <PageSection first title={m.inbox_drafts()}>
+          <p className="mb-4 text-fg-muted">{m.inbox_drafts_explain()}</p>
+          <div className="grid gap-4">
+            {drafts.map((d) => (
+              <DraftCard key={d.draftId} draft={d} />
+            ))}
+          </div>
+        </PageSection>
+      )}
       {waiting.length > 0 && (
-        <PageSection first title={m.todo_forms({ count: String(waiting.length) })}>
+        <PageSection
+          first={drafts.length === 0}
+          title={m.todo_forms({ count: String(waiting.length) })}
+        >
           <AppGrid layout="list">
             {waiting.map((s) => (
               <AppCard

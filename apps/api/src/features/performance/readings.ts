@@ -3,7 +3,12 @@ import { newId } from '@kete/records';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
 import { z } from 'zod';
 import { colourOf } from './compute.js';
-import { findReview, writeLine } from './infrastructure/performance.tables.js';
+import {
+  findReview,
+  listQuarters,
+  listReviews,
+  writeLine,
+} from './infrastructure/performance.tables.js';
 
 /**
  * Readings (spec 015): a value of an indicator for a quarter, sent by a connected app — the helpdesk
@@ -160,3 +165,48 @@ export const measureFromReading = defineCommand({
   },
   summarize: (input) => `Review ${input.reviewId}, line ${input.position}: from a reading`,
 });
+
+/**
+ * The readings waiting to be taken (spec 017): for each open review of an open quarter, a line
+ * still without a value whose indicator has a reading for that quarter — what an agent may propose
+ * to measure, as a draft. Only the reviews of units the person measures (`mayMeasure`).
+ */
+export async function readingsToTake(db: SqlExecutor, mayMeasure: (unitId: string) => boolean) {
+  const quarters = (await listQuarters(db)).filter((q) => q.status === 'open');
+  const found: {
+    reviewId: string;
+    personName: string;
+    quarter: string;
+    position: number;
+    indicator: string;
+    readingId: string;
+    value: number;
+    proof: string;
+    source: string;
+  }[] = [];
+  for (const quarter of quarters) {
+    const readings = await listReadings(db, quarter.label);
+    if (readings.length === 0) continue;
+    const reviews = await listReviews(db, { quarterId: quarter.quarterId }, true);
+    for (const review of reviews) {
+      if (review.status !== 'open' || !mayMeasure(review.unitId)) continue;
+      for (const line of review.lines) {
+        if (line.value !== null) continue;
+        const reading = readings.find((r) => r.indicator === line.name);
+        if (!reading) continue;
+        found.push({
+          reviewId: review.reviewId,
+          personName: review.personName,
+          quarter: quarter.label,
+          position: line.position,
+          indicator: line.name,
+          readingId: reading.readingId,
+          value: reading.value,
+          proof: reading.proof,
+          source: reading.source,
+        });
+      }
+    }
+  }
+  return found;
+}

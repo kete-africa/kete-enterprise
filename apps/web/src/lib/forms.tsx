@@ -45,6 +45,12 @@ export function refusal(code: string | null): string {
     wrong_step: m.error_wrong_step,
     not_measured: m.error_not_measured,
     weights: m.error_weights,
+    budget_spent: m.error_budget_spent,
+    model_failed: m.error_model_failed,
+    assistant_unavailable: m.assistant_unavailable,
+    signed_out: m.error_signed_out,
+    already_decided: m.error_decided,
+    not_allowed: m.error_forbidden,
   };
   return (messages[code ?? ''] ?? m.error_generic)();
 }

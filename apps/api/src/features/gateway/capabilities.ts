@@ -1,8 +1,11 @@
 import { defineCapability } from '@kete/capabilities';
 import { z } from 'zod';
 import { actingPerson } from '../../platform/acting.js';
+import { createAction } from '../actions/index.js';
 import { inboxFor } from '../decisions/index.js';
+import { measureFromReading, readingsToTake } from '../performance/index.js';
 import { registerInput, registerResourceForAgent, registryFor } from '../registry/index.js';
+import { covers, reach } from '../rights/index.js';
 import { chartFor } from '../structure/index.js';
 import { factsFor } from '../workspace/index.js';
 
@@ -113,5 +116,40 @@ export const gatewayCapabilities = [
       });
       return { toDecide: inbox.toDecide.map(summary), mine: inbox.mine.map(summary) };
     },
+  }),
+  // Level 1: what an agent may propose to measure, in the units where the person measures.
+  defineCapability({
+    name: 'performance_readings_to_take',
+    description:
+      'Readings sent by connected apps (the helpdesk…) that match a line still without a value in an open quarterly review, in the units where the person measures: review, holder, line position, indicator, reading, value and proof.',
+    permission: 'performance:measure',
+    autonomy: 1,
+    input: z.object({}),
+    async run(_input, { db }) {
+      const scope = await reach(db, person(), 'performance:measure');
+      return { toTake: await readingsToTake(db, (unitId) => covers(scope, unitId)) };
+    },
+  }),
+  // Level 3: a measure counts in the variable part: the agent prepares it, the person validates.
+  defineCapability({
+    name: 'performance_propose_measure',
+    description:
+      'Prepares, as a draft for the person to validate, the measure of a review line from a reading (take reviewId, position and readingId from performance_readings_to_take). Nothing is measured until she validates.',
+    permission: 'performance:measure',
+    autonomy: 3,
+    input: measureFromReading.input,
+    command: measureFromReading,
+    draft: { recordType: 'review-measure' },
+  }),
+  // Level 3: an action engages its owner: the agent prepares it, the person validates.
+  defineCapability({
+    name: 'actions_propose',
+    description:
+      'Prepares, as a draft for the person to validate, an action of the register: a title, its owner (a personId from structure_chart), a deadline (YYYY-MM-DD) and details. Nothing is created until she validates.',
+    permission: 'meetings:manage',
+    autonomy: 3,
+    input: createAction.input,
+    command: createAction,
+    draft: { recordType: 'action' },
   }),
 ];

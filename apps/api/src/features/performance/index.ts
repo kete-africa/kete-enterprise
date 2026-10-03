@@ -22,5 +22,5 @@ export {
 } from './infrastructure/performance.tables.js';
 export type { Profile, Quarter, Review } from './infrastructure/performance.tables.js';
 export { profileInput, type ProfileInput } from './performance.record.js';
-export { readingsMigrationSql } from './readings.js';
+export { measureFromReading, readingsMigrationSql, readingsToTake } from './readings.js';
 export { performancePermissions, performancePublicRoutes, performanceRoutes } from './routes.js';

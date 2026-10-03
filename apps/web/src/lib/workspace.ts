@@ -51,40 +51,6 @@ export const fetchAssistant = createServerFn({ method: 'GET' }).handler(() =>
   ),
 );
 
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-/** One turn of the conversation: the assistant answers with the person's own tools. */
-export const chat = createServerFn({ method: 'POST' })
-  .validator((input: unknown) => {
-    const messages = (input as { messages?: unknown } | null)?.messages;
-    if (!Array.isArray(messages) || messages.length === 0 || messages.length > 30) {
-      throw new Error('A conversation is required.');
-    }
-    return {
-      messages: messages.map((m) => {
-        const { role, content } = (m ?? {}) as { role?: unknown; content?: unknown };
-        if ((role !== 'user' && role !== 'assistant') || typeof content !== 'string') {
-          throw new Error('Unknown message.');
-        }
-        return { role, content: content.slice(0, 4000) } as ChatMessage;
-      }),
-    };
-  })
-  .handler(async ({ data }) => {
-    const answer = await sendGesture<{ text: string; tools: string[] }>(
-      getRequest(),
-      '/v1/assistant/chat',
-      data,
-      crypto.randomUUID(),
-    );
-    return answer.ok
-      ? { ok: true, error: null, text: answer.data.text, tools: answer.data.tools }
-      : { ok: false, error: answer.error, text: '', tools: [] as string[] };
-  });
-
 export const fetchUsage = createServerFn({ method: 'GET' }).handler(() =>
   callApi<{
     provider: string | null;
@@ -105,6 +71,73 @@ export const setBudget = createServerFn({ method: 'POST' })
       getRequest(),
       '/v1/assistant/budget',
       data,
+      crypto.randomUUID(),
+    );
+    return answer.ok ? { ok: true, error: null } : { ok: false, error: answer.error };
+  });
+
+/** A draft prepared by an agent, as the person reviews it (spec 017). */
+export interface DraftReview {
+  draftId: string;
+  capability: string;
+  description: string;
+  autonomy: 3 | 4;
+  recordType: string;
+  status: 'prepared' | 'validated' | 'refused';
+  values: Record<string, string | number | boolean | null>;
+  provenance: Record<string, { source: string; certainty?: string }>;
+  /** Its identifiers in words: a person's name, a review's holder, a reading's value. */
+  display?: Record<string, string>;
+}
+
+export interface StoredMessage {
+  messageId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  tools: { name: string; state: 'done' | 'refused' }[];
+  drafts: DraftReview[];
+  createdAt: string;
+}
+
+export const fetchConversations = createServerFn({ method: 'GET' }).handler(() =>
+  callApi<{ conversations: { conversationId: string; title: string; updatedAt: string }[] }>(
+    getRequest(),
+    '/v1/assistant/conversations',
+  ),
+);
+
+export const fetchConversation = createServerFn({ method: 'GET' })
+  .validator((input: unknown) => {
+    const id = (input as { conversationId?: unknown } | null)?.conversationId;
+    if (typeof id !== 'string' || !/^cnv_[0-9a-f-]{8,64}$/.test(id)) throw new Error('Unknown.');
+    return { conversationId: id };
+  })
+  .handler(({ data }) =>
+    callApi<{ conversationId: string; title: string; messages: StoredMessage[] }>(
+      getRequest(),
+      `/v1/assistant/conversations/${data.conversationId}`,
+    ).catch(() => null),
+  );
+
+export const fetchDrafts = createServerFn({ method: 'GET' }).handler(() =>
+  callApi<{ drafts: DraftReview[] }>(getRequest(), '/v1/assistant/drafts'),
+);
+
+/** The person validates or refuses a draft: the same command as her screen runs. */
+export const decideDraft = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const { draftId, action } = (input ?? {}) as { draftId?: unknown; action?: unknown };
+    if (typeof draftId !== 'string' || !/^drf_[0-9a-zA-Z_-]{8,64}$/.test(draftId)) {
+      throw new Error('Unknown draft.');
+    }
+    if (action !== 'validate' && action !== 'refuse') throw new Error('A decision.');
+    return { draftId, action };
+  })
+  .handler(async ({ data }) => {
+    const answer = await sendGesture(
+      getRequest(),
+      `/v1/assistant/drafts/${data.draftId}/decide`,
+      { action: data.action },
       crypto.randomUUID(),
     );
     return answer.ok ? { ok: true, error: null } : { ok: false, error: answer.error };

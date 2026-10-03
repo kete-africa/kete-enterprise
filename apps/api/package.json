@@ -16,6 +16,7 @@
     "@kete/auth": "npm:@kete-africa/auth@^0.2.0",
     "@kete/capabilities": "npm:@kete-africa/capabilities@^0.1.1",
     "@kete/commands": "npm:@kete-africa/commands@^0.2.0",
+    "@kete/drafts": "npm:@kete-africa/drafts@^0.1.1",
     "@kete/jobs": "npm:@kete-africa/jobs@^0.1.0",
     "@kete/notify": "npm:@kete-africa/notify@^0.1.0",
     "@kete/records": "npm:@kete-africa/records@^0.1.1",

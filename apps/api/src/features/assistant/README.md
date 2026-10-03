@@ -23,3 +23,19 @@ flowchart LR
 - **The model is configuration** (D-029): `KETE_AI_PROVIDER`, `KETE_AI_MODEL`, the key in the
   provider's usual variable (`OPENAI_API_KEY`). Every call is metered; a monthly budget stops calls.
 - **No pay**: no register of pay is read by `factsFor`, so none reaches a model.
+
+## Drafts and conversations (spec 017)
+
+The assistant prepares drafts (level 3) — an action, a measure from a reading — that the person
+validates or refuses, in the chat or in « À faire »; nothing exists before. Its conversations are
+kept, one person each, and the chat streams its answer (NDJSON) and can be stopped. See
+[spec 017](../../../../../specs/017-drafts-and-chat/spec.md).
+
+```mermaid
+flowchart LR
+  M[Message] --> S[chat/stream] --> T{tool level}
+  T -->|1 · 2| R[Result in the thread]
+  T -->|3| D[Draft · kete_drafts] --> V{Person}
+  V -->|Validate| C[Same command, her as actor]
+  V -->|Refuse| X[Refused, frozen]
+```

@@ -35,4 +35,5 @@ export const routes = rootRoute('__root.tsx', [
   route('/auth/callback', 'auth/callback.ts'),
   route('/auth/sortie', 'auth/sign-out.ts'),
   route('/health', 'api/health.ts'),
+  route('/assistant/flux', 'api/assistant-stream.ts'),
 ]);

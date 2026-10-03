@@ -98,3 +98,28 @@ export async function callPublic<T>(
   if (!response.ok) return { ok: false, error: answer.error ?? 'internal' };
   return { ok: true, data: answer as T };
 }
+
+/**
+ * Streams an API answer to the screen as it comes (the assistant's chat, spec 017): the person's
+ * token is added here, server-side; stopping the screen's request stops the API's. A refusal
+ * comes back as its JSON, with its status.
+ */
+export async function streamApi(request: Request, path: string, body: unknown): Promise<Response> {
+  const response = await fetch(`${env.apiUrl}${path}`, {
+    method: 'POST',
+    headers: {
+      ...(await headersFor(request)),
+      'content-type': 'application/json',
+      'kete-channel': 'web',
+    },
+    body: JSON.stringify(body),
+    signal: request.signal,
+  });
+  return new Response(response.body, {
+    status: response.status,
+    headers: {
+      'content-type': response.headers.get('content-type') ?? 'application/json',
+      'cache-control': 'no-store',
+    },
+  });
+}

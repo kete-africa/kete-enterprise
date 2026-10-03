@@ -53,6 +53,9 @@ importers:
       '@kete/commands':
         specifier: npm:@kete-africa/commands@^0.2.0
         version: '@kete-africa/commands@0.2.0(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+      '@kete/drafts':
+        specifier: npm:@kete-africa/drafts@^0.1.1
+        version: '@kete-africa/drafts@0.1.1(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/jobs':
         specifier: npm:@kete-africa/jobs@^0.1.0
         version: '@kete-africa/jobs@0.1.0(@kete-africa/notify@0.1.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0))'
