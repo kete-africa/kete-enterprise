@@ -21,6 +21,7 @@ export interface Facts {
   team: { name: string; status: string; reds: number; factor: number | null }[];
   meetings: { title: string; when: string; decisions: string[] }[];
   apps: { name: string; address: string | null; kind: string }[];
+  tasks: { title: string; source: string; dueAt: string | null; overdue: boolean }[];
 }
 
 export interface Briefing {
@@ -142,3 +143,17 @@ export const decideDraft = createServerFn({ method: 'POST' })
     );
     return answer.ok ? { ok: true, error: null } : { ok: false, error: answer.error };
   });
+
+/** What the team's apps put in the person's To do (spec 018). */
+export interface AppTask {
+  taskId: string;
+  source: string;
+  title: string;
+  href: string;
+  dueAt: string | null;
+  overdue: boolean;
+}
+
+export const fetchTasks = createServerFn({ method: 'GET' }).handler(() =>
+  callApi<{ tasks: AppTask[] }>(getRequest(), '/v1/workspace/tasks'),
+);

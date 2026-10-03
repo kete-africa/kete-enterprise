@@ -1,4 +1,5 @@
 import type { KeteIdentity } from '@kete/auth';
+import { openTasksOf } from './tasks.js';
 import type { SqlExecutor } from '@kete/tenancy';
 import { readRegister } from '../actions/index.js';
 import { inboxFor } from '../decisions/index.js';
@@ -31,6 +32,8 @@ export interface Facts {
   team: { name: string; status: string; reds: number; factor: number | null }[];
   meetings: { title: string; when: string; decisions: string[] }[];
   apps: { name: string; address: string | null; kind: string }[];
+  /** What the team's apps put in her To do (spec 018). */
+  tasks: { title: string; source: string; dueAt: string | null; overdue: boolean }[];
 }
 
 export async function factsFor(
@@ -56,6 +59,12 @@ export async function factsFor(
     apps: registry.resources
       .filter((r) => r.status === 'active' && (r.kind === 'app' || r.kind === 'mcp'))
       .map((r) => ({ name: r.name, address: r.address ?? null, kind: r.kind })),
+    tasks: (await openTasksOf(db, identity.userId)).map((t) => ({
+      title: t.title,
+      source: t.source,
+      dueAt: t.dueAt,
+      overdue: t.overdue,
+    })),
   };
   if (!personId) return facts;
   facts.actions = (await readRegister(db, { personId, openOnly: true })).map((a) => ({

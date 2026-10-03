@@ -44,7 +44,7 @@ import { transaction } from './platform/db.js';
 import { GestureRefusal, runCommand } from './platform/gestures.js';
 import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
-import { factsFor } from './features/workspace/index.js';
+import { appTasksRoutes, factsFor } from './features/workspace/index.js';
 
 /** Every permission a role may allow: each feature declares its own (spec 003). */
 export const permissionCatalog = [
@@ -180,6 +180,8 @@ export function createApi(): Hono {
   v1.route('/meetings', meetingsRoutes);
   v1.route('/actions', actionsRoutes);
   v1.route('/assistant', assistantRoutes);
+  // Tasks the team's apps put in a person's To do, with her own token (spec 018).
+  v1.route('/workspace/tasks', appTasksRoutes);
   // What waits for the person, and where she stands: the home page reads it (spec 014).
   v1.get('/workspace', async (c) => {
     const identity = c.get('identity');

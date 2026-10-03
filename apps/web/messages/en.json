@@ -785,5 +785,7 @@
   "draft_validate": "Validate",
   "draft_refuse": "Refuse",
   "inbox_drafts": "Drafts prepared for you",
-  "inbox_drafts_explain": "Your agents prepare; nothing exists until you validate."
+  "inbox_drafts_explain": "Your agents prepare; nothing exists until you validate.",
+  "inbox_app_tasks": "In your apps",
+  "inbox_task_due": "before {at}"
 }
