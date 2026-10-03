@@ -58,6 +58,18 @@ export interface IdentityCard {
   }[];
   /** The app's client id at the Compte Kete (kete-core spec 049). */
   client?: string;
+  /** The business events the app announces, with their class (kete-core spec 049). */
+  emits?: {
+    type: string;
+    description: string;
+    classification?: 'public' | 'internal' | 'confidential' | 'secret';
+  }[];
+  /** What the app asks the circuits to decide, with its words (kete-core spec 049). */
+  subjects?: {
+    name: string;
+    label: { fr: string; en: string };
+    measure?: { fr: string; en: string };
+  }[];
 }
 
 export interface Resource {

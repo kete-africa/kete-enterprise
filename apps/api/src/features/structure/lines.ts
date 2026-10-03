@@ -1,5 +1,5 @@
 import type { SqlExecutor } from '@kete/tenancy';
-import { holdersAt, readChart } from './infrastructure/structure.tables.js';
+import { holdersAt } from './infrastructure/structure.tables.js';
 
 export interface ReportingLines {
   /** Whoever holds — as primary or interim — the position hers reports to, past vacant ones. */
@@ -82,19 +82,4 @@ export async function managerOfPosition(
     above = reportsTo.get(above) ?? null;
   }
   return null;
-}
-
-/**
- * The organization at a date as one read: its units, positions, people, and who holds each
- * position (primary or interim). The directory (spec 023) answers from it.
- */
-export async function readChartAt(db: SqlExecutor, asOf: string) {
-  const [chart, holders] = await Promise.all([readChart(db, asOf), holdersAt(db, asOf)]);
-  return {
-    asOf,
-    units: chart.units,
-    positions: chart.positions,
-    people: chart.people,
-    holders,
-  };
 }

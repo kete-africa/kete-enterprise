@@ -15,6 +15,8 @@ export type Rule =
 export interface InboxRequest {
   requestId: string;
   subject: string;
+  /** An app's subject, in its card's words (spec 023). */
+  subjectLabel: { fr: string; en: string } | null;
   title: string;
   status: 'pending' | 'approved' | 'refused';
   createdAt: string;
@@ -35,12 +37,20 @@ export interface InboxScreen {
   toDecide: InboxRequest[];
   mine: InboxRequest[];
   /** Null when the person may not manage circuits. */
-  circuits: { subjects: string[]; circuits: Circuit[]; roles: Role[]; chart: Chart } | null;
+  circuits: {
+    subjects: string[];
+    /** The apps' subjects, in their cards' words (spec 023). */
+    labels: Record<string, { fr: string; en: string }>;
+    circuits: Circuit[];
+    roles: Role[];
+    chart: Chart;
+  } | null;
 }
 
 const plain = (r: InboxRequest): InboxRequest => ({
   requestId: r.requestId,
   subject: r.subject,
+  subjectLabel: r.subjectLabel ?? null,
   title: r.title,
   status: r.status,
   createdAt: r.createdAt,
@@ -70,7 +80,11 @@ export const fetchInbox = createServerFn({ method: 'GET' }).handler(
     let circuits: InboxScreen['circuits'] = null;
     if (manages) {
       const [definitions, chart, rights] = await Promise.all([
-        callApi<{ subjects: string[]; circuits: Circuit[] }>(request, '/v1/decisions/circuits'),
+        callApi<{
+          subjects: string[];
+          labels: Record<string, { fr: string; en: string }>;
+          circuits: Circuit[];
+        }>(request, '/v1/decisions/circuits'),
         callApi<Chart>(request, '/v1/structure'),
         canSeeRoles
           ? callApi<{ roles: Role[] }>(request, '/v1/rights')

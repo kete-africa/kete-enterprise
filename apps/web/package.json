@@ -10,7 +10,7 @@
     "typecheck": "vite build && tsc --noEmit"
   },
   "dependencies": {
-    "@kete/auth": "npm:@kete-africa/auth@^0.2.0",
+    "@kete/auth": "npm:@kete-africa/auth@^0.3.0",
     "@kete/design": "npm:@kete-africa/design@^0.4.0",
     "@tanstack/react-router": "^1.170.40",
     "@tanstack/react-start": "^1.168.59",

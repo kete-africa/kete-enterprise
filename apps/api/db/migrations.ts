@@ -1,3 +1,4 @@
+import { appDecisionsMigrationSql, appEventsMigrationSql } from '../src/features/apps/index.js';
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
 import { agentsMigrationSql } from '../src/features/agents/index.js';
@@ -107,4 +108,8 @@ export const migrations: Migration[] = [
   { name: '0017_app_tasks', sql: (context) => appTasksMigrationSql(context) },
   // App requests: a person asks, IT decides, the factory creates (spec 021).
   { name: '0018_app_requests', sql: (context) => appRequestsMigrationSql(context) },
+  // The apps' business events, kept once per organization (spec 025).
+  { name: '0019_app_events', sql: (context) => appEventsMigrationSql(context) },
+  // Decisions asked by apps, decided by the organization's circuits (spec 023).
+  { name: '0020_app_decisions', sql: (context) => appDecisionsMigrationSql(context) },
 ];

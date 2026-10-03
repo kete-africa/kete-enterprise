@@ -22,7 +22,10 @@ A demo of Kete Enterprise for KYA-Energy Group's general management. KYA's real 
 4. **Anyone may launch an app that integrates**: kete-helpdesk was born from
    `pnpm create @kete-africa/app`, registered by its owner, promoted to the organization, and its
    indicators flow into the reviews as readings.
-5. **Scattered flows are channelled**: one structure, one journal, one register of actions; the
+5. **An app enters the system by its card**: its permissions are ticked in Administration ›
+   Rights, its events reach each person's morning, its decisions go to the organization's
+   circuits, and an agent calling it carries a mandate (kete-core spec 049).
+6. **Scattered flows are channelled**: one structure, one journal, one register of actions; the
    documents are only final exchanges with outsiders.
 
 ```mermaid
@@ -55,7 +58,12 @@ flowchart LR
    within target (11 of 16), IT 80 % (8 of 10).
 4. Set `OPENAI_API_KEY` on the staging API in Coolify (model `gpt-6.1-sol`): without it, the
    briefings follow rules and the assistant says it has no model.
-5. Keep `KETE_MAIL_MODE=capture`: every e-mail lands in Administration › Boîte de test, whose links
+5. At the staging Compte Kete, let the apps speak as themselves:
+   `pnpm clients grant --client <Support's client> --center` (its events) and
+   `pnpm clients grant --client <Enterprise's client> --mandate` (its agents' mandates); then set
+   `KETE_MANDATES=on` on the staging API. In the registry, « Relire la carte » of Support so its
+   permissions and events are read.
+6. Keep `KETE_MAIL_MODE=capture`: every e-mail lands in Administration › Boîte de test, whose links
    open for real.
 
 ## The demo, act by act (about 35 minutes)
@@ -114,6 +122,22 @@ flowchart LR
   ticket is in Support.
 - In Support, acknowledge it: « Rétablir : … » appears in Enterprise › À faire, under « Dans vos
   apps », with its deadline; restored, it leaves.
+
+### Act 4b — The app in the system (5 minutes)
+
+- `/administration/droits`: Support's permissions appear under « App « Support » », with what each
+  allows. Edit the role « Chef de service SAV »: tick « Gérer les files et les indicateurs ». From
+  then on, Support follows Kete Enterprise's grants: Abla manages the queues, a technician no
+  longer can — without a deploy.
+- Open and restore a few tickets in Support. The next morning — or « Rafraîchir » the briefing —
+  `/` shows « Dans vos apps depuis hier »: « Support · A ticket was opened · 3 fois ». The
+  events carry identifiers only: the titles stay in Support, read under each person's rights.
+- In the central chat, the assistant calls Support with a mandate: Support's journal
+  (`/journal`) names the agent « agt_assistant », for the person.
+- `/ressources/demandes` › « Demander une app »: the need on its own page (what for, who, data,
+  what an outage costs). IT approves it in a dialog; the factory creates the repository, the
+  database, the sign-in, the hosting, and a first version a person reviews (once its keys are
+  set).
 
 ### Act 5 — Performance T3 2026, the variable part (10 minutes)
 

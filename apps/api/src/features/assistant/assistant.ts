@@ -131,6 +131,9 @@ export function briefingByRules(facts: Facts): string {
   if (teamReds.length) lines.push(w.team(teamReds.length));
   const toWrite = facts.team.filter((t) => t.status === 'measured').length;
   if (toWrite) lines.push(w.toWrite(toWrite));
+  for (const news of facts.appNews.slice(0, 3)) {
+    lines.push(w.appNews(news.app, news.count, news.description));
+  }
   if (lines.length === 1) lines.push(w.nothing);
   return lines.join('\n');
 }

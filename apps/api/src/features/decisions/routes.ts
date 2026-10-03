@@ -9,7 +9,7 @@ import type { IdentityVariables } from '../../platform/identity.js';
 import { isAdministrator, reach } from '../rights/index.js';
 import { decideRequest, DecisionRuleError, defineCircuit } from './commands.js';
 import { currentStep, type DecisionRequest } from './decisions.record.js';
-import { knownSubjects, mayDecide } from './engine.js';
+import { announceDecided, mayDecide, subjectsOf } from './engine.js';
 import {
   findCircuit,
   findRequest,
@@ -41,11 +41,17 @@ async function run<Input extends z.ZodType, Output>(
 }
 
 /** A request as the Inbox shows it: its current step, and whether it waits too long. */
-function forInbox(request: DecisionRequest, remindAfterHours: number) {
+function forInbox(
+  request: DecisionRequest,
+  remindAfterHours: number,
+  labels: Map<string, { fr: string; en: string }>,
+) {
   const step = currentStep(request);
   const since = step?.enteredAt ? new Date(step.enteredAt).getTime() : null;
   return {
     ...request,
+    // An app's subject comes with its words, from its card (spec 023).
+    subjectLabel: labels.get(request.subject) ?? null,
     currentStep: step?.position ?? null,
     overdue: since !== null && Date.now() - since > remindAfterHours * 3_600_000,
   };
@@ -60,21 +66,36 @@ export const decisionsRoutes = new Hono<{ Variables: IdentityVariables }>()
   })
   .post('/requests/:requestId/decide', async (c) => {
     const body = (await bodyOf(c)) as Record<string, unknown>;
-    return run(c, decideRequest, {
+    const requestId = c.req.param('requestId');
+    const response = await run(c, decideRequest, {
       ...body,
-      requestId: c.req.param('requestId'),
+      requestId,
       administrator: isAdministrator(c.get('identity')),
     });
+    // Once decided, whoever listens is told — an app that asked (spec 023) — after the commit.
+    const answer = (await response.clone().json()) as { status?: string };
+    if (answer.status === 'approved' || answer.status === 'refused') {
+      await announceDecided(c.get('identity').organizationId, requestId);
+    }
+    return response;
   })
   // Circuits are the organization's rules: « decisions:manage » everywhere.
   .get('/circuits', async (c) => {
     const identity = c.get('identity');
-    const circuits = await transaction(identity.organizationId, async (db) => {
+    const found = await transaction(identity.organizationId, async (db) => {
       if (!(await reach(db, identity, 'decisions:manage')).everywhere) return null;
-      return listActiveCircuits(db);
+      return { circuits: await listActiveCircuits(db), subjects: await subjectsOf(db) };
     });
-    if (!circuits) throw new GestureRefusal(403, 'forbidden', 'This needs « decisions:manage ».');
-    return c.json({ subjects: knownSubjects(), circuits });
+    if (!found) throw new GestureRefusal(403, 'forbidden', 'This needs « decisions:manage ».');
+    // The apps' subjects come with their words, from their cards (spec 023).
+    const labels = Object.fromEntries(
+      found.subjects.flatMap((s) => (s.label ? [[s.subject, s.label]] : [])),
+    );
+    return c.json({
+      subjects: found.subjects.map((s) => s.subject),
+      labels,
+      circuits: found.circuits,
+    });
   })
   .post('/circuits', async (c) => {
     const identity = c.get('identity');
@@ -98,17 +119,20 @@ export async function inboxFor(db: SqlExecutor, identity: Pick<KeteIdentity, 'ro
     }
     return reminders.get(circuitId) ?? 48;
   };
+  const labels = new Map(
+    (await subjectsOf(db)).flatMap((s) => (s.label ? [[s.subject, s.label] as const] : [])),
+  );
   const toDecide = [];
   for (const id of await pendingRequestIds(db)) {
     const request = await findRequest(db, id);
     if (request && (await mayDecide(db, request, identity.userId, isAdministrator(identity)))) {
-      toDecide.push(forInbox(request, await remindAfter(request.circuitId)));
+      toDecide.push(forInbox(request, await remindAfter(request.circuitId), labels));
     }
   }
   const mine = [];
   for (const id of await requestIdsOf(db, identity.userId)) {
     const request = await findRequest(db, id);
-    if (request) mine.push(forInbox(request, await remindAfter(request.circuitId)));
+    if (request) mine.push(forInbox(request, await remindAfter(request.circuitId), labels));
   }
   return { toDecide, mine };
 }

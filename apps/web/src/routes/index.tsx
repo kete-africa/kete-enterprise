@@ -150,6 +150,24 @@ function Home() {
           </Panel>
         </PageSection>
       )}
+      {facts.appNews.length > 0 && (
+        <PageSection title={m.home_app_news()}>
+          <Panel>
+            <ul className="grid gap-1 text-body-sm">
+              {facts.appNews.map((n) => (
+                <li key={`${n.app}-${n.type}`} className="flex flex-wrap justify-between gap-2">
+                  <span>
+                    <span className="font-semibold">{n.app}</span> · {n.description}
+                  </span>
+                  <span className="text-fg-muted">
+                    {m.home_app_news_count({ count: String(n.count) })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        </PageSection>
+      )}
       <PageSection title={m.home_my_apps()}>
         {facts.apps.length === 0 ? (
           <p className="text-body-sm text-fg-muted">{m.home_no_apps()}</p>
