@@ -1,3 +1,4 @@
+import { aiConnectionsMigrationSql } from '../src/features/ai/index.js';
 import { appDecisionsMigrationSql, appEventsMigrationSql } from '../src/features/apps/index.js';
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
@@ -112,4 +113,6 @@ export const migrations: Migration[] = [
   { name: '0019_app_events', sql: (context) => appEventsMigrationSql(context) },
   // Decisions asked by apps, decided by the organization's circuits (spec 023).
   { name: '0020_app_decisions', sql: (context) => appDecisionsMigrationSql(context) },
+  // Each person's own AI connection, and who pays for the models (spec 026).
+  { name: '0021_ai_connections', sql: (context) => aiConnectionsMigrationSql(context) },
 ];

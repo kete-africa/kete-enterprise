@@ -15,6 +15,7 @@ import { asPerson } from '../../platform/acting.js';
 import { getPool, transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
+import { modelChoiceFor } from '../ai/index.js';
 import { appToolsFor, decideDraft, draftsFor, toolsForPerson } from '../gateway/index.js';
 import { isAdministrator } from '../rights/index.js';
 import { personOfAccount } from '../structure/index.js';
@@ -75,11 +76,30 @@ export function useModel(model: Model | undefined): void {
   override = model;
 }
 
-function model(): Model | null {
-  if (override) return override;
-  const config = configured();
-  return config ? languageModel(config) : null;
+/**
+ * The model answering a person, and who pays (spec 026): her own connection when the
+ * organization allows it and she brought one, else the organization's model.
+ */
+async function modelFor(identity: {
+  organizationId: string;
+  userId: string;
+}): Promise<{ model: Model; personal: boolean } | null> {
+  if (override) return { model: override, personal: false };
+  const choice = await transaction(identity.organizationId, (db) =>
+    modelChoiceFor(db, identity.userId, configured()),
+  );
+  return choice ? { model: languageModel(choice.config), personal: choice.personal } : null;
 }
+
+/** Her own tokens are journaled, never counted against the organization's budget (spec 026). */
+function meteringStore(personal: boolean) {
+  const store = budgets();
+  return personal ? { ...store, check: async () => undefined } : store;
+}
+
+/** What the usage journal says the call was for, and on whose tokens. */
+const purposeOf = (purpose: string, personal: boolean) =>
+  personal ? `${purpose}:personal` : purpose;
 
 const system = (organization: string, name: string) =>
   [
@@ -171,16 +191,16 @@ async function writeBriefing(identity: IdentityVariables['identity'], force: boo
   }
   let text = briefingByRules(facts);
   let generatedBy: 'model' | 'rules' = 'rules';
-  const chosen = model();
-  if (chosen) {
+  const choice = await modelFor(identity);
+  if (choice) {
     try {
       const answer = await ask({
-        model: chosen,
+        model: choice.model,
         system: `${system(organization, facts.name)}\nTu écris son briefing du matin : cinq à huit lignes, les urgences d'abord (en retard, à décider, échéances proches), puis où elle en est. Pas de titre, pas de formule creuse.`,
         prompt: `Voici les faits du jour, lus dans ses registres (JSON) :\n${JSON.stringify({ ...facts, apps: undefined })}`,
         maxSteps: 1,
         metering: {
-          store: budgets(),
+          store: meteringStore(choice.personal),
           context: {
             organizationId,
             actor: {
@@ -189,7 +209,7 @@ async function writeBriefing(identity: IdentityVariables['identity'], force: boo
               channel: 'worker',
               onBehalfOf: { kind: 'person', id: identity.userId },
             },
-            purpose: 'briefing',
+            purpose: purposeOf('briefing', choice.personal),
             model: '',
           },
         },
@@ -219,37 +239,44 @@ async function writeBriefing(identity: IdentityVariables['identity'], force: boo
 
 /** The assistant's routes, under /v1/assistant (spec 014). */
 export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
-  .get('/', (c) => {
-    const config = configured();
+  // Whether a model answers this person: her own connection, or the organization's (spec 026).
+  .get('/', async (c) => {
+    const identity = c.get('identity');
+    const choice = override
+      ? null
+      : await transaction(identity.organizationId, (db) =>
+          modelChoiceFor(db, identity.userId, configured()),
+        );
     return c.json({
-      available: Boolean(override ?? config),
-      provider: config?.provider ?? null,
-      model: config?.model ?? null,
+      available: Boolean(override ?? choice),
+      provider: choice?.config.provider ?? null,
+      model: choice?.config.model ?? null,
+      personal: choice?.personal ?? false,
     });
   })
   .get('/briefing', async (c) => c.json(await writeBriefing(c.get('identity'), false)))
   .post('/briefing', async (c) => c.json(await writeBriefing(c.get('identity'), true), 201))
   .post('/chat', async (c: Ctx) => {
-    const chosen = model();
-    if (!chosen) {
+    const identity = c.get('identity');
+    const choice = await modelFor(identity);
+    if (!choice) {
       throw new GestureRefusal(409, 'assistant_unavailable', 'No model is configured here.');
     }
     const parsed = chatInput.safeParse(await bodyOf(c));
     if (!parsed.success)
       throw new GestureRefusal(422, 'invalid_input', 'The conversation is not valid.');
-    const identity = c.get('identity');
     // Seen « as » a demo person, the assistant is hers: the same rights, the same tools.
     const organization = await transaction(identity.organizationId, organizationName);
     try {
       const answer = await asPerson(identity, async () =>
         ask({
-          model: chosen,
+          model: choice.model,
           system: system(organization, identity.name),
           messages: parsed.data.messages,
           tools: await toolsForPerson(identity),
           maxSteps: 6,
           metering: {
-            store: budgets(),
+            store: meteringStore(choice.personal),
             context: {
               organizationId: identity.organizationId,
               actor: {
@@ -258,7 +285,7 @@ export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
                 channel: 'chat',
                 onBehalfOf: { kind: 'person', id: identity.userId },
               },
-              purpose: 'chat',
+              purpose: purposeOf('chat', choice.personal),
               model: '',
             },
           },
@@ -378,12 +405,12 @@ function draftOf(output: unknown): unknown {
 }
 
 async function streamChat(c: Ctx): Promise<Response> {
-  const chosen = model();
-  if (!chosen)
+  const identity = c.get('identity');
+  const choice = await modelFor(identity);
+  if (!choice)
     throw new GestureRefusal(409, 'assistant_unavailable', 'No model is configured here.');
   const parsed = streamInput.safeParse(await bodyOf(c));
   if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'A message is required.');
-  const identity = c.get('identity');
   const { organizationId, userId } = identity;
   const { conversationId, history, organization } = await transaction(
     organizationId,
@@ -419,14 +446,14 @@ async function streamChat(c: Ctx): Promise<Response> {
       try {
         await asPerson(identity, async () => {
           const result = await askStream({
-            model: chosen,
+            model: choice.model,
             system: system(organization, identity.name),
             messages: [...history, { role: 'user', content: parsed.data.message }],
             tools: [...(await toolsForPerson(identity)), ...(apps?.tools ?? [])],
             maxSteps: 6,
             abortSignal: signal,
             metering: {
-              store: budgets(),
+              store: meteringStore(choice.personal),
               context: {
                 organizationId,
                 actor: {
@@ -435,7 +462,7 @@ async function streamChat(c: Ctx): Promise<Response> {
                   channel: 'chat',
                   onBehalfOf: { kind: 'person', id: userId },
                 },
-                purpose: 'chat',
+                purpose: purposeOf('chat', choice.personal),
                 model: '',
               },
             },
