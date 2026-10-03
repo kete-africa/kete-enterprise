@@ -184,7 +184,7 @@ export const appRequestRoutes = new Hono<{ Variables: IdentityVariables }>()
 
 const report = z.object({
   requestId: z.string().regex(/^apr_[0-9a-z-]{8,64}$/),
-  organizationId: z.string().regex(/^org_[\w-]{4,64}$/),
+  organizationId: z.string().regex(/^org_[\w-]{2,64}$/),
   status: z.enum(['building', 'ready', 'coding', 'review', 'failed']),
   repository: z.string().max(200).nullable(),
   url: z.string().url().nullable(),
