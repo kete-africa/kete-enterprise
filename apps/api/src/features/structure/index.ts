@@ -1,6 +1,6 @@
 // The structure feature's only door: what the rest of the API may use (spec 002).
 export { chartFor } from './chart.js';
-export { managerOfPosition, reportingLines, type ReportingLines } from './lines.js';
+export { managerOfPosition, readChartAt, reportingLines, type ReportingLines } from './lines.js';
 export {
   addPerson,
   assignPerson,
