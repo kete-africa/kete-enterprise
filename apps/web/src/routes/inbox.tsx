@@ -1,4 +1,4 @@
-import { AppCard, AppGrid, Icon, PageSection, PageTitle } from '@kete/design';
+import { AppCard, AppGrid, Icon, PageSection, PageHeader } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchInbox } from '@/lib/decisions';
 import { InboxView } from '@/lib/decisions-view';
@@ -38,7 +38,7 @@ function InboxPage() {
   const waiting = surveys.filter((s) => s.status !== 'submitted');
   return (
     <AppShell me={me} current="todo">
-      <PageTitle>{m.inbox_title()}</PageTitle>
+      <PageHeader title={m.inbox_title()} />
       {waiting.length > 0 && (
         <PageSection first title={m.todo_forms({ count: String(waiting.length) })}>
           <AppGrid layout="list">

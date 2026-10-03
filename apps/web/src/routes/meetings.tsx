@@ -1,4 +1,4 @@
-import { Button, EmptyState, PageSection, PageTitle, Panel, Tag, TextField } from '@kete/design';
+import { Button, EmptyState, PageSection, PageHeader, Panel, Tag, TextField } from '@kete/design';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchPeople } from '@/lib/admin';
@@ -37,8 +37,7 @@ function MeetingsPage() {
   const [note, setNote] = useState({ subject: '', body: '', signedByPersonId: me.personId ?? '' });
   return (
     <AppShell me={me} current="meetings">
-      <PageTitle>{m.nav_meetings()}</PageTitle>
-      <p className="text-fg-muted">{m.meetings_explain()}</p>
+      <PageHeader title={m.nav_meetings()} description={m.meetings_explain()} />
       {manages && (
         <PageSection first title={m.meetings_list()}>
           {meetings.length === 0 ? (

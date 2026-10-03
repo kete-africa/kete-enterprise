@@ -1,4 +1,4 @@
-import { PageSection, PageTitle, Tag } from '@kete/design';
+import { PageSection, PageHeader, Tag } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchReview, performanceGesture } from '@/lib/performance';
 import {
@@ -33,7 +33,11 @@ function ReviewPage() {
   const can = (p: string) => me.administrator || me.permissions.includes(p);
   return (
     <AppShell me={me} current={mine ? 'home' : managing ? 'team' : 'performance'}>
-      <PageTitle>{m.review_title({ name: review.personName })}</PageTitle>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_performance(), href: '/performance' }]}
+        title={m.review_title({ name: review.personName })}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <Tag>{review.positionTitle}</Tag>
         <Tag tone={review.status === 'validated' ? 'validated' : 'info'}>

@@ -19,7 +19,7 @@ import {
   performancePublicRoutes,
   performanceRoutes,
 } from './features/performance/index.js';
-import { registryPermissions, registryRoutes } from './features/registry/index.js';
+import { registryFor, registryPermissions, registryRoutes } from './features/registry/index.js';
 import {
   isAdministrator,
   reach,
@@ -137,6 +137,10 @@ async function me(c: Ctx) {
       modules: await readModules(db),
       demo: (await readSettings(db)).demo,
       viewedBy,
+      // The team's apps in her sidebar: the active apps of the registry she may see (spec 016).
+      apps: (await registryFor(db, identity)).resources
+        .filter((r) => r.kind === 'app' && r.status === 'active' && r.address)
+        .map((r) => ({ resourceId: r.resourceId, name: r.name, address: r.address })),
     };
   });
 }

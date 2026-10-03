@@ -1,4 +1,4 @@
-import { PageSection, PageTitle } from '@kete/design';
+import { PageSection, PageHeader } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchRegistry } from '@/lib/registry';
 import { RegistryView } from '@/lib/registry-view';
@@ -18,7 +18,11 @@ function RegistryPage() {
   const screen = Route.useLoaderData();
   return (
     <AppShell me={me} current="registry">
-      <PageTitle>{m.registry_title()}</PageTitle>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_administration(), href: '/administration' }]}
+        title={m.registry_title()}
+      />
       <PageSection first>
         <RegistryView screen={screen} />
       </PageSection>

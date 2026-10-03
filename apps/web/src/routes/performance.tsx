@@ -1,4 +1,4 @@
-import { Button, EmptyState, PageSection, PageTitle, Panel, Tag, TextField } from '@kete/design';
+import { Button, EmptyState, PageSection, PageHeader, Panel, Tag, TextField } from '@kete/design';
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { refusal } from '@/lib/forms';
@@ -93,8 +93,7 @@ function PerformancePage() {
   const manages = me.administrator || me.permissions.includes('performance:manage');
   return (
     <AppShell me={me} current="performance">
-      <PageTitle>{m.nav_performance()}</PageTitle>
-      <p className="text-fg-muted">{m.performance_explain()}</p>
+      <PageHeader title={m.nav_performance()} description={m.performance_explain()} />
       <PageSection first title={m.performance_quarters()}>
         {quarters.length === 0 ? (
           <EmptyState title={m.performance_no_quarter()} />

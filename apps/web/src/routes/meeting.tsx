@@ -1,4 +1,4 @@
-import { Button, PageSection, PageTitle, Panel, Tag, TextField } from '@kete/design';
+import { Button, PageSection, PageHeader, Panel, Tag, TextField } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchPeople } from '@/lib/admin';
@@ -48,7 +48,11 @@ function MeetingPage() {
         : m.agenda_manual();
   return (
     <AppShell me={me} current="meetings">
-      <PageTitle>{meeting.title}</PageTitle>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_meetings(), href: '/instances' }]}
+        title={meeting.title}
+      />
       <div className="flex flex-wrap items-center gap-2">
         <Tag tone={meeting.status === 'recorded' ? 'validated' : 'info'}>
           {meetingStatusLabel(meeting.status)}

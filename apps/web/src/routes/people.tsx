@@ -1,4 +1,4 @@
-import { Button, PageSection, PageTitle, Panel, Tag, TextField } from '@kete/design';
+import { Button, PageSection, PageHeader, Panel, Tag, TextField } from '@kete/design';
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { administer, fetchPeople, type ImportReport } from '@/lib/admin';
@@ -211,7 +211,11 @@ function PeoplePage() {
   const linked = chart.people.filter((p) => p.accountUserId).length;
   return (
     <AppShell me={me} current="people">
-      <PageTitle>{m.nav_people()}</PageTitle>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_administration(), href: '/administration' }]}
+        title={m.nav_people()}
+      />
       <p className="text-fg-muted">
         {m.people_counts({ people: String(chart.people.length), linked: String(linked) })}
       </p>

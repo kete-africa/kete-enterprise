@@ -1,4 +1,4 @@
-import { AppCard, AppGrid, Icon, PageSection, PageTitle } from '@kete/design';
+import { AppCard, AppGrid, Icon, PageSection, PageHeader } from '@kete/design';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { fetchOutbox, fetchPeople } from '@/lib/admin';
 import { fetchAgents } from '@/lib/agents';
@@ -55,8 +55,7 @@ function AdminHome() {
   const modulesOn = Object.values(me.modules).filter(Boolean).length;
   return (
     <AppShell me={me} current="admin">
-      <PageTitle>{m.admin_title()}</PageTitle>
-      <p className="text-fg-muted">{m.admin_explain()}</p>
+      <PageHeader title={m.admin_title()} description={m.admin_explain()} />
       <PageSection first title={m.admin_frame()}>
         <AppGrid layout="list">
           <AppCard

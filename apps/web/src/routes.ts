@@ -6,6 +6,7 @@ export const routes = rootRoute('__root.tsx', [
   index('index.tsx'),
   route('/a-faire', 'inbox.tsx'),
   route('/assistant', 'assistant.tsx'),
+  route('/mes-agents', 'my-agents.tsx'),
   route('/ressources', 'resources.tsx'),
   route('/enquetes', 'surveys.tsx'),
   route('/enquetes/$campaignId', 'survey-campaign.tsx'),

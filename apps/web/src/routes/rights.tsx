@@ -1,4 +1,4 @@
-import { PageSection, PageTitle } from '@kete/design';
+import { PageSection, PageHeader } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchRights } from '@/lib/rights';
 import { ManageRights, MyRights } from '@/lib/rights-view';
@@ -18,7 +18,11 @@ function RightsPage() {
   const screen = Route.useLoaderData();
   return (
     <AppShell me={me} current="rights">
-      <PageTitle>{m.rights_title()}</PageTitle>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_administration(), href: '/administration' }]}
+        title={m.rights_title()}
+      />
       <PageSection first title={m.rights_mine()}>
         <MyRights screen={screen} />
       </PageSection>

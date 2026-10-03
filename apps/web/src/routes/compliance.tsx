@@ -1,4 +1,4 @@
-import { PageSection, PageTitle } from '@kete/design';
+import { PageSection, PageHeader } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchCompliance } from '@/lib/compliance';
 import { Audits, Certificates, Controls, Documents, Frameworks } from '@/lib/compliance-view';
@@ -22,7 +22,7 @@ function CompliancePage() {
   const screen = Route.useLoaderData();
   return (
     <AppShell me={me} current="compliance">
-      <PageTitle>{m.compliance_title()}</PageTitle>
+      <PageHeader title={m.compliance_title()} />
       {!screen ? (
         <PageSection first>
           <p className="text-fg-muted">{m.compliance_forbidden()}</p>

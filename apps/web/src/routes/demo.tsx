@@ -1,4 +1,4 @@
-import { Button, PageSection, PageTitle, Panel, Tag } from '@kete/design';
+import { Button, PageSection, PageHeader, Panel, Tag } from '@kete/design';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchPeople } from '@/lib/admin';
@@ -35,8 +35,12 @@ function DemoPage() {
   const byLink = chart.people.filter((p) => !p.accountUserId);
   return (
     <AppShell me={me} current="demo">
-      <PageTitle>{m.nav_demo()}</PageTitle>
-      <p className="text-fg-muted">{m.demo_explain()}</p>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_administration(), href: '/administration' }]}
+        title={m.nav_demo()}
+        description={m.demo_explain()}
+      />
       <PageSection first title={m.demo_with_account({ count: String(withAccount.length) })}>
         <ul className="grid gap-2">
           {withAccount.map((person) => (

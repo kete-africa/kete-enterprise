@@ -1,4 +1,4 @@
-import { PageSection, PageTitle } from '@kete/design';
+import { PageSection, PageHeader } from '@kete/design';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { fetchInbox } from '@/lib/decisions';
 import { Circuits } from '@/lib/decisions-view';
@@ -23,7 +23,11 @@ function CircuitsPage() {
   const screen = Route.useLoaderData();
   return (
     <AppShell me={me} current="circuits">
-      <PageTitle>{m.nav_circuits()}</PageTitle>
+      <PageHeader
+        breadcrumbLabel={m.common_breadcrumb()}
+        breadcrumbs={[{ label: m.nav_administration(), href: '/administration' }]}
+        title={m.nav_circuits()}
+      />
       <PageSection first>
         {screen.circuits ? (
           <Circuits circuits={screen.circuits} />

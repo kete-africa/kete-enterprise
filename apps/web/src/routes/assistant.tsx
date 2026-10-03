@@ -1,4 +1,4 @@
-import { Button, PageSection, PageTitle, Panel, Tag } from '@kete/design';
+import { Button, PageSection, PageHeader, Panel, Tag } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { refusal } from '@/lib/forms';
@@ -41,8 +41,7 @@ function AssistantPage() {
   };
   return (
     <AppShell me={me} current="assistant">
-      <PageTitle>{m.nav_assistant()}</PageTitle>
-      <p className="text-fg-muted">{m.assistant_explain()}</p>
+      <PageHeader title={m.nav_assistant()} description={m.assistant_explain()} />
       {!assistant.available ? (
         <PageSection first>
           <Panel>

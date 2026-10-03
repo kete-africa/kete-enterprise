@@ -1,4 +1,16 @@
-import { AppCard, AppGrid, Button, Icon, PageSection, PageTitle, Panel, Tag } from '@kete/design';
+import {
+  AppCard,
+  AppGrid,
+  Button,
+  Icon,
+  KpiGrid,
+  KpiTile,
+  Markdown,
+  PageHeader,
+  PageSection,
+  Panel,
+  Tag,
+} from '@kete/design';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { refusal } from '@/lib/forms';
@@ -46,10 +58,31 @@ function Home() {
   ];
   return (
     <AppShell me={me} current="home">
-      <PageTitle>{m.home_title({ name: facts.name })}</PageTitle>
+      <PageHeader
+        title={m.home_title({ name: facts.name })}
+        actions={
+          <a
+            href="/assistant"
+            className="inline-flex h-(--control-height) items-center rounded-control bg-action px-(--control-padding) font-semibold text-on-action hover:bg-action-strong"
+          >
+            {m.home_ask_assistant()}
+          </a>
+        }
+      />
+      <KpiGrid label={m.home_waiting()}>
+        {counts.map((c) => (
+          <KpiTile
+            key={c.label}
+            label={c.label}
+            value={c.value}
+            href={c.href}
+            {...(c.extra ? { hint: <span className="text-state-error-fg">{c.extra}</span> } : {})}
+          />
+        ))}
+      </KpiGrid>
       <PageSection first title={m.home_briefing()}>
         <Panel>
-          <p className="whitespace-pre-line">{briefing.text}</p>
+          <Markdown text={briefing.text} />
           <div className="mt-3 flex flex-wrap items-center gap-3 text-body-sm text-fg-muted">
             <Tag tone={briefing.generatedBy === 'model' ? 'agent' : 'neutral'}>
               {briefing.generatedBy === 'model' ? m.home_briefing_model() : m.home_briefing_rules()}
@@ -71,9 +104,6 @@ function Home() {
             >
               {m.home_briefing_refresh()}
             </Button>
-            <a className="text-link underline" href="/assistant">
-              {m.home_ask_assistant()}
-            </a>
           </div>
           {error && (
             <p role="alert" className="mt-2 text-body-sm text-state-error-fg">
@@ -81,21 +111,6 @@ function Home() {
             </p>
           )}
         </Panel>
-      </PageSection>
-      <PageSection title={m.home_waiting()}>
-        <div className="grid gap-3 sm:grid-cols-4">
-          {counts.map((c) => (
-            <a
-              key={c.label}
-              href={c.href}
-              className="rounded-box border border-line bg-surface p-4 hover:border-accent"
-            >
-              <p className="text-body-sm text-fg-muted">{c.label}</p>
-              <p className="font-number text-title font-semibold">{c.value}</p>
-              {c.extra && <p className="text-body-sm text-state-error-fg">{c.extra}</p>}
-            </a>
-          ))}
-        </div>
       </PageSection>
       {facts.performance.length > 0 && (
         <PageSection title={m.home_my_performance()}>

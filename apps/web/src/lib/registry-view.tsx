@@ -55,31 +55,19 @@ function useGesture() {
   return { error, send };
 }
 
-function ResourceRow({
+/** What can be done with a resource: promote it (its owner), read its card again, retire it. */
+export function ResourceControls({
   resource,
   screen,
-  unitName,
 }: {
   resource: Resource;
   screen: RegistryScreen;
-  unitName: Map<string, string>;
 }) {
   const { error, send } = useGesture();
   const [target, setTarget] = useState('');
   const owner = resource.ownerUserId === screen.me;
   return (
-    <li className="grid gap-2 border-b border-line py-3 last:border-0">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-semibold">{resource.name}</span>
-        <Tag>{kindLabel(resource.kind)}</Tag>
-        <RiskTag risk={resource.risk} />
-        {resource.flags.includes('no_card') && <Tag tone="verify">{m.flag_no_card()}</Tag>}
-        {resource.flags.includes('no_owner') && <Tag tone="verify">{m.flag_no_owner()}</Tag>}
-        {resource.status === 'retired' && <Tag>{m.status_retired()}</Tag>}
-      </div>
-      <p className="text-body-sm text-fg-muted">
-        {`${tierLabel(resource.tier, unitName)} · ${resource.ownerName}`}
-      </p>
+    <>
       {resource.status === 'active' && (
         <div className="flex flex-wrap items-end gap-2">
           {owner && (
@@ -134,6 +122,44 @@ function ResourceRow({
           {error}
         </p>
       )}
+    </>
+  );
+}
+
+/** A resource's tags: its kind, its risk, what is missing, whether it is retired. */
+export function ResourceTags({ resource }: { resource: Resource }) {
+  return (
+    <>
+      <Tag>{kindLabel(resource.kind)}</Tag>
+      <RiskTag risk={resource.risk} />
+      {resource.flags.includes('no_card') && <Tag tone="verify">{m.flag_no_card()}</Tag>}
+      {resource.flags.includes('no_owner') && <Tag tone="verify">{m.flag_no_owner()}</Tag>}
+      {resource.status === 'retired' && <Tag>{m.status_retired()}</Tag>}
+    </>
+  );
+}
+
+export { tierLabel };
+
+function ResourceRow({
+  resource,
+  screen,
+  unitName,
+}: {
+  resource: Resource;
+  screen: RegistryScreen;
+  unitName: Map<string, string>;
+}) {
+  return (
+    <li className="grid gap-2 border-b border-line py-3 last:border-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-semibold">{resource.name}</span>
+        <ResourceTags resource={resource} />
+      </div>
+      <p className="text-body-sm text-fg-muted">
+        {`${tierLabel(resource.tier, unitName)} · ${resource.ownerName}`}
+      </p>
+      <ResourceControls resource={resource} screen={screen} />
     </li>
   );
 }
@@ -175,12 +201,6 @@ function ToDecide({ screen, unitName }: { screen: RegistryScreen; unitName: Map<
 
 export function RegistryView({ screen }: { screen: RegistryScreen }) {
   const unitName = new Map(screen.units.map((u) => [u.unitId, u.name]));
-  const [draft, setDraft] = useState({
-    kind: 'app' as ResourceKind,
-    name: '',
-    description: '',
-    address: '',
-  });
   const mine = screen.resources.filter((r) => r.ownerUserId === screen.me);
   const others = screen.resources.filter((r) => r.ownerUserId !== screen.me);
   return (
@@ -217,57 +237,73 @@ export function RegistryView({ screen }: { screen: RegistryScreen }) {
           </ul>
         )}
       </Panel>
-      <GestureForm
-        title={m.registry_register()}
-        ready={draft.name.trim() !== ''}
-        send={(key) =>
-          changeRegistry({
-            data: {
-              path: '/resources',
-              body: {
-                kind: draft.kind,
-                name: draft.name,
-                description: optional(draft.description),
-                address: optional(draft.address),
-              },
-              key,
-            },
-          })
-        }
-        onDone={() => setDraft({ ...draft, name: '', description: '', address: '' })}
-      >
-        <Select
-          label={m.field_kind()}
-          value={draft.kind}
-          onChange={(e) => setDraft({ ...draft, kind: e.target.value as ResourceKind })}
-        >
-          {resourceKinds.map((k) => (
-            <option key={k} value={k}>
-              {kindLabel(k)}
-            </option>
-          ))}
-        </Select>
-        <TextField
-          label={m.field_name()}
-          value={draft.name}
-          required
-          onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-        />
-        <TextField
-          label={m.field_description()}
-          value={draft.description}
-          onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-        />
-        {(draft.kind === 'app' || draft.kind === 'mcp') && (
-          <TextField
-            label={m.field_address()}
-            hint={m.field_address_hint()}
-            type="url"
-            value={draft.address}
-            onChange={(e) => setDraft({ ...draft, address: e.target.value })}
-          />
-        )}
-      </GestureForm>
+      <RegisterForm />
     </div>
+  );
+}
+
+/** Registers a resource in the person's own space: an app or an MCP by its address, whose card is read. */
+export function RegisterForm({ onDone }: { onDone?: () => void }) {
+  const [draft, setDraft] = useState({
+    kind: 'app' as ResourceKind,
+    name: '',
+    description: '',
+    address: '',
+  });
+  return (
+    <GestureForm
+      title={m.registry_register()}
+      ready={draft.name.trim() !== ''}
+      send={(key) =>
+        changeRegistry({
+          data: {
+            path: '/resources',
+            body: {
+              kind: draft.kind,
+              name: draft.name,
+              description: optional(draft.description),
+              address: optional(draft.address),
+            },
+            key,
+          },
+        })
+      }
+      onDone={() => {
+        setDraft({ ...draft, name: '', description: '', address: '' });
+        onDone?.();
+      }}
+    >
+      <Select
+        label={m.field_kind()}
+        value={draft.kind}
+        onChange={(e) => setDraft({ ...draft, kind: e.target.value as ResourceKind })}
+      >
+        {resourceKinds.map((k) => (
+          <option key={k} value={k}>
+            {kindLabel(k)}
+          </option>
+        ))}
+      </Select>
+      <TextField
+        label={m.field_name()}
+        value={draft.name}
+        required
+        onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+      />
+      <TextField
+        label={m.field_description()}
+        value={draft.description}
+        onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+      />
+      {(draft.kind === 'app' || draft.kind === 'mcp') && (
+        <TextField
+          label={m.field_address()}
+          hint={m.field_address_hint()}
+          type="url"
+          value={draft.address}
+          onChange={(e) => setDraft({ ...draft, address: e.target.value })}
+        />
+      )}
+    </GestureForm>
   );
 }
