@@ -11,6 +11,7 @@ const catalog = {
     reds: (n: number, which: string) => `${n} de vos indicateurs sont au rouge : ${which}.`,
     team: (n: number) => `${n} personne(s) de votre équipe ont des indicateurs au rouge.`,
     toWrite: (n: number) => `${n} compte(s) rendu(s) de revue à rédiger pour votre équipe.`,
+    appNews: (app: string, n: number, what: string) => `${app} : ${what} (${n} depuis hier).`,
     nothing: 'Rien ne presse ce matin.',
   },
   en: {
@@ -22,6 +23,7 @@ const catalog = {
     reds: (n: number, which: string) => `${n} of your indicators are red: ${which}.`,
     team: (n: number) => `${n} person(s) of your team have indicators in red.`,
     toWrite: (n: number) => `${n} review record(s) to write for your team.`,
+    appNews: (app: string, n: number, what: string) => `${app}: ${what} (${n} since yesterday).`,
     nothing: 'Nothing urgent this morning.',
   },
 } as const;

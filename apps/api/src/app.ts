@@ -46,8 +46,7 @@ import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
 import { appTasksRoutes, factsFor } from './features/workspace/index.js';
 import { appRequestRoutes, factoryReportRoutes } from './features/app-requests/index.js';
-import { appPermissions, appRoutes } from './features/apps/index.js';
-import { directoryRoutes } from './features/directory/index.js';
+import { appEventRoutes, appPermissions, appRoutes, tellAppsWith } from './features/apps/index.js';
 
 /** Every permission a role may allow: each feature declares its own (spec 003). */
 export const permissionCatalog = [
@@ -153,6 +152,9 @@ async function me(c: Ctx) {
  * served by Hono. Each feature adds its routes under /v1, behind a person's token; personal links
  * open their own routes under /public, without an account (spec 010).
  */
+// An app that asked a decision is told once it is decided (spec 023).
+tellAppsWith(transaction);
+
 export function createApi(): Hono {
   const api = new Hono();
   api.get('/health', () => healthHandler(health)());
@@ -168,8 +170,6 @@ export function createApi(): Hono {
   v1.route('/organization', organizationRoutes);
   v1.route('/structure', structureRoutes);
   v1.route('/rights', rightsRoutes(permissionCatalog, appPermissions));
-  // The organization as the team's apps read it, with the person's token (spec 023).
-  v1.route('/directory', directoryRoutes);
   v1.route('/registry', registryRoutes);
   v1.route('/decisions', decisionsRoutes);
   v1.route('/gateway', gatewayRoutes);
@@ -204,6 +204,8 @@ export function createApi(): Hono {
   open.route('/performance', performancePublicRoutes);
   // The factory's signed reports (spec 021).
   open.route('/factory', factoryReportRoutes);
+  // The apps' business events, with their own token (spec 025).
+  open.route('/apps', appEventRoutes);
   api.route('/public', open);
   // A refused gesture says why, with a stable code the screens translate.
   api.onError((error, c) => {

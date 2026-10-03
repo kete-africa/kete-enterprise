@@ -2,10 +2,13 @@ import { Button, Panel, Tag, TextField } from '@kete/design';
 import { useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import * as m from '@/paraglide/messages.js';
+import { getLocale } from '@/paraglide/runtime.js';
 import { changeDecisions, type InboxRequest, type InboxScreen, type Rule } from './decisions';
 import { GestureForm, refusal, Select } from './forms';
 
-export function subjectLabel(subject: string): string {
+/** A subject in the person's words: a feature's from the catalog, an app's from its card. */
+export function subjectLabel(subject: string, words?: { fr: string; en: string } | null): string {
+  if (words) return getLocale() === 'en' ? words.en : words.fr;
   const labels: Record<string, () => string> = {
     'registry.promotion': m.subject_registry_promotion,
   };
@@ -53,7 +56,7 @@ function Decide({ request }: { request: InboxRequest }) {
     <li className="grid gap-2 border-b border-line py-3 last:border-0">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold">{request.title}</span>
-        <Tag>{subjectLabel(request.subject)}</Tag>
+        <Tag>{subjectLabel(request.subject, request.subjectLabel)}</Tag>
         {request.overdue && <Tag tone="verify">{m.inbox_overdue()}</Tag>}
         <span className="text-body-sm text-fg-muted">
           {m.inbox_step({
@@ -114,7 +117,8 @@ export function Circuits({ circuits }: { circuits: NonNullable<InboxScreen['circ
           <ul className="grid gap-3">
             {circuits.circuits.map((c) => (
               <li key={c.circuitId}>
-                <span className="font-semibold">{c.name}</span> <Tag>{subjectLabel(c.subject)}</Tag>
+                <span className="font-semibold">{c.name}</span>{' '}
+                <Tag>{subjectLabel(c.subject, circuits.labels[c.subject])}</Tag>
                 <ol className="mt-1 ml-5 list-decimal text-body-sm text-fg-muted">
                   {c.steps.map((s) => (
                     <li key={s.position}>
@@ -158,7 +162,7 @@ export function Circuits({ circuits }: { circuits: NonNullable<InboxScreen['circ
         >
           {circuits.subjects.map((s) => (
             <option key={s} value={s}>
-              {subjectLabel(s)}
+              {subjectLabel(s, circuits.labels[s])}
             </option>
           ))}
         </Select>

@@ -3,8 +3,11 @@ import { z } from 'zod';
 const id = (prefix: string) => z.string().regex(new RegExp(`^${prefix}_[0-9a-f-]{8,64}$`));
 export const requestId = id('drq');
 
-/** A subject is a feature and a kind of request: `registry.promotion`, later `expenses.claim`. */
-export const subject = z.string().regex(/^[a-z]+\.[a-z_]+$/);
+/**
+ * A subject is a feature and a kind of request: `registry.promotion`; an app's is its product and
+ * its subject: `prd_kete_purchases.purchase` (spec 023).
+ */
+export const subject = z.string().regex(/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/);
 
 /**
  * Who approves a step, found when someone looks (doctrine D-028: by relation or by role):

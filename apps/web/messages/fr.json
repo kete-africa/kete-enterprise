@@ -863,5 +863,7 @@
   "rights_permissions_of_app": "App « {app} »",
   "rights_no_app_permissions": "Aucune app inscrite au registre ne déclare encore ses permissions.",
   "rights_edit_role": "Modifier « {role} »",
-  "rights_apps_explain": "Les permissions d'une app viennent de sa carte d'identité. Dès qu'un rôle en porte une, ce sont ces droits qui s'appliquent dans l'app, et non plus ses droits par défaut."
+  "rights_apps_explain": "Les permissions d'une app viennent de sa carte d'identité. Dès qu'un rôle en porte une, ce sont ces droits qui s'appliquent dans l'app, et non plus ses droits par défaut.",
+  "home_app_news": "Dans vos apps depuis hier",
+  "home_app_news_count": "{count} fois"
 }

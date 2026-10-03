@@ -1,7 +1,7 @@
 import { defineCommand } from '@kete/commands';
 import { z } from 'zod';
 import { currentStep, decideRequestInput, defineCircuitInput } from './decisions.record.js';
-import { knownSubjects, mayDecide, settle } from './engine.js';
+import { mayDecide, settle, subjectsOf } from './engine.js';
 import {
   decideStep,
   enterStep,
@@ -25,7 +25,7 @@ export const defineCircuit = defineCommand({
   input: defineCircuitInput,
   reversibility: { reversible: false },
   async handler(input, { db, organizationId }) {
-    if (!knownSubjects().includes(input.subject)) {
+    if (!(await subjectsOf(db)).some((s) => s.subject === input.subject)) {
       throw new DecisionRuleError('unknown_subject', `No feature handles ${input.subject}.`);
     }
     try {

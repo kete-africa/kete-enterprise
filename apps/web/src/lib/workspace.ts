@@ -22,6 +22,8 @@ export interface Facts {
   meetings: { title: string; when: string; decisions: string[] }[];
   apps: { name: string; address: string | null; kind: string }[];
   tasks: { title: string; source: string; dueAt: string | null; overdue: boolean }[];
+  /** What her apps announced in the last day (spec 025). */
+  appNews: { app: string; type: string; description: string; count: number; last: string }[];
 }
 
 export interface Briefing {

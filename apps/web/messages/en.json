@@ -863,5 +863,7 @@
   "rights_permissions_of_app": "App « {app} »",
   "rights_no_app_permissions": "No app in the registry declares its permissions yet.",
   "rights_edit_role": "Edit « {role} »",
-  "rights_apps_explain": "An app's permissions come from its identity card. As soon as a role carries one, these rights apply in the app instead of its defaults."
+  "rights_apps_explain": "An app's permissions come from its identity card. As soon as a role carries one, these rights apply in the app instead of its defaults.",
+  "home_app_news": "In your apps since yesterday",
+  "home_app_news_count": "{count} times"
 }

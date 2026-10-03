@@ -17,14 +17,63 @@ export type SubjectHandler = (
 ) => Promise<void>;
 
 const subjects = new Map<string, SubjectHandler>();
+const families: { matches: (subject: string) => boolean; handler: SubjectHandler }[] = [];
+
+/** A subject, and its words when they come from an app's card. */
+export interface SubjectEntry {
+  subject: string;
+  label?: { fr: string; en: string };
+}
+
+/** Where subjects come from beyond the features: the apps' cards (spec 023). */
+export type SubjectSource = (db: SqlExecutor) => Promise<SubjectEntry[]>;
+const sources: SubjectSource[] = [];
+
+/** What is told once a request is decided, outside its transaction: an app is told (spec 023). */
+export type DecidedListener = (organizationId: string, requestId: string) => Promise<void>;
+const listeners: DecidedListener[] = [];
 
 /** A feature declares a subject of requests, and what deciding one does. */
 export function registerSubject(subject: string, handler: SubjectHandler): void {
   subjects.set(subject, handler);
 }
 
+/** A family of subjects handled alike: the apps' (`prd_….…`, spec 023). */
+export function registerSubjectFamily(
+  matches: (subject: string) => boolean,
+  handler: SubjectHandler,
+  source: SubjectSource,
+): void {
+  families.push({ matches, handler });
+  sources.push(source);
+}
+
+/** Listens to decided requests, once their transaction is over. */
+export function onDecided(listener: DecidedListener): void {
+  listeners.push(listener);
+}
+
+/** Tells the listeners a request was decided; a listener that fails never fails the decision. */
+export async function announceDecided(organizationId: string, requestId: string): Promise<void> {
+  for (const listener of listeners) {
+    await listener(organizationId, requestId).catch((error: unknown) => {
+      console.error('[decisions]', (error as Error).message);
+    });
+  }
+}
+
 export function knownSubjects(): string[] {
   return [...subjects.keys()].sort();
+}
+
+/** Every subject a circuit may be defined for in this organization, with its words if any. */
+export async function subjectsOf(db: SqlExecutor): Promise<SubjectEntry[]> {
+  const fromApps = (await Promise.all(sources.map((source) => source(db)))).flat();
+  return [...knownSubjects().map((subject) => ({ subject })), ...fromApps];
+}
+
+function handlerOf(subject: string): SubjectHandler | undefined {
+  return subjects.get(subject) ?? families.find((f) => f.matches(subject))?.handler;
 }
 
 /** Carries a decided request out: its subject's feature applies the outcome. */
@@ -35,7 +84,7 @@ export async function settle(
   decidedBy: string,
 ): Promise<void> {
   await closeRequest(db, request.requestId, outcome);
-  const handler = subjects.get(request.subject);
+  const handler = handlerOf(request.subject);
   if (!handler) throw new Error(`No feature handles the subject ${request.subject}.`);
   await handler(db, request.reference, outcome, decidedBy);
 }

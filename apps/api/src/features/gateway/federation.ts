@@ -3,18 +3,26 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { jsonSchema } from 'ai';
 import { transaction } from '../../platform/db.js';
+import { tokenForAgent, type Agent } from '../../platform/mandates.js';
 import { registryFor } from '../registry/index.js';
+
+/** The assistant, as the apps know it when it carries a person's mandate (spec 024). */
+export const ASSISTANT: Agent = { id: 'agt_assistant', name: 'Assistant Kete Enterprise' };
 
 /**
  * The tools of the team's apps, for the person's assistant (spec 018): every active app or MCP
- * server of the registry she may see, with an https address, is asked for its tools with her own
- * token — so each app applies its own rights and autonomy, never more than hers. A tool is named
- * after its app; an app that does not answer within a few seconds is left out of this turn.
+ * server of the registry she may see, with an https address, is asked for its tools with her
+ * mandate (spec 024) — or her own token while mandates are off — so each app applies its own
+ * rights and autonomy, never more than hers. A tool is named after its app; an app that does not
+ * answer within a few seconds is left out of this turn.
  */
 export async function appToolsFor(
   identity: Parameters<typeof registryFor>[1] & { organizationId: string },
-  token: string,
+  personToken: string,
+  agent: Agent = ASSISTANT,
 ): Promise<{ tools: CapabilityTool[]; close: () => Promise<void> }> {
+  const token = await tokenForAgent(personToken, agent);
+  if (!token) return { tools: [], close: async () => undefined };
   const resources = await transaction(identity.organizationId, async (db) =>
     (await registryFor(db, identity)).resources.filter(
       (r) =>

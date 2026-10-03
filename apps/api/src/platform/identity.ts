@@ -1,6 +1,9 @@
 import {
+  createAppTokenVerifier,
   createTokenVerifier,
   InvalidTokenError,
+  type AppTokenVerifier,
+  type KeteApp,
   type KeteIdentity,
   type TokenVerifier,
 } from '@kete/auth';
@@ -40,6 +43,24 @@ export async function identityOf(request: Request): Promise<IdentityVariables['i
 /** Tests: verify tokens with other keys. */
 export function useVerifier(next: TokenVerifier): void {
   verifier = next;
+}
+
+let appVerifier: AppTokenVerifier | undefined;
+
+/**
+ * The app behind a request's bearer token, when it speaks as itself (`kete:center`, kete-core spec
+ * 049): its events. Null for a person's token, or none.
+ */
+export async function appOf(request: Request): Promise<KeteApp | null> {
+  const token = /^Bearer (.+)$/.exec(request.headers.get('authorization') ?? '')?.[1];
+  if (!token) return null;
+  appVerifier ??= createAppTokenVerifier({ issuer: env.accountUrl, scope: 'kete:center' });
+  return appVerifier(token).catch(() => null);
+}
+
+/** Tests: verify apps' tokens with other keys. */
+export function useAppVerifier(next: AppTokenVerifier): void {
+  appVerifier = next;
 }
 
 export interface IdentityVariables {

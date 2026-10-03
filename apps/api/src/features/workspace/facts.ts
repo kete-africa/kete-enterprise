@@ -2,6 +2,7 @@ import type { KeteIdentity } from '@kete/auth';
 import { openTasksOf } from './tasks.js';
 import type { SqlExecutor } from '@kete/tenancy';
 import { readRegister } from '../actions/index.js';
+import { appNewsFor, type AppNews } from '../apps/index.js';
 import { inboxFor } from '../decisions/index.js';
 import { listMeetings, listNotes } from '../meetings/index.js';
 import { readModules } from '../organization/index.js';
@@ -34,6 +35,8 @@ export interface Facts {
   apps: { name: string; address: string | null; kind: string }[];
   /** What the team's apps put in her To do (spec 018). */
   tasks: { title: string; source: string; dueAt: string | null; overdue: boolean }[];
+  /** What her apps announced in the last day, counted by type; never a secret event (spec 025). */
+  appNews: AppNews[];
 }
 
 export async function factsFor(
@@ -65,6 +68,7 @@ export async function factsFor(
       dueAt: t.dueAt,
       overdue: t.overdue,
     })),
+    appNews: await appNewsFor(db, identity, new Date(Date.now() - 86_400_000)),
   };
   if (!personId) return facts;
   facts.actions = (await readRegister(db, { personId, openOnly: true })).map((a) => ({
