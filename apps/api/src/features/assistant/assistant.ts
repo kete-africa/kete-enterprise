@@ -15,7 +15,7 @@ import { asPerson } from '../../platform/acting.js';
 import { getPool, transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
-import { decideDraft, draftsFor, toolsForPerson } from '../gateway/index.js';
+import { appToolsFor, decideDraft, draftsFor, toolsForPerson } from '../gateway/index.js';
 import { isAdministrator } from '../rights/index.js';
 import { personOfAccount } from '../structure/index.js';
 import { factsFor, type Facts } from '../workspace/index.js';
@@ -400,6 +400,11 @@ async function streamChat(c: Ctx): Promise<Response> {
   );
   const encoder = new TextEncoder();
   const signal = c.req.raw.signal;
+  // The team's apps lend their tools with the person's own token (spec 018) — never while an
+  // administrator views a demo person's space: the token would be hers, not the person's.
+  const token = /^Bearer (.+)$/.exec(c.req.header('authorization') ?? '')?.[1];
+  const apps =
+    token && !c.get('viewedBy') ? await appToolsFor(identity, token).catch(() => null) : null;
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (event: object) =>
@@ -414,7 +419,7 @@ async function streamChat(c: Ctx): Promise<Response> {
             model: chosen,
             system: system(organization, identity.name),
             messages: [...history, { role: 'user', content: parsed.data.message }],
-            tools: await toolsForPerson(identity),
+            tools: [...(await toolsForPerson(identity)), ...(apps?.tools ?? [])],
             maxSteps: 6,
             abortSignal: signal,
             metering: {
@@ -475,6 +480,7 @@ async function streamChat(c: Ctx): Promise<Response> {
             }),
           ).catch(() => undefined);
         }
+        await apps?.close();
         controller.close();
       }
     },

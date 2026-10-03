@@ -65,6 +65,10 @@ flowchart LR
 - `/administration`: the frame (units, people and accounts, rights, modules, circuits, registry)
   and « Ce qui bouge »: the registry's promotions to decide, the agents, the model and its tokens,
   compliance.
+- `/administration/organisation`: the organization in three formats — the chart of positions
+  (boxes and lines, holders, vacancies, fold and unfold), the tree of units, the table of
+  positions; select a position and it opens in the detail pane. « Dessiner l'organisation » opens
+  a side panel: every addition opens the same way, in the same place.
 - `/administration/modules`: the business tools are switched on per organization; switching one
   off hides it and its data stays.
 - Say it: the Administration does not run surveys or reviews; the business does, in its space.
@@ -74,8 +78,12 @@ flowchart LR
 - Administration › Démo › « Voir comme » **Abla Nyuiadzi** (head of SAV & Maintenance).
 - `/`: her briefing of the morning, drawn from her facts: what she has to do, her red lines, her
   overdue actions, the meetings ahead.
+- `/`: the figures at the top (forms, decisions, actions, notes), then the briefing.
 - `/assistant`: « Qu'est-ce que j'ai à faire aujourd'hui ? », then « Quelles sont les actions en
-  retard de mon service ? ». The assistant answers with her tools and her rights only.
+  retard de mon service ? ». The answer comes as it is written, formatted; each tool it used is a
+  card; « stop » stops it; the conversation is kept in the list on the left.
+- `/mes-agents`: the agents acting for her, their mission, scope, level and signals — an agent
+  never holds more rights than her.
 
 ### Act 3 — Surveys by link, no account (7 minutes)
 
@@ -97,17 +105,27 @@ flowchart LR
   at the acknowledgement, stops at the restoration, motivated suspensions set aside.
 - `/indicateurs`: period T3 2026 (2026-07-01 to 2026-09-30), « Envoyer à Kete Enterprise ». The
   reading lands in Kete Enterprise, append-only, with its proof.
-- In Enterprise, `/ressources` › register the app by its address: its identity card
-  (`/.well-known/kete`) is read, its risk deduced. Ask its promotion to the organization; a
-  reviewer decides it in `/administration/registre`.
+- In Enterprise, `/ressources` › « Inscrire une ressource » (a side panel): the app by its
+  address; its identity card (`/.well-known/kete`) is read, its risk deduced. Open it in the
+  detail pane, ask its promotion to the organization; a reviewer decides it in
+  `/administration/registre`. It now appears in the sidebar under « Apps de l'équipe ».
+- As yourself (not « Voir comme »), in the central chat: « Ouvre un ticket SAV critique : onduleur
+  en panne chez un client à Agoè ». The assistant uses Support's own tool, with your token: the
+  ticket is in Support.
+- In Support, acknowledge it: « Rétablir : … » appears in Enterprise › À faire, under « Dans vos
+  apps », with its deadline; restored, it leaves.
 
 ### Act 5 — Performance T3 2026, the variable part (10 minutes)
 
-- View as **Afi Mawufemo Agbo** (management control). `/performance/<T3 2026>`: the reviews of
-  every holder, frozen lines of their job profile (KYA-KPI-01), the scale green 1 / orange 0.6 /
-  red 0, progressivity.
-- Open Abla Nyuiadzi's review: line « Respect du délai d'intervention contractuel (SLA) » shows
-  the reading Support has just sent — 68.8 %, its proof — taken as a measure in one gesture.
+- View as **Afi Mawufemo Agbo** (management control). `/performance/<T3 2026>`: open the quarter
+  (it is a draft after the seed): the reviews of every holder appear, frozen lines of their job
+  profile (KYA-KPI-01), the scale green 1 / orange 0.6 / red 0, progressivity.
+- `/assistant`: « Quels relevés des apps puis-je reprendre ? » — the assistant lists the reading
+  Support sent for Abla Nyuiadzi's line « Respect du délai d'intervention contractuel (SLA) ».
+  « Prépare la mesure » — a draft card appears under the answer: the review, the line, the
+  reading in words, « préparé par l'assistant ». Nothing is measured yet. « Valider »: the measure
+  is written, with Afi as the actor. The same card waits in À faire if she closes the chat.
+- Open Abla Nyuiadzi's review: the line shows 68.8 % and its proof.
 - Close the measures: a missing measure is red and opens an action plan in the register.
 - View as **Folly Ayité** (her manager): write the review and sign. Abla signs from her space, or
   a person without an account from the link she receives. HR validates.
@@ -118,6 +136,8 @@ flowchart LR
   agenda is drawn from the gaps: red lines of the last measured quarter, overdue actions.
 - Hold it: attendance and quorum, decisions that become actions with an owner and a date, the
   record on time or late. A decision note gets its number `2026-NNN/DG/<unit>` and its reads.
+- `/actions`: the register as a list or in columns (overdue, open, closed); « Nouvelle action »
+  opens a side panel — or ask the assistant, which prepares the action as a draft to validate.
 - `/conformite`: ISO 9001, with the automatic controls (management review held, records on time,
   actions on time, reviews held, customers heard).
 
@@ -131,5 +151,9 @@ exchange with people outside.
 
 - A link says it expired: links are personal and single-purpose; open a fresh one from the outbox.
 - The assistant says it has no model: `OPENAI_API_KEY` is not set on the staging API.
+- The chat does not use Support's tools: Support must be registered and active in the registry,
+  and you must be yourself — while viewing a demo person, no app is called.
+- The assistant refuses to prepare a draft: the person does not hold the permission (a measure
+  needs `performance:measure`, an action `meetings:manage`), or 10 drafts already wait for her.
 - No reading in Abla's review: send it again from Support › Indicateurs, with the label exactly
   « T3 2026 » and while signed in to the demo organization.

@@ -785,5 +785,7 @@
   "draft_validate": "Valider",
   "draft_refuse": "Refuser",
   "inbox_drafts": "Brouillons préparés pour vous",
-  "inbox_drafts_explain": "Vos agents préparent ; rien n'existe tant que vous n'avez pas validé."
+  "inbox_drafts_explain": "Vos agents préparent ; rien n'existe tant que vous n'avez pas validé.",
+  "inbox_app_tasks": "Dans vos apps",
+  "inbox_task_due": "avant le {at}"
 }
