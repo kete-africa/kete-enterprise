@@ -1,9 +1,7 @@
 import {
-  Button,
   CommandBar,
   DataTable,
   DetailPane,
-  Drawer,
   Facts,
   KpiGrid,
   KpiTile,
@@ -91,7 +89,6 @@ function StructurePage() {
   const view: View = search.vue ?? 'organigramme';
   const navigate = useNavigate({ from: '/administration/organisation' });
   const [selected, setSelected] = useState<string | null>(null);
-  const [drawing, setDrawing] = useState(false);
   const unitName = new Map(chart.units.map((u) => [u.unitId, u.name]));
   const titleOf = new Map(chart.positions.map((p) => [p.positionId, p.title]));
   const vacant = chart.positions.filter((p) => holdersOf(chart, p.positionId).length === 0);
@@ -109,7 +106,7 @@ function StructurePage() {
         breadcrumbs={[{ label: m.nav_administration(), href: '/administration' }]}
         title={m.structure_title()}
         description={m.structure_explain()}
-        actions={canDraw && <Button onClick={() => setDrawing(true)}>{m.structure_draw()}</Button>}
+        actions={canDraw && <StructureForms chart={chart} />}
       />
       <KpiGrid label={m.structure_title()}>
         <KpiTile label={m.structure_units()} value={chart.units.length} />
@@ -246,16 +243,6 @@ function StructurePage() {
           />
         )}
       </SplitView>
-      {canDraw && (
-        <Drawer
-          open={drawing}
-          onClose={() => setDrawing(false)}
-          title={m.structure_draw()}
-          closeLabel={m.common_close()}
-        >
-          <StructureForms chart={chart} />
-        </Drawer>
-      )}
     </AppShell>
   );
 }

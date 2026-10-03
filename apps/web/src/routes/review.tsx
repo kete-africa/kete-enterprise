@@ -1,12 +1,11 @@
-import { PageSection, PageHeader, Tag } from '@kete/design';
+import { Button, Drawer, PageHeader, PageSection, Tag } from '@kete/design';
+import { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchReview, performanceGesture } from '@/lib/performance';
 import {
   Factors,
   GridTable,
-  MeasureForm,
   PersonSign,
-  RecordForm,
   RecordView,
   reviewStatusLabel,
   ValidateBox,
@@ -59,7 +58,14 @@ function ReviewPage() {
       </PageSection>
       {review.status === 'open' && quarter?.status === 'open' && can('performance:measure') && (
         <PageSection title={m.measure_title()}>
-          <MeasureForm review={review} readings={readings} />
+          <div>
+            <a
+              href={`/performance/revues/${review.reviewId}/mesures`}
+              className="inline-flex h-(--control-height) items-center rounded-control bg-action text-on-action hover:bg-action-strong px-(--control-padding) font-semibold"
+            >
+              {m.measure_title()}
+            </a>
+          </div>
         </PageSection>
       )}
       <PageSection title={m.review_grid()}>
@@ -68,24 +74,19 @@ function ReviewPage() {
       <PageSection title={m.record_title()}>
         <div className="grid gap-4">
           {review.status === 'measured' && (managing || can('performance:manage')) && (
-            <RecordForm review={review} />
+            <div>
+              <a
+                href={`/performance/revues/${review.reviewId}/bilan`}
+                className="inline-flex h-(--control-height) items-center rounded-control bg-action text-on-action hover:bg-action-strong px-(--control-padding) font-semibold"
+              >
+                {m.record_write()}
+              </a>
+            </div>
           )}
           {review.status !== 'open' && review.status !== 'measured' && (
             <RecordView review={review} />
           )}
-          {review.status === 'manager_signed' && mine && (
-            <PersonSign
-              onSign={(observations) =>
-                performanceGesture({
-                  data: {
-                    path: `/reviews/${review.reviewId}/sign`,
-                    body: observations ? { observations } : {},
-                    key: crypto.randomUUID(),
-                  },
-                })
-              }
-            />
-          )}
+          {review.status === 'manager_signed' && mine && <SignStep reviewId={review.reviewId} />}
           {review.status === 'signed' && can('performance:validate') && (
             <ValidateBox review={review} />
           )}
@@ -95,5 +96,33 @@ function ReviewPage() {
         </div>
       </PageSection>
     </AppShell>
+  );
+}
+
+/** The person signs her review in a dialog, with her observations if any (spec 019). */
+function SignStep({ reviewId }: { reviewId: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <Button onClick={() => setOpen(true)}>{m.record_sign()}</Button>
+      <Drawer
+        open={open}
+        onClose={() => setOpen(false)}
+        title={m.record_sign_title()}
+        closeLabel={m.common_close()}
+      >
+        <PersonSign
+          onSign={(observations) =>
+            performanceGesture({
+              data: {
+                path: `/reviews/${reviewId}/sign`,
+                body: observations ? { observations } : {},
+                key: crypto.randomUUID(),
+              },
+            })
+          }
+        />
+      </Drawer>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
-import { Button, Panel } from '@kete/design';
+import { Button, Drawer } from '@kete/design';
 import { useRouter } from '@tanstack/react-router';
-import { useState, type ReactNode, type SelectHTMLAttributes } from 'react';
+import { useId, useState, type ReactNode, type SelectHTMLAttributes } from 'react';
 import * as m from '@/paraglide/messages.js';
 
 /** A refusal of the API, in the person's words. */
@@ -75,53 +75,146 @@ export function Select({
 
 export type Send = (key: string) => Promise<{ ok: boolean; error: string | null }>;
 
-/** One form, one gesture with its own idempotency key; then the page's data reloads. */
+/**
+ * One gesture, one short form (spec 019): a button that opens the form in a dialog — on the right
+ * when the screen is wide, centered otherwise — never beside the list it adds to. Its own
+ * idempotency key; on success the dialog closes and the page's data reloads.
+ */
 export function GestureForm({
   title,
   send,
   ready,
   onDone,
   children,
+  trigger = 'secondary',
 }: {
   title: string;
   send: Send;
   ready: boolean;
   onDone: () => void;
   children: ReactNode;
+  /** The look of the button that opens it: the page's main action, or a secondary one. */
+  trigger?: 'primary' | 'secondary';
 }) {
   const router = useRouter();
+  const formId = useId();
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const close = () => {
+    setOpen(false);
+    setError(null);
+  };
   return (
-    <Panel title={title}>
-      <form
-        className="grid gap-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setBusy(true);
-          setError(null);
-          send(crypto.randomUUID())
-            .then(async (answer) => {
-              if (!answer.ok) return setError(refusal(answer.error));
-              onDone();
-              await router.invalidate();
-            })
-            .catch(() => setError(m.error_generic()))
-            .finally(() => setBusy(false));
-        }}
+    <>
+      <Button variant={trigger} onClick={() => setOpen(true)}>
+        {title}
+      </Button>
+      <Drawer
+        open={open}
+        onClose={close}
+        title={title}
+        closeLabel={m.common_close()}
+        footer={
+          <>
+            <Button type="submit" form={formId} disabled={busy || !ready}>
+              {m.form_save()}
+            </Button>
+            <Button variant="secondary" onClick={close}>
+              {m.common_cancel()}
+            </Button>
+          </>
+        }
       >
-        {children}
-        {error && (
-          <p role="alert" className="text-body-sm text-state-error-fg">
-            {error}
-          </p>
-        )}
-        <Button type="submit" disabled={busy || !ready}>
-          {m.form_save()}
-        </Button>
-      </form>
-    </Panel>
+        <form
+          id={formId}
+          className="grid gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setBusy(true);
+            setError(null);
+            send(crypto.randomUUID())
+              .then(async (answer) => {
+                if (!answer.ok) return setError(refusal(answer.error));
+                onDone();
+                close();
+                await router.invalidate();
+              })
+              .catch(() => setError(m.error_generic()))
+              .finally(() => setBusy(false));
+          }}
+        >
+          {children}
+          {error && (
+            <p role="alert" className="text-body-sm text-state-error-fg">
+              {error}
+            </p>
+          )}
+        </form>
+      </Drawer>
+    </>
   );
 }
 
 export const optional = (value: string) => (value.trim() ? value.trim() : undefined);
+
+/**
+ * A short form of a page's own gesture (spec 019): a button that opens its fields in a dialog — on
+ * the right when the screen is wide, centered otherwise — and sends it. The page tells the outcome.
+ */
+export function DialogForm({
+  title,
+  label,
+  ready,
+  busy = false,
+  onSubmit,
+  trigger = 'secondary',
+  children,
+}: {
+  title: string;
+  /** The button's words, when they differ from the dialog's title. */
+  label?: string;
+  ready: boolean;
+  busy?: boolean;
+  onSubmit: () => void;
+  trigger?: 'primary' | 'secondary';
+  children: ReactNode;
+}) {
+  const formId = useId();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant={trigger} disabled={busy} onClick={() => setOpen(true)}>
+        {label ?? title}
+      </Button>
+      <Drawer
+        open={open}
+        onClose={() => setOpen(false)}
+        title={title}
+        closeLabel={m.common_close()}
+        footer={
+          <>
+            <Button type="submit" form={formId} disabled={busy || !ready}>
+              {label ?? m.form_save()}
+            </Button>
+            <Button variant="secondary" onClick={() => setOpen(false)}>
+              {m.common_cancel()}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id={formId}
+          className="grid gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit();
+            setOpen(false);
+          }}
+        >
+          {children}
+        </form>
+      </Drawer>
+    </>
+  );
+}

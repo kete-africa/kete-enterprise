@@ -2,7 +2,7 @@ import { Button, PageSection, PageHeader, Panel, Tag, TextField } from '@kete/de
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchPeople } from '@/lib/admin';
-import { Select } from '@/lib/forms';
+import { DialogForm, Select } from '@/lib/forms';
 import { fetchMeeting } from '@/lib/meetings';
 import { dateTime, meetingStatusLabel, useMeetingGesture } from '@/lib/meetings-view';
 import { AppShell } from '@/lib/shell';
@@ -85,33 +85,39 @@ function MeetingPage() {
             ))}
           </ol>
           {manages && meeting.status !== 'recorded' && (
-            <div className="mt-3 flex flex-wrap items-end gap-2">
-              <TextField
-                className="min-w-72 flex-1"
-                label={m.agenda_add()}
-                value={item}
-                onChange={(e) => setItem(e.target.value)}
-              />
-              <Button
-                variant="secondary"
-                disabled={busy || !item.trim()}
-                onClick={() =>
+            <div className="mt-3">
+              <DialogForm
+                title={m.agenda_add()}
+                busy={busy}
+                ready={Boolean(item.trim())}
+                onSubmit={() =>
                   run(`${base}/agenda`, { title: item }, () => {
                     setItem('');
                     return undefined;
                   })
                 }
               >
-                {m.form_save()}
-              </Button>
+                <TextField
+                  label={m.agenda_add()}
+                  value={item}
+                  onChange={(e) => setItem(e.target.value)}
+                />
+              </DialogForm>
             </div>
           )}
         </Panel>
       </PageSection>
       {manages && meeting.status === 'planned' && (
         <PageSection title={m.meeting_attendance()}>
-          <Panel>
-            <div className="grid gap-1 sm:grid-cols-2">
+          <DialogForm
+            title={m.meeting_attendance()}
+            label={m.meeting_hold()}
+            trigger="primary"
+            busy={busy}
+            ready={present.length > 0}
+            onSubmit={() => run(`${base}/hold`, { presentPersonIds: present })}
+          >
+            <div className="grid gap-1">
               {people.map((p) => (
                 <label key={p.personId} className="flex items-center gap-2 text-body-sm">
                   <input
@@ -129,15 +135,7 @@ function MeetingPage() {
                 </label>
               ))}
             </div>
-            <div className="mt-3">
-              <Button
-                disabled={busy || present.length === 0}
-                onClick={() => run(`${base}/hold`, { presentPersonIds: present })}
-              >
-                {m.meeting_hold()}
-              </Button>
-            </div>
-          </Panel>
+          </DialogForm>
         </PageSection>
       )}
       <PageSection title={m.decisions_title()}>
@@ -160,74 +158,66 @@ function MeetingPage() {
             ))}
           </ul>
           {manages && meeting.status === 'held' && (
-            <Panel title={m.decision_new()}>
-              <div className="grid gap-3">
+            <div>
+              <DialogForm
+                title={m.decision_new()}
+                busy={busy}
+                ready={Boolean(decision.text.trim())}
+                onSubmit={() =>
+                  run(
+                    `${base}/decisions`,
+                    {
+                      text: decision.text,
+                      idea: decision.idea,
+                      ...(decision.responsiblePersonId && decision.dueOn
+                        ? {
+                            responsiblePersonId: decision.responsiblePersonId,
+                            dueOn: decision.dueOn,
+                          }
+                        : {}),
+                    },
+                    () => {
+                      setDecision({ text: '', responsiblePersonId: '', dueOn: '', idea: false });
+                      return undefined;
+                    },
+                  )
+                }
+              >
                 <TextField
                   label={m.decision_text()}
                   value={decision.text}
                   onChange={(e) => setDecision({ ...decision, text: e.target.value })}
                 />
-                <div className="flex flex-wrap items-end gap-3">
-                  <Select
-                    label={m.decision_owner_field()}
-                    value={decision.responsiblePersonId}
-                    onChange={(e) =>
-                      setDecision({ ...decision, responsiblePersonId: e.target.value })
-                    }
-                  >
-                    <option value="">{m.field_nobody()}</option>
-                    {people.map((p) => (
-                      <option key={p.personId} value={p.personId}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </Select>
-                  <TextField
-                    label={m.decision_due()}
-                    type="date"
-                    value={decision.dueOn}
-                    onChange={(e) => setDecision({ ...decision, dueOn: e.target.value })}
+                <Select
+                  label={m.decision_owner_field()}
+                  value={decision.responsiblePersonId}
+                  onChange={(e) =>
+                    setDecision({ ...decision, responsiblePersonId: e.target.value })
+                  }
+                >
+                  <option value="">{m.field_nobody()}</option>
+                  {people.map((p) => (
+                    <option key={p.personId} value={p.personId}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+                <TextField
+                  label={m.decision_due()}
+                  type="date"
+                  value={decision.dueOn}
+                  onChange={(e) => setDecision({ ...decision, dueOn: e.target.value })}
+                />
+                <label className="flex items-center gap-2 text-body-sm">
+                  <input
+                    type="checkbox"
+                    checked={decision.idea}
+                    onChange={(e) => setDecision({ ...decision, idea: e.target.checked })}
                   />
-                  <label className="flex items-center gap-2 text-body-sm">
-                    <input
-                      type="checkbox"
-                      checked={decision.idea}
-                      onChange={(e) => setDecision({ ...decision, idea: e.target.checked })}
-                    />
-                    {m.decision_is_idea()}
-                  </label>
-                  <Button
-                    disabled={busy || !decision.text.trim()}
-                    onClick={() =>
-                      run(
-                        `${base}/decisions`,
-                        {
-                          text: decision.text,
-                          idea: decision.idea,
-                          ...(decision.responsiblePersonId && decision.dueOn
-                            ? {
-                                responsiblePersonId: decision.responsiblePersonId,
-                                dueOn: decision.dueOn,
-                              }
-                            : {}),
-                        },
-                        () => {
-                          setDecision({
-                            text: '',
-                            responsiblePersonId: '',
-                            dueOn: '',
-                            idea: false,
-                          });
-                          return undefined;
-                        },
-                      )
-                    }
-                  >
-                    {m.form_save()}
-                  </Button>
-                </div>
-              </div>
-            </Panel>
+                  {m.decision_is_idea()}
+                </label>
+              </DialogForm>
+            </div>
           )}
         </div>
       </PageSection>
@@ -237,28 +227,27 @@ function MeetingPage() {
             <p className="whitespace-pre-line">{meeting.notes || '—'}</p>
           </Panel>
         ) : manages && meeting.status === 'held' ? (
-          <Panel>
+          <DialogForm
+            title={m.meeting_record()}
+            label={m.meeting_publish()}
+            trigger="primary"
+            busy={busy}
+            ready
+            onSubmit={() =>
+              run(`${base}/publish`, { notes }, (d) =>
+                d.onTime ? m.meeting_record_on_time() : m.meeting_record_late(),
+              )
+            }
+          >
             <label className="flex flex-col gap-1.5 text-body-sm font-semibold text-fg">
               {m.meeting_record_notes()}
               <textarea
-                className="min-h-32 rounded-control border border-line-control bg-surface-control p-3 font-normal"
+                className="min-h-48 rounded-control border border-line-control bg-surface-control p-3 font-normal"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
             </label>
-            <div className="mt-3">
-              <Button
-                disabled={busy}
-                onClick={() =>
-                  run(`${base}/publish`, { notes }, (d) =>
-                    d.onTime ? m.meeting_record_on_time() : m.meeting_record_late(),
-                  )
-                }
-              >
-                {m.meeting_publish()}
-              </Button>
-            </div>
-          </Panel>
+          </DialogForm>
         ) : (
           <p className="text-body-sm text-fg-muted">{m.meeting_record_waiting()}</p>
         )}

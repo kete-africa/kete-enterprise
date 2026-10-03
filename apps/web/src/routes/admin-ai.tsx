@@ -1,7 +1,7 @@
 import { Button, PageSection, PageHeader, Panel, TextField } from '@kete/design';
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
-import { refusal } from '@/lib/forms';
+import { DialogForm, refusal } from '@/lib/forms';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import { fetchUsage, setBudget } from '@/lib/workspace';
@@ -70,7 +70,20 @@ function AiPage() {
       </PageSection>
       <PageSection title={m.ai_budget()}>
         <Panel>
-          <div className="flex flex-wrap items-end gap-3">
+          <p className="mb-3 font-number text-title font-semibold">
+            {usage.monthlyTokens === null ? '—' : usage.monthlyTokens.toLocaleString()}
+          </p>
+          <DialogForm
+            title={m.ai_budget()}
+            ready={budget !== ''}
+            onSubmit={() => {
+              setError(null);
+              void setBudget({ data: { monthlyTokens: Number(budget) } }).then(async (answer) => {
+                if (!answer.ok) return setError(refusal(answer.error));
+                await router.invalidate();
+              });
+            }}
+          >
             <TextField
               label={m.ai_budget_tokens()}
               type="number"
@@ -78,19 +91,7 @@ function AiPage() {
               value={budget}
               onChange={(e) => setDraft(e.target.value)}
             />
-            <Button
-              disabled={budget === ''}
-              onClick={() => {
-                setError(null);
-                void setBudget({ data: { monthlyTokens: Number(budget) } }).then(async (answer) => {
-                  if (!answer.ok) return setError(refusal(answer.error));
-                  await router.invalidate();
-                });
-              }}
-            >
-              {m.form_save()}
-            </Button>
-          </div>
+          </DialogForm>
           <p className="mt-2 text-body-sm text-fg-muted">{m.ai_budget_explain()}</p>
           {error && (
             <p role="alert" className="mt-2 text-body-sm text-state-error-fg">

@@ -237,7 +237,6 @@ export function RegistryView({ screen }: { screen: RegistryScreen }) {
           </ul>
         )}
       </Panel>
-      <RegisterForm />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { Button, EmptyState, PageSection, PageHeader, Panel, Tag, TextField } from '@kete/design';
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
-import { refusal } from '@/lib/forms';
+import { DialogForm, refusal } from '@/lib/forms';
 import { opens } from '@/lib/me';
 import { fetchQuarters, percent, performanceGesture } from '@/lib/performance';
 import { quarterStatusLabel } from '@/lib/review-view';
@@ -25,13 +25,27 @@ export const Route = createFileRoute('/performance')({
   component: PerformancePage,
 });
 
+/** A new quarter, prepared in a dialog (spec 019). */
 function NewQuarter() {
   const router = useRouter();
   const [draft, setDraft] = useState({ label: '', startsOn: '', endsOn: '', progressive: false });
   const [error, setError] = useState<string | null>(null);
   return (
-    <Panel title={m.quarter_new()}>
-      <div className="flex flex-wrap items-end gap-3">
+    <div className="grid gap-2">
+      <DialogForm
+        title={m.quarter_new()}
+        label={m.campaign_prepare()}
+        ready={Boolean(draft.label && draft.startsOn && draft.endsOn)}
+        onSubmit={() => {
+          setError(null);
+          void performanceGesture({
+            data: { path: '/quarters', body: draft, key: crypto.randomUUID() },
+          }).then(async (answer) => {
+            if (!answer.ok) return setError(refusal(answer.error));
+            await router.invalidate();
+          });
+        }}
+      >
         <TextField
           label={m.quarter_label()}
           hint={m.campaign_period_hint()}
@@ -58,27 +72,13 @@ function NewQuarter() {
           />
           {m.quarter_progressive()}
         </label>
-        <Button
-          disabled={!draft.label || !draft.startsOn || !draft.endsOn}
-          onClick={() => {
-            setError(null);
-            void performanceGesture({
-              data: { path: '/quarters', body: draft, key: crypto.randomUUID() },
-            }).then(async (answer) => {
-              if (!answer.ok) return setError(refusal(answer.error));
-              await router.invalidate();
-            });
-          }}
-        >
-          {m.campaign_prepare()}
-        </Button>
-      </div>
+      </DialogForm>
       {error && (
-        <p role="alert" className="mt-3 text-body-sm text-state-error-fg">
+        <p role="alert" className="text-body-sm text-state-error-fg">
           {error}
         </p>
       )}
-    </Panel>
+    </div>
   );
 }
 

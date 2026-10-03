@@ -27,7 +27,7 @@ export function StructureForms({ chart }: { chart: Chart }) {
   const unitName = new Map(chart.units.map((u) => [u.unitId, u.name]));
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="flex flex-wrap gap-2">
       <GestureForm
         title={m.form_unit_type()}
         ready={type.key.length > 1 && type.name.trim() !== ''}

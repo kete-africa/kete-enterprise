@@ -2,7 +2,7 @@ import { Button, EmptyState, PageSection, PageHeader, Panel, Tag, TextField } fr
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchPeople } from '@/lib/admin';
-import { Select } from '@/lib/forms';
+import { DialogForm, Select } from '@/lib/forms';
 import { opens } from '@/lib/me';
 import { fetchMeetings } from '@/lib/meetings';
 import { dateTime, meetingStatusLabel, NoteCard, useMeetingGesture } from '@/lib/meetings-view';
@@ -37,7 +37,47 @@ function MeetingsPage() {
   const [note, setNote] = useState({ subject: '', body: '', signedByPersonId: me.personId ?? '' });
   return (
     <AppShell me={me} current="meetings">
-      <PageHeader title={m.nav_meetings()} description={m.meetings_explain()} />
+      <PageHeader
+        title={m.nav_meetings()}
+        description={m.meetings_explain()}
+        actions={
+          manages && (
+            <DialogForm
+              title={m.meeting_plan()}
+              label={m.meeting_plan_action()}
+              trigger="primary"
+              busy={busy}
+              ready={Boolean(plan.typeId && plan.startsAt)}
+              onSubmit={() =>
+                run(
+                  '/meetings/meetings',
+                  { typeId: plan.typeId, startsAt: new Date(plan.startsAt).toISOString() },
+                  (d) => m.meeting_planned_done({ items: String(d.agenda ?? 0) }),
+                )
+              }
+            >
+              <Select
+                label={m.meeting_type()}
+                value={plan.typeId}
+                onChange={(e) => setPlan({ ...plan, typeId: e.target.value })}
+              >
+                {types.map((t) => (
+                  <option key={t.typeId} value={t.typeId}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+              <TextField
+                label={m.meeting_when()}
+                type="datetime-local"
+                value={plan.startsAt}
+                onChange={(e) => setPlan({ ...plan, startsAt: e.target.value })}
+              />
+            </DialogForm>
+          )
+        }
+      />
+      {notice}
       {manages && (
         <PageSection first title={m.meetings_list()}>
           {meetings.length === 0 ? (
@@ -61,42 +101,6 @@ function MeetingsPage() {
               ))}
             </ul>
           )}
-          <div className="mt-4">
-            <Panel title={m.meeting_plan()}>
-              <div className="flex flex-wrap items-end gap-3">
-                <Select
-                  label={m.meeting_type()}
-                  value={plan.typeId}
-                  onChange={(e) => setPlan({ ...plan, typeId: e.target.value })}
-                >
-                  {types.map((t) => (
-                    <option key={t.typeId} value={t.typeId}>
-                      {t.name}
-                    </option>
-                  ))}
-                </Select>
-                <TextField
-                  label={m.meeting_when()}
-                  type="datetime-local"
-                  value={plan.startsAt}
-                  onChange={(e) => setPlan({ ...plan, startsAt: e.target.value })}
-                />
-                <Button
-                  disabled={busy || !plan.typeId || !plan.startsAt}
-                  onClick={() =>
-                    run(
-                      '/meetings/meetings',
-                      { typeId: plan.typeId, startsAt: new Date(plan.startsAt).toISOString() },
-                      (d) => m.meeting_planned_done({ items: String(d.agenda ?? 0) }),
-                    )
-                  }
-                >
-                  {m.meeting_plan_action()}
-                </Button>
-              </div>
-              {notice}
-            </Panel>
-          </div>
         </PageSection>
       )}
       {manages && (
@@ -124,49 +128,47 @@ function MeetingsPage() {
         </PageSection>
       )}
       <PageSection first={!manages} title={m.notes_title()}>
+        {publishes && (
+          <div className="mb-3">
+            <DialogForm
+              title={m.note_new()}
+              label={m.note_draft_action()}
+              busy={busy}
+              ready={Boolean(note.subject && note.body && note.signedByPersonId)}
+              onSubmit={() => run('/meetings/notes', note, () => m.note_drafted())}
+            >
+              <TextField
+                label={m.note_subject()}
+                value={note.subject}
+                onChange={(e) => setNote({ ...note, subject: e.target.value })}
+              />
+              <label className="flex flex-col gap-1.5 text-body-sm font-semibold text-fg">
+                {m.note_body()}
+                <textarea
+                  className="min-h-40 rounded-control border border-line-control bg-surface-control p-3 font-normal"
+                  value={note.body}
+                  onChange={(e) => setNote({ ...note, body: e.target.value })}
+                />
+              </label>
+              <Select
+                label={m.note_signatory()}
+                value={note.signedByPersonId}
+                onChange={(e) => setNote({ ...note, signedByPersonId: e.target.value })}
+              >
+                <option value="">{m.field_choose()}</option>
+                {chart.people.map((p) => (
+                  <option key={p.personId} value={p.personId}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </DialogForm>
+          </div>
+        )}
         <div className="grid gap-3">
           {notes.map((n) => (
             <NoteCard key={n.noteId} note={n} publishes={publishes} />
           ))}
-          {publishes && (
-            <Panel title={m.note_new()}>
-              <div className="grid gap-3">
-                <TextField
-                  label={m.note_subject()}
-                  value={note.subject}
-                  onChange={(e) => setNote({ ...note, subject: e.target.value })}
-                />
-                <label className="flex flex-col gap-1.5 text-body-sm font-semibold text-fg">
-                  {m.note_body()}
-                  <textarea
-                    className="min-h-40 rounded-control border border-line-control bg-surface-control p-3 font-normal"
-                    value={note.body}
-                    onChange={(e) => setNote({ ...note, body: e.target.value })}
-                  />
-                </label>
-                <Select
-                  label={m.note_signatory()}
-                  value={note.signedByPersonId}
-                  onChange={(e) => setNote({ ...note, signedByPersonId: e.target.value })}
-                >
-                  <option value="">{m.field_choose()}</option>
-                  {chart.people.map((p) => (
-                    <option key={p.personId} value={p.personId}>
-                      {p.name}
-                    </option>
-                  ))}
-                </Select>
-                <div>
-                  <Button
-                    disabled={busy || !note.subject || !note.body || !note.signedByPersonId}
-                    onClick={() => run('/meetings/notes', note, () => m.note_drafted())}
-                  >
-                    {m.note_draft_action()}
-                  </Button>
-                </div>
-              </div>
-            </Panel>
-          )}
         </div>
       </PageSection>
     </AppShell>

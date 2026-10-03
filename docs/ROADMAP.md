@@ -18,6 +18,38 @@ KYA is the first client (doctrine D-025): each proof is obtained on KYA's real o
 | `012-performance`                   | Indicators with six attributes on three levels, grids per position (KYA-KPI-01), objectives, protocols, the quarterly review up to the performance factors                                                                                                             | A quarter closed, reviewed and signed, factors out                                           |
 | `013-meetings`                      | Meetings and their agendas drawn from the gaps, decision records, numbered decision notes, the action register, ISO 9001 evidence                                                                                                                                      | A Codir decides on a red indicator, the action is tracked                                    |
 
+| `014-workspace-assistant` | The home page, the morning briefing, the assistant acting for the person with her tools, resources, the use of models and its budget | Abla's morning, read and explained by her assistant |
+| `015-app-readings` | Readings of indicators sent by connected apps, taken into reviews | Support's SLA reading in Abla's review |
+| `016-page-slots` | Every page in the same slots, every view in several formats | The organization as a chart, a tree and a table |
+| `017-drafts-and-chat` | Level-3 drafts decided by people; the streamed chat with its conversations | A measure prepared by the assistant, validated by management control |
+| `018-app-integration` | The apps' tools in the central chat; the apps' tasks in To do | A ticket opened from the central chat; « Rétablir » in To do |
+
+## The complete system (decided 2026-10-03)
+
+Each spec is delivered and proven before the next. What exists is reused: the libraries and
+standards named in kete-core's roadmap (phase 6).
+
+| Spec                           | Delivers                                                                                                                       | Proof                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `019-forms-and-modes`          | Every form on its page or in a dialog, never beside a list; dark, light or automatic                                           | No page holds a list and a form; the person's mode is kept       |
+| `020-card-discovery`           | The registry reads an app's tools and data sets from its card; an end-to-end MCP test                                          | Support's tools reach the central chat in CI                     |
+| `021-app-factory`              | A person asks for an app; IT approves; the factory creates it, a coding agent codes it in a sandbox, a pull request comes back | An app asked from the space runs on staging, registered          |
+| `022-chat`                     | The chat of the current era: attachments, side canvas, citations, mentions, commands, dictation                                | A client's PDF read and answered in a final document             |
+| `023-knowledge`                | The company's library (ISO procedures, notes, templates, records), searched with citations, by rights                          | « What does our procedure say about … » answered with its source |
+| `024-memory-and-schedules`     | The assistant's memory, scheduled tasks, the briefing sent in the morning                                                      | « Every Monday at 8 » runs and lands in To do                    |
+| `025-notifications-and-search` | Notifications (in the app, Web Push), global search                                                                            | A decision waiting reaches its person's phone                    |
+| `026-skills-and-data`          | Skills as folders, created from a conversation, evaluated, shared; team data sets                                              | A skill kept from a conversation, then promoted                  |
+| `027-forms`                    | Simple collections with a circuit, as data sets; a recurring form becomes an app                                               | A collection answered by link, its data in a dashboard           |
+| `028-dashboards`               | Dashboards composed by each person or prepared by the assistant                                                                | « Make me an SAV dashboard », validated, shared                  |
+| `029-dossiers`                 | Shared spaces per subject: conversations, documents, drafts, data                                                              | The ISO audit dossier built by a team                            |
+| `030-meeting-records`          | A meeting's audio transcribed, its record prepared as a draft                                                                  | The weekly review's record prepared, decisions into actions      |
+| `031-agents`                   | Tasks given to agents in the background, delegation between agents, supervision, kill switch                                   | The audit agent asks the SAV agent; the person decides           |
+| `032-production`               | KYA's own domain and server, backups, monitoring, real e-mails, WhatsApp                                                       | KYA works on production                                          |
+
+New apps, each in its own repository, created by the factory: `kete-fieldwork`, `kete-assets`,
+`kete-inventory`, `kete-projects`, `kete-lab`, `kete-correspondence`; then Frappe's flows, one by
+one (inventory, classification, recoding, history, parallel run, Frappe form switched off).
+
 ## Later, when a real need appears
 
 The internal chat and knowledge (`assistant`, `knowledge`), finance and HR operations with the books
