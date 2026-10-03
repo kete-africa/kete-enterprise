@@ -1,4 +1,4 @@
-import { Button, EmptyState, PageSection, PageHeader, Panel, Tag, TextField } from '@kete/design';
+import { EmptyState, PageSection, PageHeader, Panel, Tag, TextField } from '@kete/design';
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { DialogForm, refusal } from '@/lib/forms';

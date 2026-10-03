@@ -1,6 +1,5 @@
 import { EmptyState, PageHeader, PageSection, Panel, Tag } from '@kete/design';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { fetchPeople } from '@/lib/admin';
 import { opens } from '@/lib/me';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
@@ -14,10 +13,7 @@ export const Route = createFileRoute('/enquetes')({
     if (!opens(context.me, 'surveys', ['surveys:manage'])) throw redirect({ to: '/' });
     return context;
   },
-  loader: async () => {
-    const [surveys, chart] = await Promise.all([fetchSurveys(), fetchPeople()]);
-    return { ...surveys, chart };
-  },
+  loader: () => fetchSurveys(),
   component: SurveysPage,
 });
 
@@ -27,7 +23,7 @@ export const Route = createFileRoute('/enquetes')({
  */
 function SurveysPage() {
   const { me } = Route.useRouteContext();
-  const { questionnaires, campaigns, chart } = Route.useLoaderData();
+  const { questionnaires, campaigns } = Route.useLoaderData();
   return (
     <AppShell me={me} current="surveys">
       <PageHeader

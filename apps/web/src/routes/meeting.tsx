@@ -1,4 +1,4 @@
-import { Button, PageSection, PageHeader, Panel, Tag, TextField } from '@kete/design';
+import { PageSection, PageHeader, Panel, Tag, TextField } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchPeople } from '@/lib/admin';

@@ -26,7 +26,7 @@ export const Route = createFileRoute('/performance/revues/$reviewId')({
  */
 function ReviewPage() {
   const { me } = Route.useRouteContext();
-  const { review, quarter, readings } = Route.useLoaderData();
+  const { review, quarter } = Route.useLoaderData();
   const mine = me.personId === review.personId;
   const managing = me.personId === review.managerPersonId;
   const can = (p: string) => me.administrator || me.permissions.includes(p);

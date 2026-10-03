@@ -115,8 +115,8 @@ importers:
         specifier: npm:@kete-africa/auth@^0.2.0
         version: '@kete-africa/auth@0.2.0'
       '@kete/design':
-        specifier: npm:@kete-africa/design@^0.3.0
-        version: '@kete-africa/design@0.3.0(react@19.3.0)(supports-color@7.2.0)'
+        specifier: npm:@kete-africa/design@^0.4.0
+        version: '@kete-africa/design@0.4.0(react@19.3.0)(supports-color@7.2.0)'
       '@tanstack/react-router':
         specifier: ^1.170.40
         version: 1.170.40(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -680,8 +680,8 @@ packages:
   '@kete-africa/commands@0.2.0':
     resolution: {integrity: sha512-/uLLszL5C8CXzXZk6v7+jyWMCB0yG+eJDZ9JdDKHtTyc8esvUt1CyOMUbA4AbJz9+9ZZIVskrbIjpabypv2P/w==, tarball: https://npm.pkg.github.com/download/@kete-africa/commands/0.2.0/f0c9b37636e81c356275698065a86ee90114e76a}
 
-  '@kete-africa/design@0.3.0':
-    resolution: {integrity: sha512-FGzqW4fuL23M0DbALtBn9A3Hsjj3JfrKaru9s0BjSvA4KCaI2a4GMV0yrNk7JjJt27bU5MPtlKMYcnJGBbFI2A==, tarball: https://npm.pkg.github.com/download/@kete-africa/design/0.3.0/7ea24ce2475d7d757252edc0a570c9c919a4d771}
+  '@kete-africa/design@0.4.0':
+    resolution: {integrity: sha512-FH/4+H4kiPA7VOG/Y8xKKJlB6JwxKi/d7BURyW7AmWN5X+WVNTff2NkhoG2JCPVh7ssVdEx0zL8QRIipgtTjog==, tarball: https://npm.pkg.github.com/download/@kete-africa/design/0.4.0/bf126b05a6c0ace6b56eb94093cb5231c86b88c5}
     peerDependencies:
       react: ^19
 
@@ -4211,7 +4211,7 @@ snapshots:
       - drizzle-orm
       - pg-native
 
-  '@kete-africa/design@0.3.0(react@19.3.0)(supports-color@7.2.0)':
+  '@kete-africa/design@0.4.0(react@19.3.0)(supports-color@7.2.0)':
     dependencies:
       '@fontsource-variable/archivo': 5.3.0
       '@fontsource-variable/instrument-sans': 5.3.0
