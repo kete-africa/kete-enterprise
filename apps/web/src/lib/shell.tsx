@@ -1,5 +1,15 @@
-import { Button, Icon, Menu, NavItem, NavSection, Shell } from '@kete/design';
-import type { ReactNode } from 'react';
+import {
+  applyTheme,
+  Button,
+  Icon,
+  Menu,
+  NavItem,
+  NavSection,
+  Shell,
+  ThemeChoice,
+  type ThemeChoiceValue,
+} from '@kete/design';
+import { useEffect, useState, type ReactNode } from 'react';
 import * as m from '@/paraglide/messages.js';
 import { administers, opens, viewAs, type Me } from './me';
 
@@ -211,9 +221,26 @@ export function AppShell({
   current: Page;
   children: ReactNode;
 }) {
+  // The person's mode: dark, light or the device's own, kept in a cookie (spec 019).
+  const [theme, setTheme] = useState<ThemeChoiceValue>('dark');
+  useEffect(() => {
+    const current = document.documentElement.getAttribute('data-theme');
+    if (current === 'dark' || current === 'light' || current === 'auto') setTheme(current);
+  }, []);
   return (
     <Shell
       brand={m.app_name()}
+      footer={
+        <ThemeChoice
+          label={m.theme_label()}
+          value={theme}
+          onChange={(choice) => {
+            setTheme(choice);
+            applyTheme(choice);
+          }}
+          labels={{ dark: m.theme_dark(), light: m.theme_light(), auto: m.theme_auto() }}
+        />
+      }
       navLabel={m.nav_label()}
       showNavLabel={m.nav_show()}
       hideNavLabel={m.nav_hide()}

@@ -2,7 +2,7 @@ import { Button, PageSection, PageHeader, Panel, Tag, TextField } from '@kete/de
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchPeople } from '@/lib/admin';
-import { refusal, Select } from '@/lib/forms';
+import { DialogForm, refusal, Select } from '@/lib/forms';
 import { opens } from '@/lib/me';
 import { fetchQuarter, percent, performanceGesture } from '@/lib/performance';
 import { colourTag, quarterStatusLabel, reviewStatusLabel } from '@/lib/review-view';
@@ -141,7 +141,15 @@ function QuarterPage() {
                   </li>
                 ))}
               </ul>
-              <div className="flex flex-wrap items-end gap-3">
+              <DialogForm
+                title={m.quarter_units()}
+                ready={Boolean(unit.unitId && unit.factor !== '')}
+                onSubmit={() =>
+                  act(`${base}/units/${unit.unitId}`, { factor: Number(unit.factor) / 100 }, () =>
+                    m.quarter_factor_saved(),
+                  )
+                }
+              >
                 <Select
                   label={m.field_unit()}
                   value={unit.unitId}
@@ -155,7 +163,6 @@ function QuarterPage() {
                   ))}
                 </Select>
                 <TextField
-                  className="w-28"
                   label={m.quarter_factor_percent()}
                   type="number"
                   min={0}
@@ -163,22 +170,21 @@ function QuarterPage() {
                   value={unit.factor}
                   onChange={(e) => setUnit({ ...unit, factor: e.target.value })}
                 />
-                <Button
-                  disabled={!unit.unitId || unit.factor === ''}
-                  onClick={() =>
-                    act(`${base}/units/${unit.unitId}`, { factor: Number(unit.factor) / 100 }, () =>
-                      m.quarter_factor_saved(),
-                    )
-                  }
-                >
-                  {m.form_save()}
-                </Button>
-              </div>
+              </DialogForm>
             </Panel>
             <Panel title={m.quarter_group()}>
-              <div className="flex flex-wrap items-end gap-3">
+              <DialogForm
+                title={m.quarter_group()}
+                ready={group.factor !== ''}
+                onSubmit={() =>
+                  act(
+                    `${base}/group`,
+                    { factor: Number(group.factor) / 100, triggered: group.triggered },
+                    () => m.quarter_factor_saved(),
+                  )
+                }
+              >
                 <TextField
-                  className="w-28"
                   label={m.quarter_factor_percent()}
                   type="number"
                   min={0}
@@ -194,19 +200,7 @@ function QuarterPage() {
                   />
                   {m.quarter_triggered()}
                 </label>
-                <Button
-                  disabled={group.factor === ''}
-                  onClick={() =>
-                    act(
-                      `${base}/group`,
-                      { factor: Number(group.factor) / 100, triggered: group.triggered },
-                      () => m.quarter_factor_saved(),
-                    )
-                  }
-                >
-                  {m.form_save()}
-                </Button>
-              </div>
+              </DialogForm>
             </Panel>
           </div>
         </PageSection>

@@ -92,7 +92,7 @@ function Frameworks({ screen }: { screen: ComplianceScreen }) {
           ))}
         </Panel>
       ))}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="flex flex-wrap gap-2">
         <GestureForm
           title={m.framework_new()}
           ready={framework.code.trim() !== '' && framework.name.trim() !== ''}
@@ -544,7 +544,7 @@ function Audits({ screen }: { screen: ComplianceScreen }) {
         )}
         {alert}
       </Panel>
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="flex flex-wrap gap-2">
         <GestureForm
           title={m.audit_plan()}
           ready={audit.plannedOn !== ''}

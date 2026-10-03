@@ -1,13 +1,10 @@
-import { Button, EmptyState, PageSection, PageHeader, Panel, Tag } from '@kete/design';
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
-import { fetchPeople } from '@/lib/admin';
+import { EmptyState, PageHeader, PageSection, Panel, Tag } from '@kete/design';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { opens } from '@/lib/me';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
-import { CampaignForm, QuestionnaireEditor } from '@/lib/survey-editor';
 import { campaignStatusLabel } from '@/lib/survey-results';
-import { fetchSurveys, type Questionnaire } from '@/lib/surveys';
+import { fetchSurveys } from '@/lib/surveys';
 import * as m from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/enquetes')({
@@ -16,10 +13,7 @@ export const Route = createFileRoute('/enquetes')({
     if (!opens(context.me, 'surveys', ['surveys:manage'])) throw redirect({ to: '/' });
     return context;
   },
-  loader: async () => {
-    const [surveys, chart] = await Promise.all([fetchSurveys(), fetchPeople()]);
-    return { ...surveys, chart };
-  },
+  loader: () => fetchSurveys(),
   component: SurveysPage,
 });
 
@@ -29,13 +23,31 @@ export const Route = createFileRoute('/enquetes')({
  */
 function SurveysPage() {
   const { me } = Route.useRouteContext();
-  const { questionnaires, campaigns, chart } = Route.useLoaderData();
-  const navigate = useNavigate();
-  const [editing, setEditing] = useState<Questionnaire | 'new' | null>(null);
-  const [preparing, setPreparing] = useState(false);
+  const { questionnaires, campaigns } = Route.useLoaderData();
   return (
     <AppShell me={me} current="surveys">
-      <PageHeader title={m.nav_surveys()} description={m.surveys_explain()} />
+      <PageHeader
+        title={m.nav_surveys()}
+        description={m.surveys_explain()}
+        actions={
+          <>
+            <a
+              href="/enquetes/questionnaires/nouveau"
+              className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
+            >
+              {m.questionnaire_new()}
+            </a>
+            {questionnaires.length > 0 && (
+              <a
+                href="/enquetes/campagnes/nouvelle"
+                className="inline-flex h-(--control-height) items-center rounded-control bg-action px-(--control-padding) font-semibold text-on-action hover:bg-action-strong"
+              >
+                {m.campaign_new()}
+              </a>
+            )}
+          </>
+        }
+      />
       <PageSection first title={m.surveys_campaigns()}>
         {campaigns.length === 0 ? (
           <EmptyState title={m.surveys_no_campaign()} />
@@ -69,22 +81,6 @@ function SurveysPage() {
             ))}
           </ul>
         )}
-        <div className="mt-4">
-          {preparing ? (
-            <CampaignForm
-              questionnaires={questionnaires}
-              chart={chart}
-              onDone={(campaignId) => {
-                setPreparing(false);
-                void navigate({ to: '/enquetes/$campaignId', params: { campaignId } });
-              }}
-            />
-          ) : (
-            <Button disabled={questionnaires.length === 0} onClick={() => setPreparing(true)}>
-              {m.campaign_new()}
-            </Button>
-          )}
-        </div>
       </PageSection>
       <PageSection title={m.surveys_questionnaires()}>
         <div className="grid gap-3">
@@ -108,27 +104,17 @@ function SurveysPage() {
                   {q.used ? (
                     <Tag tone="neutral">{m.questionnaire_used()}</Tag>
                   ) : (
-                    <Button variant="secondary" onClick={() => setEditing(q)}>
+                    <a
+                      href={`/enquetes/questionnaires/${q.questionnaireId}`}
+                      className="text-link underline"
+                    >
                       {m.questionnaire_edit()}
-                    </Button>
+                    </a>
                   )}
                 </span>
               </div>
             </Panel>
           ))}
-          {editing ? (
-            <QuestionnaireEditor
-              questionnaire={editing === 'new' ? null : editing}
-              chart={chart}
-              onDone={() => setEditing(null)}
-            />
-          ) : (
-            <div>
-              <Button variant="secondary" onClick={() => setEditing('new')}>
-                {m.questionnaire_new()}
-              </Button>
-            </div>
-          )}
         </div>
       </PageSection>
     </AppShell>

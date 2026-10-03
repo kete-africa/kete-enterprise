@@ -130,7 +130,7 @@ export function ManageRights({ screen }: { screen: RightsScreen }) {
         )}
       </Panel>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="flex flex-wrap gap-2">
         <GestureForm
           title={m.rights_new_role()}
           ready={role.name.trim() !== ''}
