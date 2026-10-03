@@ -64,7 +64,7 @@ function AgentCard({ agent, unitName }: { agent: AgentView; unitName: Map<string
               ? m.agent_scope({ unit: unitName.get(agent.scopeUnitId) ?? '…' })
               : m.agent_scope_all(),
             agent.permissions.length > 0
-              ? agent.permissions.map(permissionLabel).join(', ')
+              ? agent.permissions.map((p) => permissionLabel(p)).join(', ')
               : m.agent_no_permission(),
             m.agent_every({ minutes: String(agent.wakeEveryMinutes) }),
             agent.lastRunAt

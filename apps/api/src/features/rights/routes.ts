@@ -1,4 +1,5 @@
 import type { CommandDefinition } from '@kete/commands';
+import type { SqlExecutor } from '@kete/tenancy';
 import { Hono, type Context } from 'hono';
 import type { z } from 'zod';
 import { transaction } from '../../platform/db.js';
@@ -17,12 +18,18 @@ import { covers, reach } from './rights.js';
 type Ctx = Context<{ Variables: IdentityVariables }>;
 const today = () => new Date().toISOString().slice(0, 10);
 
+/** The permissions the organization's apps declare, by app (spec 022). */
+export type AppCatalog = (db: SqlExecutor) => Promise<{ permissions: { key: string }[] }[]>;
+
 /**
  * The rights' routes, under /v1/rights (spec 003). `permissions` is the catalog the features
- * declare: a role allows only permissions that exist.
+ * declare, `apps` what the organization's apps declare in their cards (spec 022): a role allows
+ * only permissions that exist.
  */
-export function rightsRoutes(permissions: readonly string[]) {
+export function rightsRoutes(permissions: readonly string[], apps: AppCatalog = async () => []) {
   const known = new Set(permissions);
+  const appKeys = async (db: SqlExecutor) =>
+    (await apps(db)).flatMap((a) => a.permissions.map((p) => p.key));
 
   async function manageReach(c: Ctx) {
     const identity = c.get('identity');
@@ -44,10 +51,12 @@ export function rightsRoutes(permissions: readonly string[]) {
     }
   }
 
-  function checkPermissions(input: unknown): void {
+  async function checkPermissions(c: Ctx, input: unknown): Promise<void> {
     const list = (input as { permissions?: unknown })?.permissions;
     if (!Array.isArray(list)) return;
-    const unknown = list.filter((p) => typeof p === 'string' && !known.has(p));
+    const { organizationId } = c.get('identity');
+    const ofApps = new Set(await transaction(organizationId, appKeys));
+    const unknown = list.filter((p) => typeof p === 'string' && !known.has(p) && !ofApps.has(p));
     if (unknown.length > 0) {
       throw new GestureRefusal(
         422,
@@ -62,14 +71,20 @@ export function rightsRoutes(permissions: readonly string[]) {
 
   return (
     new Hono<{ Variables: IdentityVariables }>()
-      .get('/permissions', (c) => c.json({ permissions: [...known].sort() }))
+      .get('/permissions', async (c) => {
+        const { organizationId } = c.get('identity');
+        return c.json({
+          permissions: [...known].sort(),
+          apps: await transaction(organizationId, apps),
+        });
+      })
       // What the person may do, and where.
       .get('/me', async (c) => {
         const identity = c.get('identity');
         const asOf = c.req.query('asOf') ?? today();
         const reaches = await transaction(identity.organizationId, async (db) => {
           const result: { permission: string; everywhere: boolean; units: string[] }[] = [];
-          for (const permission of [...known].sort()) {
+          for (const permission of [...[...known].sort(), ...(await appKeys(db))]) {
             const scope = await reach(db, identity, permission, asOf);
             if (scope.everywhere || scope.units.size > 0) {
               result.push({ permission, everywhere: scope.everywhere, units: [...scope.units] });
@@ -91,13 +106,13 @@ export function rightsRoutes(permissions: readonly string[]) {
       .post('/roles', async (c) => {
         if (!(await manageReach(c)).everywhere) throw forbidden();
         const input = await bodyOf(c);
-        checkPermissions(input);
+        await checkPermissions(c, input);
         return run(c, createRole, input);
       })
       .post('/roles/:roleId/permissions', async (c) => {
         if (!(await manageReach(c)).everywhere) throw forbidden();
         const input = { ...((await bodyOf(c)) as object), roleId: c.req.param('roleId') };
-        checkPermissions(input);
+        await checkPermissions(c, input);
         return run(c, setRolePermissionsCommand, input);
       })
       // A grant on a unit needs « rights:manage » on that unit; elsewhere, everywhere.

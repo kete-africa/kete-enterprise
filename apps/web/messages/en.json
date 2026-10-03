@@ -858,5 +858,10 @@
   "criticality_high": "Work stops, or money is lost",
   "criticality_critical": "Safety, legal obligations or every customer",
   "error_factory_not_configured": "The factory is not configured.",
-  "error_factory_unreachable": "The factory does not answer: send again later."
+  "error_factory_unreachable": "The factory does not answer: send again later.",
+  "rights_permissions_enterprise": "Kete Enterprise",
+  "rights_permissions_of_app": "App « {app} »",
+  "rights_no_app_permissions": "No app in the registry declares its permissions yet.",
+  "rights_edit_role": "Edit « {role} »",
+  "rights_apps_explain": "An app's permissions come from its identity card. As soon as a role carries one, these rights apply in the app instead of its defaults."
 }

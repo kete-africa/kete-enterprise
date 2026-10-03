@@ -2,11 +2,30 @@ import { Button, Panel, Tag, TextField } from '@kete/design';
 import { useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import * as m from '@/paraglide/messages.js';
+import { getLocale } from '@/paraglide/runtime.js';
 import { GestureForm, optional, refusal, Select } from './forms';
-import { changeRights, type RightsScreen } from './rights';
+import { changeRights, type AppPermissions, type RightsScreen } from './rights';
 
-/** A permission, in the person's words. */
-export function permissionLabel(permission: string): string {
+/** Words of an app's card, in the person's language. */
+const inLocale = (words: { fr: string; en: string }) =>
+  getLocale() === 'en' ? words.en : words.fr;
+
+/**
+ * A permission, in the person's words: Kete Enterprise's from the catalog, an app's from its card
+ * (`prd_kete_helpdesk#tickets:manage` reads « Support · Gérer les files »).
+ */
+export function permissionLabel(permission: string, apps: AppPermissions[] = []): string {
+  if (permission.includes('#')) {
+    for (const app of apps) {
+      const declared = app.permissions.find((p) => p.key === permission);
+      if (declared) return `${app.appName} · ${inLocale(declared.label)}`;
+    }
+    return permission.slice(permission.indexOf('#') + 1);
+  }
+  return enterpriseLabel(permission);
+}
+
+function enterpriseLabel(permission: string): string {
   const labels: Record<string, () => string> = {
     'structure:read': m.permission_structure_read,
     'structure:write': m.permission_structure_write,
@@ -29,7 +48,7 @@ export function MyRights({ screen }: { screen: RightsScreen }) {
     <ul className="grid gap-2">
       {screen.reaches.map((reach) => (
         <li key={reach.permission} className="flex flex-wrap items-center gap-2">
-          <Tag tone="info">{permissionLabel(reach.permission)}</Tag>
+          <Tag tone="info">{permissionLabel(reach.permission, screen.apps)}</Tag>
           <span className="text-fg-muted">
             {reach.everywhere
               ? m.rights_everywhere()
@@ -80,8 +99,15 @@ export function ManageRights({ screen }: { screen: RightsScreen }) {
             <li key={r.roleId} className="flex flex-wrap items-center gap-2">
               <span className="font-semibold">{r.name}</span>
               {r.permissions.map((p) => (
-                <Tag key={p}>{permissionLabel(p)}</Tag>
+                <Tag key={p}>{permissionLabel(p, screen.apps)}</Tag>
               ))}
+              <EditRole
+                roleId={r.roleId}
+                name={r.name}
+                current={r.permissions}
+                enterprise={managed.permissions}
+                apps={screen.apps}
+              />
             </li>
           ))}
         </ul>
@@ -143,26 +169,12 @@ export function ManageRights({ screen }: { screen: RightsScreen }) {
             required
             onChange={(e) => setRole({ ...role, name: e.target.value })}
           />
-          <fieldset className="grid gap-2">
-            <legend className="mb-1 text-body-sm font-semibold">{m.rights_permissions()}</legend>
-            {managed.permissions.map((p) => (
-              <label key={p} className="flex items-center gap-2 text-body-sm">
-                <input
-                  type="checkbox"
-                  checked={role.permissions.includes(p)}
-                  onChange={(e) =>
-                    setRole({
-                      ...role,
-                      permissions: e.target.checked
-                        ? [...role.permissions, p]
-                        : role.permissions.filter((q) => q !== p),
-                    })
-                  }
-                />
-                {permissionLabel(p)}
-              </label>
-            ))}
-          </fieldset>
+          <PermissionPicker
+            enterprise={managed.permissions}
+            apps={screen.apps}
+            value={role.permissions}
+            onChange={(permissions) => setRole({ ...role, permissions })}
+          />
         </GestureForm>
 
         <GestureForm
@@ -245,5 +257,95 @@ export function ManageRights({ screen }: { screen: RightsScreen }) {
         </GestureForm>
       </div>
     </div>
+  );
+}
+
+/**
+ * The permissions a role may carry (spec 022): Kete Enterprise's, then each app's from its card,
+ * with what each allows.
+ */
+function PermissionPicker({
+  enterprise,
+  apps,
+  value,
+  onChange,
+}: {
+  enterprise: string[];
+  apps: AppPermissions[];
+  value: string[];
+  onChange: (permissions: string[]) => void;
+}) {
+  const toggle = (key: string, on: boolean) =>
+    onChange(on ? [...value, key] : value.filter((p) => p !== key));
+  const box = (key: string, label: string, hint?: string) => (
+    <label key={key} className="flex items-start gap-2 text-body-sm">
+      <input
+        type="checkbox"
+        className="mt-1"
+        checked={value.includes(key)}
+        onChange={(e) => toggle(key, e.target.checked)}
+      />
+      <span>
+        {label}
+        {hint && <span className="block text-fg-muted">{hint}</span>}
+      </span>
+    </label>
+  );
+  return (
+    <div className="grid gap-5">
+      <fieldset className="grid gap-2">
+        <legend className="mb-1 text-body-sm font-semibold">
+          {m.rights_permissions_enterprise()}
+        </legend>
+        {enterprise.map((p) => box(p, enterpriseLabel(p)))}
+      </fieldset>
+      {apps.map((app) => (
+        <fieldset key={app.product} className="grid gap-2">
+          <legend className="mb-1 text-body-sm font-semibold">
+            {m.rights_permissions_of_app({ app: app.appName })}
+          </legend>
+          {app.permissions.map((p) =>
+            box(p.key, inLocale(p.label), p.description ? inLocale(p.description) : undefined),
+          )}
+        </fieldset>
+      ))}
+      {apps.length === 0 && (
+        <p className="text-body-sm text-fg-muted">{m.rights_no_app_permissions()}</p>
+      )}
+    </div>
+  );
+}
+
+/** Changes what a role allows, in a dialog; whoever holds it gets the change at once. */
+function EditRole({
+  roleId,
+  name,
+  current,
+  enterprise,
+  apps,
+}: {
+  roleId: string;
+  name: string;
+  current: string[];
+  enterprise: string[];
+  apps: AppPermissions[];
+}) {
+  const [permissions, setPermissions] = useState(current);
+  return (
+    <GestureForm
+      title={m.rights_edit_role({ role: name })}
+      ready
+      send={(key) =>
+        changeRights({ data: { path: `/roles/${roleId}/permissions`, body: { permissions }, key } })
+      }
+      onDone={() => undefined}
+    >
+      <PermissionPicker
+        enterprise={enterprise}
+        apps={apps}
+        value={permissions}
+        onChange={setPermissions}
+      />
+    </GestureForm>
   );
 }

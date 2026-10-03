@@ -13,6 +13,7 @@ export {
   type CardReader,
 } from './infrastructure/identity-card.js';
 export {
+  listResources,
   registryCircuitsMigrationSql,
   registryMigrationSql,
 } from './infrastructure/registry.tables.js';

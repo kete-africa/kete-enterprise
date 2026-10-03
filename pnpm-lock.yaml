@@ -48,8 +48,8 @@ importers:
         specifier: npm:@kete-africa/auth@^0.2.0
         version: '@kete-africa/auth@0.2.0'
       '@kete/capabilities':
-        specifier: npm:@kete-africa/capabilities@^0.1.1
-        version: '@kete-africa/capabilities@0.1.1(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(supports-color@7.2.0)'
+        specifier: npm:@kete-africa/capabilities@^0.3.0
+        version: '@kete-africa/capabilities@0.3.0(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(supports-color@7.2.0)'
       '@kete/commands':
         specifier: npm:@kete-africa/commands@^0.2.0
         version: '@kete-africa/commands@0.2.0(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
@@ -66,8 +66,8 @@ importers:
         specifier: npm:@kete-africa/records@^0.1.1
         version: '@kete-africa/records@0.1.1'
       '@kete/sdk':
-        specifier: npm:@kete-africa/sdk@^0.3.0
-        version: '@kete-africa/sdk@0.3.0'
+        specifier: npm:@kete-africa/sdk@^0.5.0
+        version: '@kete-africa/sdk@0.5.0'
       '@kete/tenancy':
         specifier: npm:@kete-africa/tenancy@^0.1.1
         version: '@kete-africa/tenancy@0.1.1(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
@@ -677,6 +677,9 @@ packages:
   '@kete-africa/capabilities@0.1.1':
     resolution: {integrity: sha512-YY0IODs1lMd/Zoe2lMwJnKsuN5kU69BP2mc56leoPVNIR/pfgYs2YvoZTHTl6AvAEDMG27BQ4ntldTXsB8+nAg==, tarball: https://npm.pkg.github.com/download/@kete-africa/capabilities/0.1.1/399fce8c5a89a1bb418ed79a0bab743af716a0d6}
 
+  '@kete-africa/capabilities@0.3.0':
+    resolution: {integrity: sha512-oKuqZM5/k+cWpuNKJrWVbSZniNW3HEQE2ZkzHSMRbSf0pu9Q2oJga95C+BqgZz5JkFZsTb33gdKOVlHOSpGyHQ==, tarball: https://npm.pkg.github.com/download/@kete-africa/capabilities/0.3.0/0e0773f4b525f8f49afaa13290aebbf2cd2fb66d}
+
   '@kete-africa/commands@0.2.0':
     resolution: {integrity: sha512-/uLLszL5C8CXzXZk6v7+jyWMCB0yG+eJDZ9JdDKHtTyc8esvUt1CyOMUbA4AbJz9+9ZZIVskrbIjpabypv2P/w==, tarball: https://npm.pkg.github.com/download/@kete-africa/commands/0.2.0/f0c9b37636e81c356275698065a86ee90114e76a}
 
@@ -704,6 +707,9 @@ packages:
 
   '@kete-africa/sdk@0.3.0':
     resolution: {integrity: sha512-oA7uqcSAT7Ojg4/2jYPvn/tgCqdsQBQUHhxneKWz7sUDIKrTPsJwDvr/6idj4q80eTQuL9HKePW9WVHM/kU61Q==, tarball: https://npm.pkg.github.com/download/@kete-africa/sdk/0.3.0/edf5c753df3adce29d26d4bbc986bae69a95a321}
+
+  '@kete-africa/sdk@0.5.0':
+    resolution: {integrity: sha512-jh99w5c6uwAq9GXIhbRE7DVuDA/hKhipt0nLPasGKhavSzg+Gb6ryXuayO8MURk6+yetLZ5uM12xg+jqIRkSGA==, tarball: https://npm.pkg.github.com/download/@kete-africa/sdk/0.5.0/bb2fb597211b578f157649441f09e2fd709ca7f8}
 
   '@kete-africa/tenancy@0.1.1':
     resolution: {integrity: sha512-9CeMDHeoT5cvEbidExebE4ljN0GswsW7ZTpKRJjD7D4TiSdcGXrSCh/zv+TB1ZD5sbJ8tCAOYyTvCHWadFliyQ==, tarball: https://npm.pkg.github.com/download/@kete-africa/tenancy/0.1.1/880180dae326ad193f4c8f665e99e45e69272ff4}
@@ -4202,6 +4208,21 @@ snapshots:
       - pg-native
       - supports-color
 
+  '@kete-africa/capabilities@0.3.0(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(supports-color@7.2.0)':
+    dependencies:
+      '@kete/commands': '@kete-africa/commands@0.2.0(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+      '@kete/drafts': '@kete-africa/drafts@0.1.1(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+      '@kete/records': '@kete-africa/records@0.1.1'
+      '@kete/sdk': '@kete-africa/sdk@0.5.0'
+      '@kete/tenancy': '@kete-africa/tenancy@0.1.1(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+      '@modelcontextprotocol/sdk': 1.31.0(supports-color@7.2.0)(zod@4.6.5)
+      zod: 4.6.5
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - drizzle-orm
+      - pg-native
+      - supports-color
+
   '@kete-africa/commands@0.2.0(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))':
     dependencies:
       '@kete/sdk': '@kete-africa/sdk@0.3.0'
@@ -4253,6 +4274,14 @@ snapshots:
       - pg-native
 
   '@kete-africa/sdk@0.3.0':
+    dependencies:
+      ajv: 8.20.0
+      ajv-formats: 3.0.1(ajv@8.20.0)
+      pg: 8.23.1
+    transitivePeerDependencies:
+      - pg-native
+
+  '@kete-africa/sdk@0.5.0':
     dependencies:
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)

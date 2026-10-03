@@ -49,6 +49,15 @@ export interface IdentityCard {
     ai: { used: boolean; purpose?: string };
     criticality: 'low' | 'medium' | 'high' | 'critical';
   };
+  /** The permissions the app checks, with their words (kete-core spec 049): granted here. */
+  permissions?: {
+    name: string;
+    label: { fr: string; en: string };
+    description?: { fr: string; en: string };
+    roles: ('owner' | 'admin' | 'member')[];
+  }[];
+  /** The app's client id at the Compte Kete (kete-core spec 049). */
+  client?: string;
 }
 
 export interface Resource {
