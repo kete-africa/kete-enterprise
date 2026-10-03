@@ -117,8 +117,9 @@ flowchart LR
 
 ### Act 5 — Performance T3 2026, the variable part (10 minutes)
 
-- View as **Afi Mawufemo Agbo** (management control). `/performance/<T3 2026>`: open the quarter
-  (it is a draft after the seed): the reviews of every holder appear, frozen lines of their job
+- View as **Mawuena Kpodar** (HR, `performance:manage`): `/performance/<T3 2026>`, open the
+  quarter (it is a draft after the seed). Then view as **Afi Mawufemo Agbo** (management
+  control, `performance:measure`): the reviews of every holder appear, frozen lines of their job
   profile (KYA-KPI-01), the scale green 1 / orange 0.6 / red 0, progressivity.
 - `/assistant`: « Quels relevés des apps puis-je reprendre ? » — the assistant lists the reading
   Support sent for Abla Nyuiadzi's line « Respect du délai d'intervention contractuel (SLA) ».
