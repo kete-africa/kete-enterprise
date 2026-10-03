@@ -858,5 +858,10 @@
   "criticality_high": "Le travail s'arrête, ou on perd de l'argent",
   "criticality_critical": "Sécurité, obligations légales ou tous les clients",
   "error_factory_not_configured": "La fabrique n'est pas configurée.",
-  "error_factory_unreachable": "La fabrique ne répond pas : renvoyez plus tard."
+  "error_factory_unreachable": "La fabrique ne répond pas : renvoyez plus tard.",
+  "rights_permissions_enterprise": "Kete Enterprise",
+  "rights_permissions_of_app": "App « {app} »",
+  "rights_no_app_permissions": "Aucune app inscrite au registre ne déclare encore ses permissions.",
+  "rights_edit_role": "Modifier « {role} »",
+  "rights_apps_explain": "Les permissions d'une app viennent de sa carte d'identité. Dès qu'un rôle en porte une, ce sont ces droits qui s'appliquent dans l'app, et non plus ses droits par défaut."
 }

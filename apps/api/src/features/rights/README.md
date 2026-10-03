@@ -23,6 +23,9 @@ flowchart LR
 - **Without any grant**, a person sees the units where she holds a position.
 - **Agents** never hold more than the person they act for (principle 4); their own narrowing comes
   with spec 007.
+- **The apps' permissions** (spec 022): each app declares them in its card; a role carries them as
+  `<product>#<permission>` (`prd_kete_helpdesk#tickets:manage`), granted like the others. The app
+  reads a person's grants at `GET /v1/apps/:product/grants` (feature `apps`).
 
 ## One evaluation for every feature
 

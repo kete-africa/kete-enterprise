@@ -46,6 +46,7 @@ import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
 import { appTasksRoutes, factsFor } from './features/workspace/index.js';
 import { appRequestRoutes, factoryReportRoutes } from './features/app-requests/index.js';
+import { appPermissions, appRoutes } from './features/apps/index.js';
 
 /** Every permission a role may allow: each feature declares its own (spec 003). */
 export const permissionCatalog = [
@@ -165,7 +166,7 @@ export function createApi(): Hono {
   v1.get('/me', async (c) => c.json(await me(c)));
   v1.route('/organization', organizationRoutes);
   v1.route('/structure', structureRoutes);
-  v1.route('/rights', rightsRoutes(permissionCatalog));
+  v1.route('/rights', rightsRoutes(permissionCatalog, appPermissions));
   v1.route('/registry', registryRoutes);
   v1.route('/decisions', decisionsRoutes);
   v1.route('/gateway', gatewayRoutes);
@@ -181,6 +182,8 @@ export function createApi(): Hono {
   v1.route('/meetings', meetingsRoutes);
   v1.route('/actions', actionsRoutes);
   v1.route('/assistant', assistantRoutes);
+  // What the team's apps ask with the person's token: her grants for one app (spec 022).
+  v1.route('/apps', appRoutes);
   // Tasks the team's apps put in a person's To do, with her own token (spec 018).
   v1.route('/workspace/tasks', appTasksRoutes);
   // A person asks for an app, IT decides, the factory creates it (spec 021).

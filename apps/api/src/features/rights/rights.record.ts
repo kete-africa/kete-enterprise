@@ -3,8 +3,13 @@ import { z } from 'zod';
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'A date is written YYYY-MM-DD.');
 const id = (prefix: string) => z.string().regex(new RegExp(`^${prefix}_[0-9a-f-]{8,64}$`));
 
-/** A permission is a feature and a verb: `structure:read`, `registry:review`. */
-export const permission = z.string().regex(/^[a-z]+:[a-z_]+$/);
+/**
+ * A permission is a feature and a verb: `structure:read`, `registry:review`; an app's is prefixed by
+ * its product: `prd_kete_helpdesk#tickets:manage` (spec 022).
+ */
+export const permission = z
+  .string()
+  .regex(/^(prd_[a-z0-9_]{2,40}#)?[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$/);
 
 export const createRoleInput = z.object({
   name: z.string().trim().min(1).max(120),

@@ -12,7 +12,10 @@ export const Route = createFileRoute('/administration/droits')({
   component: RightsPage,
 });
 
-/** What the person may do and where; for administrators, roles and their grants (spec 003). */
+/**
+ * What the person may do and where; for administrators, roles and their grants (spec 003) — Kete
+ * Enterprise's permissions and those the apps declare in their cards (spec 022).
+ */
 function RightsPage() {
   const { me } = Route.useRouteContext();
   const screen = Route.useLoaderData();
@@ -22,6 +25,7 @@ function RightsPage() {
         breadcrumbLabel={m.common_breadcrumb()}
         breadcrumbs={[{ label: m.nav_administration(), href: '/administration' }]}
         title={m.rights_title()}
+        description={m.rights_apps_explain()}
       />
       <PageSection first title={m.rights_mine()}>
         <MyRights screen={screen} />
