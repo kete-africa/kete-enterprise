@@ -48,6 +48,7 @@ import { health, manifest } from './platform/service.js';
 import { appTasksRoutes, factsFor } from './features/workspace/index.js';
 import { appRequestRoutes, factoryReportRoutes } from './features/app-requests/index.js';
 import { appEventRoutes, appPermissions, appRoutes, tellAppsWith } from './features/apps/index.js';
+import { directoryRoutes } from './features/directory/index.js';
 
 /** Every permission a role may allow: each feature declares its own (spec 003). */
 export const permissionCatalog = [
@@ -171,6 +172,8 @@ export function createApi(): Hono {
   v1.route('/organization', organizationRoutes);
   v1.route('/structure', structureRoutes);
   v1.route('/rights', rightsRoutes(permissionCatalog, appPermissions));
+  // The organization as the team's apps read it, with the person's token (spec 023).
+  v1.route('/directory', directoryRoutes);
   v1.route('/registry', registryRoutes);
   v1.route('/decisions', decisionsRoutes);
   v1.route('/gateway', gatewayRoutes);
