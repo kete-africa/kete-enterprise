@@ -1,5 +1,6 @@
 import { createJobs, defineJob, type Jobs } from '@kete/jobs';
 import { dueAgents, wakeDueAgents } from './features/agents/index.js';
+import { runDueSchedules } from './features/assistant/index.js';
 import { sendQueuedMail } from './features/mail/index.js';
 import { getPool } from './platform/db.js';
 import { env } from './platform/env.js';
@@ -21,6 +22,16 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const reports = await wakeDueAgents(() => dueAgents(getPool()));
           if (reports.length > 0) console.log(`[worker] ${reports.length} agent(s) woken`);
+        },
+      }),
+      // People's scheduled tasks (spec 029): the morning briefings, the questions at a set time.
+      defineJob({
+        name: 'run-schedules',
+        schedule: '*/5 * * * *',
+        retryLimit: 0,
+        async handle() {
+          const ran = await runDueSchedules();
+          if (ran > 0) console.log(`[worker] ${ran} scheduled task(s) run`);
         },
       }),
       // E-mails queued by gestures leave every minute; in capture mode none is ever queued.

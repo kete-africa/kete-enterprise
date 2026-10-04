@@ -14,6 +14,7 @@ import { draftsMigrationSql } from '@kete/drafts';
 import {
   assistantMigrationSql,
   chatMigrationSql,
+  schedulesMigrationSql,
   conversationsMigrationSql,
 } from '../src/features/assistant/index.js';
 import { mailMigrationSql } from '../src/features/mail/index.js';
@@ -123,4 +124,6 @@ export const migrations: Migration[] = [
   { name: '0022_assistant_chat', sql: (context) => chatMigrationSql(context) },
   // Each person's own AI subscription, on her own machine (spec 026b).
   { name: '0023_ai_subscriptions', sql: (context) => aiSubscriptionsMigrationSql(context) },
+  // Each person's scheduled tasks: her morning briefing, her questions at a set time (spec 029).
+  { name: '0024_assistant_schedules', sql: (context) => schedulesMigrationSql(context) },
 ];

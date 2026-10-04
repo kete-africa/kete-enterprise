@@ -102,12 +102,20 @@ function AssistantPage() {
         title={m.nav_assistant()}
         description={m.assistant_explain()}
         actions={
-          <a
-            href="/assistant/connexion"
-            className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
-          >
-            {m.assistant_connection_link()}
-          </a>
+          <>
+            <a
+              href="/assistant/taches"
+              className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
+            >
+              {m.schedules_link()}
+            </a>
+            <a
+              href="/assistant/connexion"
+              className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
+            >
+              {m.assistant_connection_link()}
+            </a>
+          </>
         }
       />
       {!assistant.available ? (

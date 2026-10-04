@@ -67,6 +67,37 @@ export async function openTasksOf(db: SqlExecutor, userId: string): Promise<AppT
   }));
 }
 
+/**
+ * Puts a task in a person's « To do », or updates it: one per source and key. Apps send theirs with
+ * the person's token; her assistant puts the answers of her scheduled tasks (spec 029).
+ */
+export async function putTask(
+  db: SqlExecutor,
+  organizationId: string,
+  userId: string,
+  task: { source: string; key: string; title: string; href: string; dueAt?: string | undefined },
+): Promise<string | undefined> {
+  const { rows } = await db.query<{ task_id: string }>(
+    `insert into app_tasks (task_id, organization_id, user_id, source, key, title, href, due_at)
+     values ($1, $2, $3, $4, $5, $6, $7, $8)
+     on conflict (organization_id, user_id, source, key) do update
+       set title = excluded.title, href = excluded.href, due_at = excluded.due_at,
+           status = 'open', updated_at = now()
+     returning task_id`,
+    [
+      newId('tsk'),
+      organizationId,
+      userId,
+      task.source,
+      task.key,
+      task.title,
+      task.href,
+      task.dueAt ?? null,
+    ],
+  );
+  return rows[0]?.task_id;
+}
+
 const taskInput = z.object({
   source: z.string().trim().min(1).max(80),
   key: z.string().trim().min(1).max(120),
@@ -91,27 +122,9 @@ export const appTasksRoutes = new Hono<{ Variables: IdentityVariables }>()
     if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'A task is not valid.');
     const { organizationId, userId } = c.get('identity');
     const task = parsed.data;
-    const taskId = await transaction(organizationId, async (db) => {
-      const { rows } = await db.query<{ task_id: string }>(
-        `insert into app_tasks (task_id, organization_id, user_id, source, key, title, href, due_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8)
-         on conflict (organization_id, user_id, source, key) do update
-           set title = excluded.title, href = excluded.href, due_at = excluded.due_at,
-               status = 'open', updated_at = now()
-         returning task_id`,
-        [
-          newId('tsk'),
-          organizationId,
-          userId,
-          task.source,
-          task.key,
-          task.title,
-          task.href,
-          task.dueAt ?? null,
-        ],
-      );
-      return rows[0]?.task_id;
-    });
+    const taskId = await transaction(organizationId, (db) =>
+      putTask(db, organizationId, userId, task),
+    );
     return c.json({ taskId }, 201);
   })
   .post('/close', async (c) => {

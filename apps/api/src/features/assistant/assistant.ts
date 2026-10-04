@@ -49,6 +49,7 @@ import {
   canvasTool,
   commandInstructions,
   readDirectives,
+  scheduleTool,
   sourcesOf,
   type Source,
 } from './chat-tools.js';
@@ -104,7 +105,7 @@ export function useModel(model: Model | undefined): void {
  * The model answering a person, and who pays (spec 026): her own connection when the
  * organization allows it and she brought one, else the organization's model.
  */
-async function modelFor(identity: {
+export async function modelFor(identity: {
   organizationId: string;
   userId: string;
 }): Promise<{ model: Model; personal: boolean } | null> {
@@ -175,16 +176,16 @@ function subscriptionPrompt(
 }
 
 /** Her own tokens are journaled, never counted against the organization's budget (spec 026). */
-function meteringStore(personal: boolean) {
+export function meteringStore(personal: boolean) {
   const store = budgets();
   return personal ? { ...store, check: async () => undefined } : store;
 }
 
 /** What the usage journal says the call was for, and on whose tokens. */
-const purposeOf = (purpose: string, personal: boolean) =>
+export const purposeOf = (purpose: string, personal: boolean) =>
   personal ? `${purpose}:personal` : purpose;
 
-const system = (organization: string, name: string) =>
+export const system = (organization: string, name: string) =>
   [
     `Tu es l'assistant de ${name} dans Kete Enterprise, chez ${organization}.`,
     'Tu agis pour elle, avec ses droits et jamais plus : tes outils ne te montrent que ce qu’elle peut voir.',
@@ -195,7 +196,7 @@ const system = (organization: string, name: string) =>
     'Réponds en français, brièvement, en Markdown (listes courtes, tableaux quand c’est utile).',
   ].join('\n');
 
-async function organizationName(db: SqlExecutor): Promise<string> {
+export async function organizationName(db: SqlExecutor): Promise<string> {
   const { rows } = await db.query<{ name: string }>(
     `select name from units where parent_id is null order by created_at limit 1`,
   );
@@ -241,7 +242,7 @@ export function briefingByRules(facts: Facts): string {
   return lines.join('\n');
 }
 
-async function writeBriefing(identity: IdentityVariables['identity'], force: boolean) {
+export async function writeBriefing(identity: IdentityVariables['identity'], force: boolean) {
   const today = new Date().toISOString().slice(0, 10);
   const { organizationId } = identity;
   const { person, facts, existing, organization } = await transaction(
@@ -322,8 +323,8 @@ async function writeBriefing(identity: IdentityVariables['identity'], force: boo
 
 /** The assistant's routes, under /v1/assistant (spec 014). */
 export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
-  // Whether a model answers this person: her own connection, or the organization's (spec 026).
-  // Who may pay for her answers, the first by default (spec 026b).
+  // Whether a model answers this person: her own connection, or the organization's (spec 026); and
+  // who may pay for her answers, the first by default (spec 026b).
   .get('/', async (c) => {
     const identity = c.get('identity');
     const { choice, payers } = await transaction(identity.organizationId, async (db) => ({
@@ -649,7 +650,12 @@ async function streamChat(c: Ctx): Promise<Response> {
               model: answerer.model,
               system: system(organization, identity.name),
               messages: [...history, { role: 'user', content }],
-              tools: [...(await toolsForPerson(identity)), canvasTool, ...appTools],
+              tools: [
+                ...(await toolsForPerson(identity)),
+                canvasTool,
+                ...(c.get('viewedBy') ? [] : [scheduleTool(identity)]),
+                ...appTools,
+              ],
               maxSteps: 6,
               abortSignal: signal,
               metering: {

@@ -2,3 +2,6 @@
 export { assistantMigrationSql, assistantRoutes, briefingByRules, useModel } from './assistant.js';
 export { chatMigrationSql } from './attachments.js';
 export { conversationsMigrationSql } from './conversations.js';
+export { runDueSchedules, scheduleRoutes } from './schedule-runs.js';
+export { schedulesMigrationSql } from './schedules.js';
+export { nextRun } from './when.js';

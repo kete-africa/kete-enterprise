@@ -25,6 +25,7 @@ import * as m from '@/paraglide/messages.js';
 function toolLabel(name: string): string {
   const labels: Record<string, () => string> = {
     my_day: m.tool_my_day,
+    schedule_task: m.tool_schedule_task,
     structure_chart: m.tool_structure_chart,
     registry_list: m.tool_registry_list,
     registry_register: m.tool_registry_register,

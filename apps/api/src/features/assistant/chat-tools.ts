@@ -1,5 +1,7 @@
 import type { CapabilityTool } from '@kete/capabilities';
 import { z } from 'zod';
+import { transaction } from '../../platform/db.js';
+import { createSchedule, scheduleInput, ScheduleLimitError } from './schedules.js';
 
 // What the chat of the current era adds around the model (spec 027): the mentions and commands a
 // person picks in the composer (assistant-ui writes them as directives in her message), the side
@@ -67,6 +69,77 @@ export const canvasTool: CapabilityTool = {
     return { status: 'done', output: { title: value.title, content: value.content } };
   },
 };
+
+const scheduleToolInput = z.object({
+  title: z
+    .string()
+    .min(1)
+    .max(120)
+    .describe('Un titre court, par exemple « Actions en retard de mon équipe ».'),
+  kind: z
+    .enum(['briefing', 'prompt'])
+    .describe('briefing : son briefing du matin ; prompt : une question à laquelle répondre.'),
+  prompt: z
+    .string()
+    .min(1)
+    .max(2000)
+    .optional()
+    .describe('La question, pour une tâche « prompt ».'),
+  cadence: z.enum(['daily', 'weekdays', 'weekly']),
+  weekday: z
+    .number()
+    .int()
+    .min(1)
+    .max(7)
+    .optional()
+    .describe('1 = lundi … 7 = dimanche, si weekly.'),
+  time: z
+    .string()
+    .regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/)
+    .describe('HH:MM, son heure locale.'),
+  byEmail: z.boolean().optional().describe('Aussi par e-mail, si elle le demande.'),
+});
+
+/**
+ * Schedules a task of hers from the chat (spec 029): « every Monday at 8, the late actions of my
+ * team ». It sets only her own tasks, which she sees, pauses or removes in her assistant (level 2).
+ */
+export function scheduleTool(person: {
+  organizationId: string;
+  userId: string;
+  name: string;
+  email: string;
+}): CapabilityTool {
+  return {
+    name: 'schedule_task',
+    description:
+      'Planifie une tâche pour elle : son briefing du matin, ou une question à laquelle tu répondras à heure fixe (chaque jour, en semaine ou un jour de la semaine). La réponse arrivera dans son « À faire ».',
+    input: scheduleToolInput,
+    jsonSchema: z.toJSONSchema(scheduleToolInput) as Record<string, unknown>,
+    autonomy: 2,
+    async execute(input) {
+      const parsed = scheduleInput.safeParse(input);
+      if (!parsed.success) return { status: 'refused', reason: 'invalid_input' };
+      try {
+        const schedule = await transaction(person.organizationId, (db) =>
+          createSchedule(db, person, parsed.data),
+        );
+        return {
+          status: 'done',
+          output: {
+            title: schedule.title,
+            nextRunAt: schedule.nextRunAt,
+            href: '/assistant/taches',
+          },
+        };
+      } catch (error) {
+        if (error instanceof ScheduleLimitError)
+          return { status: 'refused', reason: 'not_allowed' };
+        throw error;
+      }
+    },
+  };
+}
 
 export interface Source {
   label: string;

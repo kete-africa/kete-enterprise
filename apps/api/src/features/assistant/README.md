@@ -56,3 +56,20 @@ flowchart LR
   P -->|subscription| S[her machine: the agent of her subscription, read-only]
   A & S --> T[the thread, kept]
 ```
+
+## Scheduled tasks (spec 029)
+
+Her morning briefing, or a question her assistant answers at a set time, with her rights — asked in
+the chat (`schedule_task`) or on « Mes tâches planifiées ». The worker's round takes each task due
+once (its next time set first), and the answer lands in « À faire », and by e-mail when she asked.
+See [spec 029](../../../../../specs/029-memory-and-schedules/spec.md).
+
+```mermaid
+flowchart LR
+  C[chat: schedule_task] & P[Mes tâches planifiées] --> S[(assistant_schedules)]
+  W[worker · run-schedules · every 5 min] --> D[assistant_schedules_due] --> T[take: next time set first]
+  T --> B{kind}
+  B -->|briefing| BR[(briefings) · home page]
+  B -->|question| Q[asPerson · her tools] --> CV[a conversation] --> TD[(app_tasks) · À faire]
+  BR & TD --> M[(mail queue) if by e-mail]
+```
