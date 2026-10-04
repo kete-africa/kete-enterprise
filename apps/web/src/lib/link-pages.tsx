@@ -8,6 +8,8 @@ import { fetchLinkReview, linkReviewGesture, type Quarter, type Review } from '.
 import { Factors, GridTable, PersonSign, RecordView, reviewStatusLabel } from './review-view';
 import { SurveyAnswer } from './survey-answer';
 import { fetchLinkSurvey, type AnswerScreen } from './surveys';
+import { fetchLinkForm, submitLinkAnswers, type FormField } from './collections';
+import { FormFill } from './form-fields';
 
 /**
  * What each purpose of a personal link shows. Each business tool adds its page here: the link
@@ -16,12 +18,20 @@ import { fetchLinkSurvey, type AnswerScreen } from './surveys';
 export type LinkPageData =
   | { purpose: 'surveys.answer'; survey: AnswerScreen }
   | { purpose: 'performance.review'; review: Review; quarter: Quarter }
+  | {
+      purpose: 'forms.answer';
+      form: { name: string; description: string | null; fields: FormField[] };
+    }
   | { purpose: 'unknown'; name: string };
 
 export async function loadLinkPage(link: LinkInfo, token: string): Promise<LinkPageData | null> {
   if (link.purpose === 'surveys.answer') {
     const survey = await fetchLinkSurvey({ data: { token } });
     return survey ? { purpose: 'surveys.answer', survey } : null;
+  }
+  if (link.purpose === 'forms.answer') {
+    const form = await fetchLinkForm({ data: { token } });
+    return form ? { purpose: 'forms.answer', form } : null;
   }
   if (link.purpose === 'performance.review') {
     const found = await fetchLinkReview({ data: { token } });
@@ -98,12 +108,57 @@ export function LinkPage({ page, token }: { page: LinkPageData; token: string })
   if (page.purpose === 'surveys.answer') {
     return <SurveyAnswer screen={page.survey} via={`link:${token}`} />;
   }
+  if (page.purpose === 'forms.answer') {
+    return <FormByLink form={page.form} token={token} />;
+  }
   if (page.purpose === 'performance.review') {
     return <ReviewByLink review={page.review} quarter={page.quarter} token={token} />;
   }
   return (
     <Panel title={m.link_hello({ name: page.name })}>
       <p>{m.link_unknown_purpose()}</p>
+    </Panel>
+  );
+}
+
+/** A form opened by its link (spec 032): filled in without an account, then thanked. */
+function FormByLink({
+  form,
+  token,
+}: {
+  form: { name: string; description: string | null; fields: FormField[] };
+  token: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Panel title={form.name}>
+      {form.description && <p className="mb-4 text-fg-muted">{form.description}</p>}
+      {sent ? (
+        <p role="status" className="font-semibold">
+          {m.forms_sent()}
+        </p>
+      ) : (
+        <FormFill
+          fields={form.fields}
+          busy={busy}
+          withName
+          onSend={(values, name) => {
+            setBusy(true);
+            setError(null);
+            void submitLinkAnswers({ data: { token, name, values } })
+              .then((answer) => (answer.ok ? setSent(true) : setError(refusal(answer.error))))
+              .catch(() => setError(m.error_generic()))
+              .finally(() => setBusy(false));
+          }}
+        />
+      )}
+      {error && (
+        <p role="alert" className="mt-2 text-body-sm text-state-error-fg">
+          {error}
+        </p>
+      )}
     </Panel>
   );
 }

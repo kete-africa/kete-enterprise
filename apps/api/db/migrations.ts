@@ -6,6 +6,7 @@ import { aiCostMigrationSql } from '@kete/ai';
 import { skillsMigrationSql } from '@kete/skills';
 import { datasetsMigrationSql } from '../src/features/datasets/index.js';
 import { documentsMigrationSql } from '../src/features/documents/index.js';
+import { formsMigrationSql } from '../src/features/forms/index.js';
 import { dossiersMigrationSql } from '../src/features/dossiers/index.js';
 import { knowledgeTablesSql } from '../src/features/knowledge/index.js';
 import { notificationsTablesSql } from '../src/features/notifications/index.js';
@@ -158,4 +159,6 @@ export const migrations: Migration[] = [
   { name: '0033_meeting_records', sql: (context) => meetingRecordsMigrationSql(context) },
   // A team's tables, kept as rows (spec 031).
   { name: '0034_team_datasets', sql: (context) => datasetsMigrationSql(context) },
+  // Forms: collections answered by link or in the space, through a circuit (spec 032).
+  { name: '0035_forms', sql: (context) => formsMigrationSql(context) },
 ];
