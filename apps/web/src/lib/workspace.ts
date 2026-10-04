@@ -99,6 +99,17 @@ export interface StoredMessage {
   content: string;
   tools: { name: string; state: 'done' | 'refused' }[];
   drafts: DraftReview[];
+  /** The files sent with a message (spec 027). */
+  attachments: {
+    attachmentId: string;
+    name: string;
+    kind: 'text' | 'image';
+    pages: number | null;
+  }[];
+  /** Where an answer comes from. */
+  sources: { label: string; href: string }[];
+  /** The document the assistant wrote in the canvas. */
+  canvas: { title: string; content: string } | null;
   createdAt: string;
 }
 

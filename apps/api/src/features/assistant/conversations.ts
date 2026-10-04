@@ -50,12 +50,25 @@ export interface ToolUse {
   state: 'done' | 'refused';
 }
 
+/** A file sent with a message, as the thread shows it (spec 027). */
+export interface MessageAttachment {
+  attachmentId: string;
+  name: string;
+  kind: 'text' | 'image';
+  pages: number | null;
+}
+
 export interface StoredMessage {
   messageId: string;
   role: 'user' | 'assistant';
   content: string;
   tools: ToolUse[];
   drafts: unknown[];
+  attachments: MessageAttachment[];
+  /** Where the answer comes from: the records and documents its tools returned. */
+  sources: { label: string; href: string }[];
+  /** The document the assistant wrote in the canvas, if any. */
+  canvas: { title: string; content: string } | null;
   createdAt: string;
 }
 
@@ -86,9 +99,13 @@ export async function readConversation(db: SqlExecutor, userId: string, conversa
     content: string;
     tools: ToolUse[];
     drafts: unknown[];
+    attachments: MessageAttachment[];
+    sources: StoredMessage['sources'];
+    canvas: StoredMessage['canvas'];
     created_at: Date;
   }>(
-    `select message_id, role, content, tools, drafts, created_at from assistant_messages
+    `select message_id, role, content, tools, drafts, attachments, sources, canvas, created_at
+       from assistant_messages
       where conversation_id = $1 order by created_at, message_id`,
     [conversationId],
   );
@@ -101,6 +118,9 @@ export async function readConversation(db: SqlExecutor, userId: string, conversa
       content: m.content,
       tools: m.tools,
       drafts: m.drafts,
+      attachments: m.attachments,
+      sources: m.sources,
+      canvas: m.canvas,
       createdAt: m.created_at.toISOString(),
     })),
   };
@@ -127,11 +147,20 @@ export async function appendMessage(
   db: SqlExecutor,
   organizationId: string,
   conversationId: string,
-  message: { role: 'user' | 'assistant'; content: string; tools?: ToolUse[]; drafts?: unknown[] },
+  message: {
+    role: 'user' | 'assistant';
+    content: string;
+    tools?: ToolUse[];
+    drafts?: unknown[];
+    attachments?: MessageAttachment[];
+    sources?: StoredMessage['sources'];
+    canvas?: StoredMessage['canvas'];
+  },
 ): Promise<void> {
   await db.query(
     `insert into assistant_messages (message_id, organization_id, conversation_id, role, content,
-       tools, drafts) values ($1, $2, $3, $4, $5, $6, $7)`,
+       tools, drafts, attachments, sources, canvas)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [
       newId('msg'),
       organizationId,
@@ -140,6 +169,9 @@ export async function appendMessage(
       message.content,
       JSON.stringify(message.tools ?? []),
       JSON.stringify(message.drafts ?? []),
+      JSON.stringify(message.attachments ?? []),
+      JSON.stringify(message.sources ?? []),
+      message.canvas ? JSON.stringify(message.canvas) : null,
     ],
   );
   await db.query(
