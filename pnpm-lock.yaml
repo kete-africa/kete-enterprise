@@ -60,8 +60,8 @@ importers:
         specifier: npm:@kete-africa/jobs@^0.1.0
         version: '@kete-africa/jobs@0.1.0(@kete-africa/notify@0.1.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0))'
       '@kete/knowledge':
-        specifier: npm:@kete-africa/knowledge@^0.1.0
-        version: '@kete-africa/knowledge@0.1.0(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+        specifier: npm:@kete-africa/knowledge@^0.1.1
+        version: '@kete-africa/knowledge@0.1.1(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/notify':
         specifier: npm:@kete-africa/notify@^0.1.0
         version: '@kete-africa/notify@0.1.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)'
@@ -788,8 +788,8 @@ packages:
     peerDependencies:
       '@kete/notify': 0.1.0@kete-africa/notify@*
 
-  '@kete-africa/knowledge@0.1.0':
-    resolution: {integrity: sha512-Jf3Hb12CzL9shIno3YEtGNbtwjMUg9rUscwSWo+LRSMMLT+GqsIIgXB1l6tWMTA9iz7Fog3ZJ+Jlyw7hNuML/w==, tarball: https://npm.pkg.github.com/download/@kete-africa/knowledge/0.1.0/0817f6435b095125464181e5d870f47eba28ab6d}
+  '@kete-africa/knowledge@0.1.1':
+    resolution: {integrity: sha512-blOGBFr+Ed+ySX8O59Bzl08Xuc2VC1RhkqNH25/gyULTCJMjMpJjDHx3VrthebfRE1O0O2AmjNJxkKM5mHSjog==, tarball: https://npm.pkg.github.com/download/@kete-africa/knowledge/0.1.1/33432f455375ff2815bb33fa540e1cb4d968e15d}
 
   '@kete-africa/notify@0.1.0':
     resolution: {integrity: sha512-W5YsMFkMEgpHLR3wYgDh2ydgF0jKcyZzJO0hSokFNsu9XCzJZtzTShdafUgp3XDtqzeH8nYFK+3Jncg7ghfL4w==, tarball: https://npm.pkg.github.com/download/@kete-africa/notify/0.1.0/31ebe4cde4a477b41d2dfb24418b25059b0e546b}
@@ -5441,7 +5441,7 @@ snapshots:
     transitivePeerDependencies:
       - pg-native
 
-  '@kete-africa/knowledge@0.1.0(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))':
+  '@kete-africa/knowledge@0.1.1(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))':
     dependencies:
       '@kete/records': '@kete-africa/records@0.1.1'
       '@kete/tenancy': '@kete-africa/tenancy@0.1.1(drizzle-orm@0.45.3(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
