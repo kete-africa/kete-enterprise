@@ -15,6 +15,8 @@ export function refusal(code: string | null): string {
     pdf_unavailable: m.error_pdf_unavailable,
     pdf_failed: m.error_pdf_failed,
     template_invalid: m.error_template_invalid,
+    transcription_unavailable: m.error_transcription_unavailable,
+    no_transcript: m.error_no_transcript,
     skill_name_taken: m.error_skill_name_taken,
     skill_invalid: m.error_skill_invalid,
     no_cases: m.error_no_cases,

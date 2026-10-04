@@ -1150,5 +1150,19 @@
   "skills_kept_notice": "Skill “{name}” kept for you.",
   "error_skill_name_taken": "A skill already has this name.",
   "error_skill_invalid": "This file is not a skill in the Agent Skills format.",
-  "error_no_cases": "This skill has no test case (evals/evals.json)."
+  "error_no_cases": "This skill has no test case (evals/evals.json).",
+  "record_assist_title": "Prepare the record",
+  "record_assist_explain": "Upload the meeting’s recording or paste its transcript: the assistant proposes the record and the decisions, you correct them, then publish. The recording is not kept.",
+  "record_assist_audio": "Upload the recording",
+  "record_assist_text": "Or paste the transcript",
+  "record_assist_save_text": "Keep the transcript",
+  "record_assist_transcribed": "Transcript ready ({source}).",
+  "record_assist_prepare": "Propose the record",
+  "record_assist_proposal": "Proposal to check",
+  "record_assist_decisions": "Proposed decisions",
+  "record_assist_remove": "Remove",
+  "record_assist_publish": "Record the decisions and publish",
+  "record_assist_done": "Record published with {count} decision(s).",
+  "error_transcription_unavailable": "Transcription is not configured here.",
+  "error_no_transcript": "A transcript is needed first."
 }

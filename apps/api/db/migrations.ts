@@ -26,7 +26,10 @@ import {
   conversationsMigrationSql,
 } from '../src/features/assistant/index.js';
 import { mailMigrationSql } from '../src/features/mail/index.js';
-import { meetingsMigrationSql } from '../src/features/meetings/index.js';
+import {
+  meetingRecordsMigrationSql,
+  meetingsMigrationSql,
+} from '../src/features/meetings/index.js';
 import { organizationMigrationSql } from '../src/features/organization/index.js';
 import { passesMigrationSql } from '../src/features/passes/index.js';
 import {
@@ -150,4 +153,6 @@ export const migrations: Migration[] = [
   { name: '0031_skills', sql: (context) => skillsMigrationSql(context) },
   // What each model call cost (spec 037, @kete/ai).
   { name: '0032_ai_costs', sql: (context) => aiCostMigrationSql(context) },
+  // A meeting's transcript and the record the model proposes (spec 035).
+  { name: '0033_meeting_records', sql: (context) => meetingRecordsMigrationSql(context) },
 ];

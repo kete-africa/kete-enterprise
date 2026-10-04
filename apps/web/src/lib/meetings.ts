@@ -141,3 +141,109 @@ export const meetingsGesture = createServerFn({ method: 'POST' })
       ? { ok: true, error: null, data: answer.data }
       : { ok: false, error: answer.error, data: null };
   });
+
+/** What the model proposes for a meeting's record (spec 035), before the person corrects it. */
+export interface RecordProposal {
+  notes: string;
+  decisions: {
+    text: string;
+    responsiblePersonId: string | null;
+    dueOn: string | null;
+    idea: boolean;
+  }[];
+}
+
+const meetingIdOf = (value: unknown) => {
+  const id = typeof value === 'string' ? value : '';
+  if (!/^mtg_[0-9a-f-]{8,64}$/.test(id)) throw new Error('Which meeting?');
+  return id;
+};
+const answerOf = <T>(answer: { ok: boolean; data?: T; error?: string | null }) =>
+  answer.ok
+    ? { ok: true as const, data: (answer.data ?? null) as T | null, error: null }
+    : { ok: false as const, data: null, error: answer.error ?? null };
+
+export const fetchTranscript = createServerFn({ method: 'GET' })
+  .validator((input: unknown) => ({
+    meetingId: meetingIdOf((input as { meetingId?: unknown } | null)?.meetingId),
+  }))
+  .handler(({ data }) =>
+    callApi<{
+      transcript: {
+        text: string;
+        source: 'audio' | 'text';
+        proposal: RecordProposal | null;
+      } | null;
+    }>(getRequest(), `/v1/meetings/meetings/${data.meetingId}/transcript`),
+  );
+
+/** Its transcript: a recording (base64) transcribed by the API, or a text pasted. */
+export const sendTranscript = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const audio = typeof v.audio === 'string' ? v.audio.slice(0, 36_000_000) : '';
+    const contentType = typeof v.contentType === 'string' ? v.contentType.slice(0, 80) : '';
+    const text = typeof v.text === 'string' ? v.text.slice(0, 400_000) : '';
+    return { meetingId: meetingIdOf(v.meetingId), audio, contentType, text };
+  })
+  .handler(async ({ data }) =>
+    answerOf(
+      await sendGesture<{ transcript: { text: string; source: 'audio' | 'text' } }>(
+        getRequest(),
+        `/v1/meetings/meetings/${data.meetingId}/transcript`,
+        data.audio ? { audio: data.audio, contentType: data.contentType } : { text: data.text },
+        crypto.randomUUID(),
+      ),
+    ),
+  );
+
+export const prepareRecord = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => ({
+    meetingId: meetingIdOf((input as { meetingId?: unknown } | null)?.meetingId),
+  }))
+  .handler(async ({ data }) =>
+    answerOf(
+      await sendGesture<{ proposal: RecordProposal }>(
+        getRequest(),
+        `/v1/meetings/meetings/${data.meetingId}/prepare`,
+        {},
+        crypto.randomUUID(),
+      ),
+    ),
+  );
+
+/** What the person validated: its decisions recorded, then the record published. */
+export const recordMeeting = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const decisions = (Array.isArray(v.decisions) ? v.decisions : []).slice(0, 50).map((raw) => {
+      const d = (raw ?? {}) as Record<string, unknown>;
+      return {
+        text: typeof d.text === 'string' ? d.text.slice(0, 2000) : '',
+        responsiblePersonId:
+          typeof d.responsiblePersonId === 'string' && d.responsiblePersonId
+            ? d.responsiblePersonId
+            : null,
+        dueOn: typeof d.dueOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.dueOn) ? d.dueOn : null,
+        idea: d.idea === true,
+      };
+    });
+    return {
+      meetingId: meetingIdOf(v.meetingId),
+      notes: typeof v.notes === 'string' ? v.notes.slice(0, 8000) : '',
+      decisions: decisions.filter((d) => d.text.trim()),
+    };
+  })
+  .handler(async ({ data }) =>
+    answerOf(
+      await sendGesture<{
+        decisions: { decisionId: string; actionId: string | null }[];
+        published: { onTime: boolean | null };
+      }>(
+        getRequest(),
+        `/v1/meetings/meetings/${data.meetingId}/record`,
+        { notes: data.notes, decisions: data.decisions },
+        crypto.randomUUID(),
+      ),
+    ),
+  );
