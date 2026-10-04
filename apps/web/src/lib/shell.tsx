@@ -22,6 +22,7 @@ export type Page =
   | 'notifications'
   | 'search'
   | 'library'
+  | 'dossiers'
   | 'admin_library'
   | 'my_agents'
   | 'surveys'
@@ -77,6 +78,11 @@ function SpaceNav({ me, current }: { me: Me; current: Page }) {
         <NavItem href="/ressources" icon="library" current={current === 'resources'}>
           {m.nav_resources()}
         </NavItem>
+        {me.modules.dossiers && (
+          <NavItem href="/dossiers" icon="library" current={current === 'dossiers'}>
+            {m.nav_dossiers()}
+          </NavItem>
+        )}
         {me.modules.knowledge && (
           <NavItem href="/bibliotheque" icon="library" current={current === 'library'}>
             {m.nav_library()}

@@ -103,9 +103,18 @@ export async function listConversations(db: SqlExecutor, userId: string) {
 
 /** A conversation of this person, with its messages; null when it is not hers. */
 export async function readConversation(db: SqlExecutor, userId: string, conversationId: string) {
-  const { rows } = await db.query<{ title: string }>(
-    `select title from assistant_conversations where conversation_id = $1 and user_id = $2`,
-    [conversationId, userId],
+  return readConversationOf(db, conversationId, userId);
+}
+
+/**
+ * A conversation by its id, for a feature that already checked who may read it — a dossier's
+ * members read the conversations ranged in it (spec 034).
+ */
+export async function readConversationOf(db: SqlExecutor, conversationId: string, userId?: string) {
+  const { rows } = await db.query<{ title: string; user_id: string }>(
+    `select title, user_id from assistant_conversations
+      where conversation_id = $1 ${userId ? 'and user_id = $2' : ''}`,
+    userId ? [conversationId, userId] : [conversationId],
   );
   const head = rows[0];
   if (!head) return null;

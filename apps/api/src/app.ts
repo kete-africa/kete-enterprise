@@ -3,6 +3,7 @@ import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
 import { aiRoutes } from './features/ai/index.js';
 import { assistantRoutes, memoryRoutes, scheduleRoutes } from './features/assistant/index.js';
+import { dossierRoutes, listenForDossiers } from './features/dossiers/index.js';
 import { knowledgeRoutes } from './features/knowledge/index.js';
 import { listenForNotifications, notificationRoutes } from './features/notifications/index.js';
 import { searchRoutes } from './features/search/index.js';
@@ -167,6 +168,8 @@ async function me(c: Ctx) {
 tellAppsWith(transaction);
 // The people a request waits for are told (spec 030).
 listenForNotifications();
+// A dossier's documents are read by its members (spec 034).
+listenForDossiers();
 
 export function createApi(): Hono {
   const api = new Hono();
@@ -213,6 +216,8 @@ export function createApi(): Hono {
   v1.route('/notifications', notificationRoutes);
   // One question across what she may see (spec 030).
   v1.route('/search', searchRoutes);
+  // One space per subject (spec 034).
+  v1.route('/dossiers', dossierRoutes);
   v1.route('/assistant', assistantRoutes);
   // Each person's own AI connection, and the organization's policy (spec 026).
   v1.route('/ai', aiRoutes);

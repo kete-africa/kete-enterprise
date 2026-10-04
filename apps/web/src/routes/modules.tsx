@@ -25,6 +25,7 @@ const modules: { key: ModuleKey; name: () => string; explain: () => string }[] =
   { key: 'compliance', name: m.nav_compliance, explain: m.module_compliance },
   { key: 'agents', name: m.nav_agents, explain: m.module_agents },
   { key: 'knowledge', name: m.nav_library, explain: m.module_knowledge },
+  { key: 'dossiers', name: m.nav_dossiers, explain: m.module_dossiers },
 ];
 
 /** Which business tools the organization uses (spec 010): switched off, the data stays. */

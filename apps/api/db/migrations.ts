@@ -2,6 +2,7 @@ import {
   aiConnectionsMigrationSql,
   aiSubscriptionsMigrationSql,
 } from '../src/features/ai/index.js';
+import { dossiersMigrationSql } from '../src/features/dossiers/index.js';
 import { knowledgeTablesSql } from '../src/features/knowledge/index.js';
 import { notificationsTablesSql } from '../src/features/notifications/index.js';
 import { appDecisionsMigrationSql, appEventsMigrationSql } from '../src/features/apps/index.js';
@@ -138,4 +139,6 @@ export const migrations: Migration[] = [
   { name: '0027_assistant_memories', sql: (context) => memoryMigrationSql(context) },
   // Her notifications and the devices she is told on (spec 030).
   { name: '0028_notifications', sql: (context) => notificationsTablesSql(context) },
+  // Dossiers: one space per subject, its members, its links (spec 034).
+  { name: '0029_dossiers', sql: (context) => dossiersMigrationSql(context) },
 ];
