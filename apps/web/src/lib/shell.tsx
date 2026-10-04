@@ -19,6 +19,8 @@ export type Page =
   | 'todo'
   | 'assistant'
   | 'resources'
+  | 'library'
+  | 'admin_library'
   | 'my_agents'
   | 'surveys'
   | 'performance'
@@ -73,6 +75,11 @@ function SpaceNav({ me, current }: { me: Me; current: Page }) {
         <NavItem href="/ressources" icon="library" current={current === 'resources'}>
           {m.nav_resources()}
         </NavItem>
+        {me.modules.knowledge && (
+          <NavItem href="/bibliotheque" icon="library" current={current === 'library'}>
+            {m.nav_library()}
+          </NavItem>
+        )}
       </NavSection>
       <NavSection label={m.nav_tools()}>
         {opens(me, 'surveys', ['surveys:manage']) && (
@@ -181,6 +188,15 @@ function AdminNav({ me, current }: { me: Me; current: Page }) {
       {me.administrator && (
         <NavItem href="/administration/ia" icon="agent" current={current === 'ai'}>
           {m.nav_ai()}
+        </NavItem>
+      )}
+      {me.administrator && me.modules.knowledge && (
+        <NavItem
+          href="/administration/bibliotheque"
+          icon="library"
+          current={current === 'admin_library'}
+        >
+          {m.nav_admin_library()}
         </NavItem>
       )}
       {me.administrator && me.demo && (

@@ -27,6 +27,7 @@ import {
   type Payer,
 } from '../ai/index.js';
 import { colleagueCard } from '../directory/index.js';
+import { knowledgeTool, libraryOpen } from '../knowledge/index.js';
 import { appToolsFor, decideDraft, draftsFor, toolsForPerson } from '../gateway/index.js';
 import { isAdministrator } from '../rights/index.js';
 import { personOfAccount } from '../structure/index.js';
@@ -585,6 +586,10 @@ async function streamChat(c: Ctx): Promise<Response> {
       ? await appToolsFor(identity, token).catch(() => null)
       : null;
   const named = mentioned.directives.filter((d) => d.type === 'app').map((d) => `[${d.label}]`);
+  // The company's library answers when its module is on (spec 028).
+  const library =
+    answerer.kind === 'model' &&
+    (await transaction(organizationId, (db) => libraryOpen(db, identity)).catch(() => false));
   const appTools = (apps?.tools ?? []).filter(
     (t) => named.length === 0 || named.some((n) => t.description.startsWith(n)),
   );
@@ -656,6 +661,7 @@ async function streamChat(c: Ctx): Promise<Response> {
                 ...(await toolsForPerson(identity)),
                 canvasTool,
                 ...(c.get('viewedBy') ? [] : [scheduleTool(identity)]),
+                ...(library ? [knowledgeTool(identity)] : []),
                 ...appTools,
               ],
               maxSteps: 6,

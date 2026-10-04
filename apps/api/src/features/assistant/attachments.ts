@@ -1,6 +1,6 @@
 import { newId } from '@kete/records';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
-import { extract, readable, type AttachmentKind } from './infrastructure/extract.js';
+import { extract, readable, type AttachmentKind } from '../../platform/extract.js';
 
 // Files attached to the chat (spec 027): read once when attached, kept with the person's
 // conversation, under its organization's row-level security. What reaches the model is the text
