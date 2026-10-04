@@ -3,7 +3,8 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchPeople } from '@/lib/admin';
 import { DialogForm, Select } from '@/lib/forms';
-import { fetchMeeting } from '@/lib/meetings';
+import { RecordAssistant } from '@/lib/meeting-record';
+import { fetchMeeting, fetchTranscript } from '@/lib/meetings';
 import { dateTime, meetingStatusLabel, useMeetingGesture } from '@/lib/meetings-view';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
@@ -16,7 +17,12 @@ export const Route = createFileRoute('/instances/$meetingId')({
       fetchMeeting({ data: { meetingId: params.meetingId } }),
       fetchPeople(),
     ]);
-    return { ...screen, chart };
+    // Its transcript and the record proposed (spec 035), for who runs it while it is held.
+    const transcript =
+      screen.manages && screen.meeting.status === 'held'
+        ? (await fetchTranscript({ data: { meetingId: params.meetingId } })).transcript
+        : null;
+    return { ...screen, chart, transcript };
   },
   component: MeetingPage,
 });
@@ -27,7 +33,7 @@ export const Route = createFileRoute('/instances/$meetingId')({
  */
 function MeetingPage() {
   const { me } = Route.useRouteContext();
-  const { meeting, manages, chart } = Route.useLoaderData();
+  const { meeting, manages, chart, transcript } = Route.useLoaderData();
   const { busy, run, notice } = useMeetingGesture();
   const [item, setItem] = useState('');
   const [present, setPresent] = useState<string[]>(meeting.presentPersonIds);
@@ -221,6 +227,15 @@ function MeetingPage() {
           )}
         </div>
       </PageSection>
+      {manages && meeting.status === 'held' && (
+        <PageSection title={m.record_assist_title()}>
+          <RecordAssistant
+            meetingId={meeting.meetingId}
+            present={people.filter((p) => meeting.presentPersonIds.includes(p.personId))}
+            initial={transcript}
+          />
+        </PageSection>
+      )}
       <PageSection title={m.meeting_record()}>
         {meeting.status === 'recorded' ? (
           <Panel>

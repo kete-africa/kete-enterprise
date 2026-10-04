@@ -1150,5 +1150,19 @@
   "skills_kept_notice": "Compétence « {name} » gardée pour vous.",
   "error_skill_name_taken": "Une compétence porte déjà ce nom.",
   "error_skill_invalid": "Ce fichier n’est pas une compétence au format Agent Skills.",
-  "error_no_cases": "Cette compétence n’a pas de cas de test (evals/evals.json)."
+  "error_no_cases": "Cette compétence n’a pas de cas de test (evals/evals.json).",
+  "record_assist_title": "Préparer le compte rendu",
+  "record_assist_explain": "Déposez l’enregistrement de la réunion ou collez sa transcription : l’assistant propose le compte rendu et les décisions, vous corrigez puis publiez. L’enregistrement n’est pas conservé.",
+  "record_assist_audio": "Déposer l’enregistrement",
+  "record_assist_text": "Ou coller la transcription",
+  "record_assist_save_text": "Garder la transcription",
+  "record_assist_transcribed": "Transcription prête ({source}).",
+  "record_assist_prepare": "Proposer le compte rendu",
+  "record_assist_proposal": "Proposition à vérifier",
+  "record_assist_decisions": "Décisions proposées",
+  "record_assist_remove": "Retirer",
+  "record_assist_publish": "Enregistrer les décisions et publier",
+  "record_assist_done": "Compte rendu publié avec {count} décision(s).",
+  "error_transcription_unavailable": "La transcription n’est pas configurée ici.",
+  "error_no_transcript": "Il faut d’abord une transcription."
 }

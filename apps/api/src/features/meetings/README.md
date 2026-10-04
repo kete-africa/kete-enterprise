@@ -32,3 +32,12 @@ flowchart LR
 - **Evidence**: the compliance checks `meetings.management_review_held`,
   `meetings.records_on_time`, `actions.on_time`, `performance.reviews_held` and
   `surveys.customers_heard` read these registers.
+
+## The record prepared from what was said (spec 035)
+
+A held meeting's recording is transcribed (and not kept), or its transcript pasted; the model
+proposes the record and the decisions — owners only among those present, deadlines only those said
+— and the person who runs the meeting corrects them, then records and publishes through the same
+commands (`record-decision`, `publish-record`), journaled as hers. Routes:
+`/meetings/:id/transcript`, `/meetings/:id/prepare`, `/meetings/:id/record`. See
+[spec 035](../../../../../specs/035-meeting-records/spec.md).
