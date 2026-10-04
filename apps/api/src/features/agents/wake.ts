@@ -11,6 +11,7 @@ import {
   personOfAgent,
   subtreeOf,
 } from './infrastructure/agents.tables.js';
+import { notificationWords, tell } from '../notifications/index.js';
 import { watchNamed } from './watches.js';
 
 export interface WakeReport {
@@ -68,6 +69,11 @@ export async function wakeAgent(organizationId: string, agentId: string): Promis
         actor,
         idempotencyKey: `raise-${randomUUID()}`,
         input: { agentId, watch, ...finding },
+      });
+      await tell(db, organizationId, userId, {
+        kind: 'agent.signal',
+        title: notificationWords().agentSignal(finding.subject),
+        href: '/mes-agents',
       });
       raised += 1;
     }

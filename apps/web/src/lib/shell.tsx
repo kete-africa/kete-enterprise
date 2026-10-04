@@ -19,6 +19,8 @@ export type Page =
   | 'todo'
   | 'assistant'
   | 'resources'
+  | 'notifications'
+  | 'search'
   | 'library'
   | 'admin_library'
   | 'my_agents'
@@ -278,9 +280,17 @@ export function AppShell({
             <Icon name="agent" />
           </a>
           <a
-            href="/a-faire"
-            aria-label={m.nav_todo()}
-            title={m.nav_todo()}
+            href="/recherche"
+            aria-label={m.nav_search()}
+            title={m.nav_search()}
+            className="inline-flex size-(--icon-button-size) items-center justify-center rounded-control text-fg hover:bg-surface-hover"
+          >
+            <Icon name="search" />
+          </a>
+          <a
+            href="/notifications"
+            aria-label={m.nav_notifications()}
+            title={m.nav_notifications()}
             className="inline-flex size-(--icon-button-size) items-center justify-center rounded-control text-fg hover:bg-surface-hover"
           >
             <Icon name="bell" />

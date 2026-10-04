@@ -8,6 +8,7 @@ import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { toolsForPerson } from '../gateway/index.js';
 import { queueMail, renderMail } from '../mail/index.js';
+import { notificationWords, tell } from '../notifications/index.js';
 import { putTask } from '../workspace/index.js';
 import {
   meteringStore,
@@ -137,14 +138,19 @@ export async function runSchedule(s: ScheduleRun): Promise<'done' | 'failed' | '
     const url = answer.conversationId ? link(`/assistant?c=${answer.conversationId}`) : null;
     // The answer waits in her « To do », one per schedule and day.
     if (url) {
-      await transaction(s.organizationId, (db) =>
-        putTask(db, s.organizationId, s.userId, {
+      await transaction(s.organizationId, async (db) => {
+        await tell(db, s.organizationId, s.userId, {
+          kind: 'schedule.answered',
+          title: notificationWords(s.locale).scheduleAnswered(s.title),
+          href: `/assistant?c=${answer.conversationId}`,
+        });
+        return putTask(db, s.organizationId, s.userId, {
           source: 'assistant',
           key: `${s.scheduleId}-${day}`,
           title: s.title,
           href: url,
-        }),
-      );
+        });
+      });
     }
     mail = {
       subject: w.taskSubject(s.title),

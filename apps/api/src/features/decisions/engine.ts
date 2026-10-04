@@ -48,6 +48,39 @@ export function registerSubjectFamily(
   sources.push(source);
 }
 
+/**
+ * What is told when a request waits for new approvers, in its transaction: they are notified
+ * (spec 030). A listener that fails never fails the request.
+ */
+export type WaitingListener = (
+  db: SqlExecutor,
+  organizationId: string,
+  request: DecisionRequest,
+  approvers: Set<string>,
+) => Promise<void>;
+const waitingListeners: WaitingListener[] = [];
+
+export function onWaiting(listener: WaitingListener): void {
+  waitingListeners.push(listener);
+}
+
+/** Tells the listeners who must decide a request now, if anyone. */
+export async function announceWaiting(
+  db: SqlExecutor,
+  organizationId: string,
+  requestId: string,
+): Promise<void> {
+  const request = await findRequest(db, requestId);
+  if (!request) return;
+  const approvers = await approversNow(db, request);
+  if (!approvers || approvers.people.size === 0) return;
+  for (const listener of waitingListeners) {
+    await listener(db, organizationId, request, approvers.people).catch((error: unknown) => {
+      console.error('[decisions]', (error as Error).message);
+    });
+  }
+}
+
 /** Listens to decided requests, once their transaction is over. */
 export function onDecided(listener: DecidedListener): void {
   listeners.push(listener);
@@ -111,6 +144,7 @@ export async function openRequest(
   const requestId = await insertRequest(db, organizationId, { circuit, ...input });
   const request = (await findRequest(db, requestId)) as DecisionRequest;
   if (!currentStep(request)) await settle(db, request, 'approved', 'circuit');
+  else await announceWaiting(db, organizationId, requestId);
   return requestId;
 }
 

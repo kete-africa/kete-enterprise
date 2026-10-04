@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
+import { notificationWords, tell } from '../notifications/index.js';
 
 /**
  * Tasks of the team's apps (spec 018): a connected app — the helpdesk for a ticket a person took —
@@ -122,9 +123,15 @@ export const appTasksRoutes = new Hono<{ Variables: IdentityVariables }>()
     if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'A task is not valid.');
     const { organizationId, userId } = c.get('identity');
     const task = parsed.data;
-    const taskId = await transaction(organizationId, (db) =>
-      putTask(db, organizationId, userId, task),
-    );
+    const taskId = await transaction(organizationId, async (db) => {
+      const id = await putTask(db, organizationId, userId, task);
+      await tell(db, organizationId, userId, {
+        kind: 'task.added',
+        title: notificationWords().taskAdded(task.source, task.title),
+        href: task.href,
+      });
+      return id;
+    });
     return c.json({ taskId }, 201);
   })
   .post('/close', async (c) => {
