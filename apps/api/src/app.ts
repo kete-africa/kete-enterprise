@@ -3,6 +3,7 @@ import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
 import { aiRoutes } from './features/ai/index.js';
 import { assistantRoutes, memoryRoutes, scheduleRoutes } from './features/assistant/index.js';
+import { datasetRoutes } from './features/datasets/index.js';
 import { documentRoutes } from './features/documents/index.js';
 import { skillRoutes } from './features/skills/index.js';
 import { dossierRoutes, listenForDossiers } from './features/dossiers/index.js';
@@ -222,6 +223,8 @@ export function createApi(): Hono {
   v1.route('/dossiers', dossierRoutes);
   // The organization's templates and each person's documents (spec 038).
   v1.route('/documents', documentRoutes);
+  // A team's data, its tables summed up (spec 031).
+  v1.route('/datasets', datasetRoutes);
   // The organization's know-how, as skills (spec 031).
   v1.route('/skills', skillRoutes);
   v1.route('/assistant', assistantRoutes);

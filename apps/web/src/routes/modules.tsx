@@ -28,6 +28,7 @@ const modules: { key: ModuleKey; name: () => string; explain: () => string }[] =
   { key: 'dossiers', name: m.nav_dossiers, explain: m.module_dossiers },
   { key: 'documents', name: m.nav_documents, explain: m.module_documents },
   { key: 'skills', name: m.nav_skills, explain: m.module_skills },
+  { key: 'datasets', name: m.nav_datasets, explain: m.module_datasets },
 ];
 
 /** Which business tools the organization uses (spec 010): switched off, the data stays. */

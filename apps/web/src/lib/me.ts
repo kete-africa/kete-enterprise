@@ -11,7 +11,8 @@ export type ModuleKey =
   | 'knowledge'
   | 'dossiers'
   | 'documents'
-  | 'skills';
+  | 'skills'
+  | 'datasets';
 
 export interface Me {
   userId: string;

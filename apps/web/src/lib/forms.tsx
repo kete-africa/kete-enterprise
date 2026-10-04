@@ -20,6 +20,7 @@ export function refusal(code: string | null): string {
     skill_name_taken: m.error_skill_name_taken,
     skill_invalid: m.error_skill_invalid,
     no_cases: m.error_no_cases,
+    invalid_query: m.error_invalid_query,
     invalid_input: m.error_invalid_input,
     duplicate: m.error_duplicate,
     unknown_permission: m.error_invalid_input,

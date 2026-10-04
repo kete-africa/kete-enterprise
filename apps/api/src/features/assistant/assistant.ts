@@ -28,6 +28,7 @@ import {
   type Payer,
 } from '../ai/index.js';
 import { colleagueCard } from '../directory/index.js';
+import { datasetsOpen, datasetTools } from '../datasets/index.js';
 import { documentsOpen, documentTools } from '../documents/index.js';
 import { knowledgeTool, libraryOpen } from '../knowledge/index.js';
 import { keepSkill, skillsForModel, skillsOf } from '../skills/index.js';
@@ -695,6 +696,8 @@ async function streamChat(c: Ctx): Promise<Response> {
           await transaction(organizationId, (db) => skillsOf(db, identity)).catch(() => []),
         )
       : { prompt: '', tools: [] };
+  // Her teams' data, summed up from their rows (spec 031).
+  const teamData = answerer.kind === 'model' && (await datasetsOpen(identity).catch(() => false));
   // The organization's document templates, filled for her (spec 038).
   const documents = answerer.kind === 'model' && (await documentsOpen(identity).catch(() => false));
   const appTools = (apps?.tools ?? []).filter(
@@ -778,6 +781,7 @@ ${skills.prompt}`
                 ...(library ? [knowledgeTool(identity)] : []),
                 ...(documents && !c.get('viewedBy') ? documentTools(identity) : []),
                 ...skills.tools,
+                ...(teamData ? datasetTools(identity) : []),
                 ...appTools,
               ],
               maxSteps: 6,
