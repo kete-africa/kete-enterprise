@@ -14,8 +14,9 @@ import {
 import { Icon, IconButton, Markdown, Tag, ToolCard } from '@kete/design';
 import type { ComponentProps, FC, ReactNode } from 'react';
 import { DraftCard } from '@/lib/draft-card';
-import type { DraftReview } from '@/lib/workspace';
+import type { AppView as AppViewData, DraftReview } from '@/lib/workspace';
 import * as m from '@/paraglide/messages.js';
+import { AppView } from './app-view';
 
 // The chat's thread on assistant-ui's primitives (spec 027), dressed with @kete/design's tokens
 // and components: the conversation, the tools as cards with their drafts, the sources, the files,
@@ -80,6 +81,8 @@ const Source: SourceMessagePartComponent = ({ url = '#', title }) => (
 export interface ToolViews {
   /** Opens the canvas with a document the assistant wrote. */
   openCanvas: (canvas: { title: string; content: string }) => void;
+  /** Where the apps' views run (spec 030); none shown without it. */
+  sandboxUrl: string | null;
 }
 
 function makeToolCard(views: ToolViews): ToolCallMessagePartComponent {
@@ -88,6 +91,7 @@ function makeToolCard(views: ToolViews): ToolCallMessagePartComponent {
       state?: 'done' | 'refused';
       drafts?: DraftReview[];
       canvas?: { title: string; content: string } | null;
+      view?: AppViewData | null;
     } | null;
     const state = outcome?.state ?? 'running';
     return (
@@ -107,6 +111,9 @@ function makeToolCard(views: ToolViews): ToolCallMessagePartComponent {
         {(outcome?.drafts ?? []).map((draft) => (
           <DraftCard key={draft.draftId} draft={draft} />
         ))}
+        {outcome?.view && views.sandboxUrl && (
+          <AppView view={outcome.view} sandboxUrl={views.sandboxUrl} />
+        )}
       </div>
     );
   };

@@ -13,6 +13,10 @@ export const env = {
   get apiUrl() {
     return required('API_URL').replace(/\/$/, '');
   },
+  /** The API as browsers reach it (the apps' views run there, spec 030); `API_URL` by default. */
+  get publicApiUrl() {
+    return (process.env.PUBLIC_API_URL ?? required('API_URL')).replace(/\/$/, '');
+  },
   get accountUrl() {
     return required('KETE_ACCOUNT_URL').replace(/\/$/, '');
   },

@@ -122,13 +122,16 @@ importers:
     dependencies:
       '@assistant-ui/react':
         specifier: 0.15.23
-        version: 0.15.23(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ai@7.0.126(zod@4.6.5))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0))
+        version: 0.15.23(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ai@7.0.126(zod@3.25.76))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0))
       '@kete/auth':
         specifier: npm:@kete-africa/auth@^0.3.0
         version: '@kete-africa/auth@0.3.0'
       '@kete/design':
         specifier: npm:@kete-africa/design@^0.5.0
         version: '@kete-africa/design@0.5.0(react@19.3.0)(supports-color@7.2.0)'
+      '@mcp-ui/client':
+        specifier: 7.1.1
+        version: 7.1.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
       '@tanstack/react-router':
         specifier: ^1.170.40
         version: 1.170.40(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -833,6 +836,26 @@ packages:
 
   '@lix-js/sdk@0.17.0':
     resolution: {integrity: sha512-xplbKYEokKbm0/soUy9eXlROF55Si1J9HK97iwJrNl/av1VixZ2mvpDTa0QsX96UyxFnzkXru6hngjtIJTl73g==}
+
+  '@mcp-ui/client@7.1.1':
+    resolution: {integrity: sha512-Yy0q3YFl6WmcHRW0pRwD2F+Fs9Y/TFm1xpBpkuqvS1IRBaGGgc7PvkB0nvrKTqO6QZm+MufObfQM+oxo8mmLFw==}
+    peerDependencies:
+      react: ^18 || ^19
+      react-dom: ^18 || ^19
+
+  '@modelcontextprotocol/ext-apps@1.7.5':
+    resolution: {integrity: sha512-TjPH2S2y5UEGKhmI6+XGFuqfqOV4ppe1x6DA3txnUaEWkgtA4G5vo14jGKFZmegdkZ1H4QMLyujLvoU1BEdnAg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': ^1.29.0
+      react: ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
+      zod: ^3.25.0 || ^4.0.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   '@modelcontextprotocol/sdk@1.31.0':
     resolution: {integrity: sha512-UvTMgnNlnIBO/22ob2RcVGDlcvOslQs8T59+FTGdA0L27a39fdGF/EDETNtDVK4DZGpwomlsYpRdA8UXcVL/pw==}
@@ -4708,6 +4731,14 @@ snapshots:
       '@ai-sdk/provider-utils': 5.0.53(zod@4.6.5)
       zod: 4.6.5
 
+  '@ai-sdk/gateway@4.0.102(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.21
+      '@ai-sdk/provider-utils': 5.0.53(zod@3.25.76)
+      '@vercel/oidc': 3.2.0
+      zod: 3.25.76
+    optional: true
+
   '@ai-sdk/gateway@4.0.102(zod@4.6.5)':
     dependencies:
       '@ai-sdk/provider': 4.0.21
@@ -4733,6 +4764,16 @@ snapshots:
       '@ai-sdk/provider-utils': 5.0.53(zod@4.6.5)
       zod: 4.6.5
 
+  '@ai-sdk/provider-utils@5.0.53(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.21
+      '@standard-schema/spec': 1.1.0
+      '@workflow/serde': 4.1.0
+      eventsource-parser: 3.1.1
+      undici: 7.30.0
+      zod: 3.25.76
+    optional: true
+
   '@ai-sdk/provider-utils@5.0.53(zod@4.6.5)':
     dependencies:
       '@ai-sdk/provider': 4.0.21
@@ -4746,7 +4787,7 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@assistant-ui/core@0.3.22(@assistant-ui/store@0.3.16(@assistant-ui/tap@0.9.20(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@assistant-ui/tap@0.9.20(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(assistant-cloud@0.2.4(ai@7.0.126(zod@4.6.5)))(react@19.3.0)':
+  '@assistant-ui/core@0.3.22(@assistant-ui/store@0.3.16(@assistant-ui/tap@0.9.20(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@assistant-ui/tap@0.9.20(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(assistant-cloud@0.2.4(ai@7.0.126(zod@3.25.76)))(react@19.3.0)':
     dependencies:
       '@assistant-ui/store': 0.3.16(@assistant-ui/tap@0.9.20(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)
       '@assistant-ui/tap': 0.9.20(@types/react@19.3.0)(react@19.3.0)
@@ -4754,18 +4795,18 @@ snapshots:
       nanoid: 6.0.1
     optionalDependencies:
       '@types/react': 19.3.0
-      assistant-cloud: 0.2.4(ai@7.0.126(zod@4.6.5))
+      assistant-cloud: 0.2.4(ai@7.0.126(zod@3.25.76))
       react: 19.3.0
     transitivePeerDependencies:
       - ioredis
       - redis
 
-  '@assistant-ui/react@0.15.23(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ai@7.0.126(zod@4.6.5))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0))':
+  '@assistant-ui/react@0.15.23(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(ai@7.0.126(zod@3.25.76))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0))':
     dependencies:
-      '@assistant-ui/core': 0.3.22(@assistant-ui/store@0.3.16(@assistant-ui/tap@0.9.20(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@assistant-ui/tap@0.9.20(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(assistant-cloud@0.2.4(ai@7.0.126(zod@4.6.5)))(react@19.3.0)
+      '@assistant-ui/core': 0.3.22(@assistant-ui/store@0.3.16(@assistant-ui/tap@0.9.20(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react@19.3.0))(@assistant-ui/tap@0.9.20(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(assistant-cloud@0.2.4(ai@7.0.126(zod@3.25.76)))(react@19.3.0)
       '@assistant-ui/store': 0.3.16(@assistant-ui/tap@0.9.20(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)
       '@assistant-ui/tap': 0.9.20(@types/react@19.3.0)(react@19.3.0)
-      assistant-cloud: 0.2.4(ai@7.0.126(zod@4.6.5))
+      assistant-cloud: 0.2.4(ai@7.0.126(zod@3.25.76))
       assistant-stream: 0.3.46
       radix-ui: 1.6.7(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react: 19.3.0
@@ -5418,6 +5459,48 @@ snapshots:
       '@lix-js/sdk-linux-arm64': 0.17.0
       '@lix-js/sdk-linux-x64': 0.17.0
       '@lix-js/sdk-win32-x64': 0.17.0
+
+  '@mcp-ui/client@7.1.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
+    dependencies:
+      '@modelcontextprotocol/ext-apps': 1.7.5(@modelcontextprotocol/sdk@1.31.0(supports-color@7.2.0)(zod@3.25.76))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(zod@3.25.76)
+      '@modelcontextprotocol/sdk': 1.31.0(supports-color@7.2.0)(zod@3.25.76)
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - supports-color
+
+  '@modelcontextprotocol/ext-apps@1.7.5(@modelcontextprotocol/sdk@1.31.0(supports-color@7.2.0)(zod@3.25.76))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(zod@3.25.76)':
+    dependencies:
+      '@modelcontextprotocol/sdk': 1.31.0(supports-color@7.2.0)(zod@3.25.76)
+      '@standard-schema/spec': 1.1.0
+      zod: 3.25.76
+    optionalDependencies:
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+
+  '@modelcontextprotocol/sdk@1.31.0(supports-color@7.2.0)(zod@3.25.76)':
+    dependencies:
+      '@hono/node-server': 2.1.3(hono@4.13.12)
+      ajv: 8.20.0
+      ajv-formats: 3.0.1(ajv@8.20.0)
+      content-type: 1.0.5
+      cors: 2.8.6
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.1.1
+      express: 5.2.1(supports-color@7.2.0)
+      express-rate-limit: 8.7.0(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)
+      hono: 4.13.12
+      jose: 6.2.12
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.1
+      raw-body: 3.0.2
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.2(zod@3.25.76)
+    transitivePeerDependencies:
+      - supports-color
 
   '@modelcontextprotocol/sdk@1.31.0(supports-color@7.2.0)(zod@4.6.5)':
     dependencies:
@@ -6961,6 +7044,14 @@ snapshots:
 
   acorn@8.18.0: {}
 
+  ai@7.0.126(zod@3.25.76):
+    dependencies:
+      '@ai-sdk/gateway': 4.0.102(zod@3.25.76)
+      '@ai-sdk/provider': 4.0.21
+      '@ai-sdk/provider-utils': 5.0.53(zod@3.25.76)
+      zod: 3.25.76
+    optional: true
+
   ai@7.0.126(zod@4.6.5):
     dependencies:
       '@ai-sdk/gateway': 4.0.102(zod@4.6.5)
@@ -7040,11 +7131,11 @@ snapshots:
 
   assertion-error@2.0.1: {}
 
-  assistant-cloud@0.2.4(ai@7.0.126(zod@4.6.5)):
+  assistant-cloud@0.2.4(ai@7.0.126(zod@3.25.76)):
     dependencies:
       assistant-stream: 0.3.46
     optionalDependencies:
-      ai: 7.0.126(zod@4.6.5)
+      ai: 7.0.126(zod@3.25.76)
     transitivePeerDependencies:
       - ioredis
       - redis
@@ -9458,6 +9549,10 @@ snapshots:
       archiver-utils: 5.0.2
       compress-commons: 6.0.2
       readable-stream: 4.7.0
+
+  zod-to-json-schema@3.25.2(zod@3.25.76):
+    dependencies:
+      zod: 3.25.76
 
   zod-to-json-schema@3.25.2(zod@4.6.5):
     dependencies:

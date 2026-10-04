@@ -15,6 +15,7 @@ import {
   assistantMigrationSql,
   chatMigrationSql,
   schedulesMigrationSql,
+  viewsMigrationSql,
   conversationsMigrationSql,
 } from '../src/features/assistant/index.js';
 import { mailMigrationSql } from '../src/features/mail/index.js';
@@ -126,4 +127,6 @@ export const migrations: Migration[] = [
   { name: '0023_ai_subscriptions', sql: (context) => aiSubscriptionsMigrationSql(context) },
   // Each person's scheduled tasks: her morning briefing, her questions at a set time (spec 029).
   { name: '0024_assistant_schedules', sql: (context) => schedulesMigrationSql(context) },
+  // The team's apps' views shown in the chat, kept with each answer (spec 030).
+  { name: '0025_assistant_views', sql: (context) => viewsMigrationSql(context) },
 ];

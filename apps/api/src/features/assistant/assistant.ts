@@ -34,6 +34,7 @@ import { factsFor, type Facts } from '../workspace/index.js';
 import {
   appendMessage,
   explainDraft,
+  type AppView,
   listConversations,
   readConversation,
   startConversation,
@@ -616,6 +617,7 @@ async function streamChat(c: Ctx): Promise<Response> {
       const drafts: unknown[] = [];
       const sources: Source[] = [];
       let canvas: { title: string; content: string } | null = null;
+      const views: AppView[] = [];
       try {
         if (answerer.kind === 'subscription') {
           // Her own subscription answers, on her own machine: the whole answer at once.
@@ -693,6 +695,19 @@ async function streamChat(c: Ctx): Promise<Response> {
                 if (draft) drafts.push(draft);
                 send({ type: 'tool', name: part['toolName'], state, ...(draft ? { draft } : {}) });
                 const result = (output as { output?: unknown } | null)?.output;
+                // An app's tool that names a view (MCP Apps): the chat shows it with its result.
+                const view = apps?.viewOf(String(part['toolName']));
+                if (view && state === 'done' && views.length < 6) {
+                  const shown: AppView = {
+                    tool: String(part['toolName']),
+                    resource: view.resourceId,
+                    uri: view.uri,
+                    input: (part['input'] ?? {}) as Record<string, unknown>,
+                    result: result ?? null,
+                  };
+                  views.push(shown);
+                  send({ type: 'view', ...shown });
+                }
                 if (part['toolName'] === 'canvas_write' && result) {
                   // The document goes to the canvas, beside the conversation.
                   canvas = result as { title: string; content: string };
@@ -722,7 +737,7 @@ async function streamChat(c: Ctx): Promise<Response> {
         }
       } finally {
         // What was said is kept, even when the person stopped the answer.
-        if (text.trim() || tools.length || canvas) {
+        if (text.trim() || tools.length || canvas || views.length) {
           await transaction(organizationId, (db) =>
             appendMessage(db, organizationId, conversationId, {
               role: 'assistant',
@@ -731,6 +746,7 @@ async function streamChat(c: Ctx): Promise<Response> {
               drafts,
               sources,
               canvas,
+              views,
             }),
           ).catch(() => undefined);
         }

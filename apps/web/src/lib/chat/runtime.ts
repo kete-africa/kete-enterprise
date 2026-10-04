@@ -7,7 +7,7 @@ import {
 } from '@assistant-ui/react';
 import { useRouter } from '@tanstack/react-router';
 import { useMemo, useRef, useState } from 'react';
-import type { DraftReview, Payer, StoredMessage } from '@/lib/workspace';
+import type { AppView, DraftReview, Payer, StoredMessage } from '@/lib/workspace';
 import { uploadAttachment } from './api';
 
 // The chat's runtime (spec 027), on assistant-ui's external store: the conversations stay Kete
@@ -23,6 +23,7 @@ export interface ChatMessage {
   attachments: { attachmentId: string; name: string; kind: 'text' | 'image' }[];
   sources: { label: string; href: string }[];
   canvas: { title: string; content: string } | null;
+  views: AppView[];
 }
 
 export const fromStored = (m: StoredMessage): ChatMessage => ({
@@ -38,6 +39,7 @@ export const fromStored = (m: StoredMessage): ChatMessage => ({
   })),
   sources: m.sources ?? [],
   canvas: m.canvas ?? null,
+  views: m.views ?? [],
 });
 
 /** A message as assistant-ui draws it: its text, its tools (with their drafts), its sources. */
@@ -62,6 +64,7 @@ function convert(message: ChatMessage): ThreadMessageLike {
                     ? (message.drafts as unknown as Record<string, unknown>[])
                     : [],
                 canvas: tool.name === 'canvas_write' ? message.canvas : null,
+                view: message.views.find((v) => v.tool === tool.name) ?? null,
               },
             }),
       })),
@@ -159,7 +162,7 @@ export function useKeteChat(options: {
   async function send(text: string, files: ChatMessage['attachments']) {
     options.onError(null);
     setRunning(true);
-    const empty = { tools: [], drafts: [], sources: [], canvas: null };
+    const empty = { tools: [], drafts: [], sources: [], canvas: null, views: [] };
     setMessages((list) => [
       ...list,
       { id: crypto.randomUUID(), role: 'user', text, ...empty, attachments: files },
@@ -227,6 +230,9 @@ export function useKeteChat(options: {
               content: String(event.content ?? ''),
             };
             patchLast((last) => ({ ...last, canvas }));
+          } else if (event.type === 'view') {
+            const view = event as unknown as AppView;
+            patchLast((last) => ({ ...last, views: [...last.views, view] }));
           } else if (event.type === 'source') {
             const source = { label: String(event.label ?? ''), href: String(event.href ?? '') };
             patchLast((last) => ({ ...last, sources: [...last.sources, source] }));

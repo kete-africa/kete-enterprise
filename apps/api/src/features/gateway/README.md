@@ -31,3 +31,19 @@ sequenceDiagram
 - **No decision through a copilot**: `decide-request` refuses any actor but a person.
 - **Traced**: every `tools/call` is recorded in `gateway_calls` (append-only, RLS); the person reads
   her own at `GET /v1/gateway/calls`, and the home screen shows them.
+
+## The apps' views in the chat (spec 029b, MCP Apps)
+
+When an app's tool names a view (`_meta.ui.resourceUri`), the chat shows it with the result, drawn
+by mcp-ui's `AppRenderer` in a double frame on the API's origin (`GET /views/sandbox`). The view's
+page is read with `GET /v1/views`, and its calls go through `POST /v1/views/call` with the person's
+own token. A tool meant for the view alone (`visibility: ["app"]`) never reaches the model. See
+[spec 029b](../../../../../specs/029b-app-views/spec.md).
+
+```mermaid
+flowchart LR
+  T[an app's tool + ui://…] --> C[the chat: view event]
+  C --> R[AppRenderer · sandbox on the API's origin]
+  R -->|tools/call| V[POST /v1/views/call · her token] --> A[the app]
+  L[tools/list] -->|visibility app| X[kept from the model]
+```

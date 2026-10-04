@@ -49,6 +49,18 @@ export const refreshBriefing = createServerFn({ method: 'POST' }).handler(async 
 
 export type Payer = 'organization' | 'key' | 'subscription';
 
+/** A value as JSON carries it: what a server function may return. */
+export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+
+/** An app's view in the chat (spec 030, MCP Apps): its app, its page, its tool's input and result. */
+export interface AppView {
+  tool: string;
+  resource: string;
+  uri: string;
+  input: { [key: string]: Json };
+  result: Json;
+}
+
 export const fetchAssistant = createServerFn({ method: 'GET' }).handler(() =>
   callApi<{
     available: boolean;
@@ -115,6 +127,8 @@ export interface StoredMessage {
   sources: { label: string; href: string }[];
   /** The document the assistant wrote in the canvas. */
   canvas: { title: string; content: string } | null;
+  /** The apps' views shown with their tools' results (spec 030). */
+  views?: AppView[];
   createdAt: string;
 }
 

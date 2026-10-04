@@ -5,7 +5,13 @@ import { aiRoutes } from './features/ai/index.js';
 import { assistantRoutes, scheduleRoutes } from './features/assistant/index.js';
 import { compliancePermissions, complianceRoutes } from './features/compliance/index.js';
 import { decisionsPermissions, decisionsRoutes } from './features/decisions/index.js';
-import { gatewayResourceMetadata, gatewayRoutes, handleGateway } from './features/gateway/index.js';
+import {
+  gatewayResourceMetadata,
+  gatewayRoutes,
+  handleGateway,
+  viewRoutes,
+  viewSandbox,
+} from './features/gateway/index.js';
 import { mailRoutes } from './features/mail/index.js';
 import { actionsRoutes, meetingsPermissions, meetingsRoutes } from './features/meetings/index.js';
 import {
@@ -164,6 +170,8 @@ export function createApi(): Hono {
   // The MCP gateway checks its own token, and tells copilots where to get one (spec 006).
   api.all('/mcp', (c) => handleGateway(c.req.raw));
   api.get('/.well-known/oauth-protected-resource', (c) => gatewayResourceMetadata(c.req.raw));
+  // The apps' views run here, on another origin than the screens (spec 030, MCP Apps).
+  api.get('/views/sandbox', () => viewSandbox());
 
   const v1 = new Hono<{ Variables: IdentityVariables }>();
   v1.use('*', requirePerson);
@@ -190,6 +198,8 @@ export function createApi(): Hono {
   v1.route('/actions', actionsRoutes);
   // Her scheduled tasks: her morning briefing, her questions at a set time (spec 029).
   v1.route('/assistant/schedules', scheduleRoutes);
+  // The team's apps' views in the chat: their pages, the calls they make (spec 030).
+  v1.route('/views', viewRoutes);
   v1.route('/assistant', assistantRoutes);
   // Each person's own AI connection, and the organization's policy (spec 026).
   v1.route('/ai', aiRoutes);
