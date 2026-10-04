@@ -1032,5 +1032,17 @@
   "kadmin_none": "No source. Start with « New source ».",
   "kadmin_pages": "{pages} pages",
   "kadmin_passages": "{chunks} passages",
-  "error_knowledge_unavailable": "This instance has no embedding model yet: ask its operator."
+  "error_knowledge_unavailable": "This instance has no embedding model yet: ask its operator.",
+  "memory_link": "What it remembers",
+  "memory_title": "What the assistant remembers about you",
+  "memory_explain": "Your preferences and what you asked it to remember. It uses them in every conversation and scheduled task; only you see them, and you erase them whenever you want.",
+  "memory_add": "Add",
+  "memory_add_hint": "For example: my reports in French, amounts in FCFA.",
+  "memory_new": "To remember",
+  "memory_forget": "Forget",
+  "memory_none": "Nothing yet. Tell it « remember that… » in the chat, or add it here.",
+  "memory_by_assistant": "remembered in a conversation",
+  "tool_memory_remember": "Remembered",
+  "tool_knowledge_search": "Library",
+  "error_memory_full": "Fifty memories at most: forget one first."
 }

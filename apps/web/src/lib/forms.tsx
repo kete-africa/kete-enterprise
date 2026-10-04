@@ -62,6 +62,7 @@ export function refusal(code: string | null): string {
     secrets_off: m.ai_connection_unavailable,
     subscriptions_off: m.ai_subscription_unavailable,
     payer_refused: m.error_payer_refused,
+    memory_full: m.error_memory_full,
     knowledge_unavailable: m.error_knowledge_unavailable,
     too_many_schedules: m.error_too_many_schedules,
     subscription_lost: m.error_subscription_lost,

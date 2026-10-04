@@ -16,6 +16,7 @@ import {
   assistantMigrationSql,
   chatMigrationSql,
   schedulesMigrationSql,
+  memoryMigrationSql,
   viewsMigrationSql,
   conversationsMigrationSql,
 } from '../src/features/assistant/index.js';
@@ -132,4 +133,6 @@ export const migrations: Migration[] = [
   { name: '0025_assistant_views', sql: (context) => viewsMigrationSql(context) },
   // The company's library: sources, documents, passages, with pgvector (spec 028).
   { name: '0026_knowledge', sql: (context) => knowledgeTablesSql(context) },
+  // What a person's assistant remembers about her (spec 029).
+  { name: '0027_assistant_memories', sql: (context) => memoryMigrationSql(context) },
 ];

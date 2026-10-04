@@ -1032,5 +1032,17 @@
   "kadmin_none": "Aucune source. Commencez par « Nouvelle source ».",
   "kadmin_pages": "{pages} pages",
   "kadmin_passages": "{chunks} passages",
-  "error_knowledge_unavailable": "Cette instance n'a pas encore de modèle d'embeddings : demandez à son opérateur."
+  "error_knowledge_unavailable": "Cette instance n'a pas encore de modèle d'embeddings : demandez à son opérateur.",
+  "memory_link": "Ce qu’il retient",
+  "memory_title": "Ce que l’assistant retient de vous",
+  "memory_explain": "Vos préférences et ce que vous lui avez demandé de retenir. Il s’en sert dans chaque conversation et chaque tâche planifiée ; vous seul le voyez, et vous l’effacez quand vous voulez.",
+  "memory_add": "Ajouter",
+  "memory_add_hint": "Par exemple : mes rapports en français, montants en FCFA.",
+  "memory_new": "À retenir",
+  "memory_forget": "Oublier",
+  "memory_none": "Rien pour l’instant. Dites-lui « retiens que… » dans le chat, ou ajoutez-le ici.",
+  "memory_by_assistant": "retenu en conversation",
+  "tool_memory_remember": "Retenu",
+  "tool_knowledge_search": "Bibliothèque",
+  "error_memory_full": "Cinquante souvenirs au plus : oubliez-en un d’abord."
 }

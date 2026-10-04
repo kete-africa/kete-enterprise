@@ -112,6 +112,12 @@ function AssistantPage() {
         actions={
           <>
             <a
+              href="/assistant/memoire"
+              className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
+            >
+              {m.memory_link()}
+            </a>
+            <a
               href="/assistant/taches"
               className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
             >
