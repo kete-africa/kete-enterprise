@@ -3,6 +3,8 @@ import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
 import { aiRoutes } from './features/ai/index.js';
 import { assistantRoutes, memoryRoutes, scheduleRoutes } from './features/assistant/index.js';
+import { documentRoutes } from './features/documents/index.js';
+import { skillRoutes } from './features/skills/index.js';
 import { dossierRoutes, listenForDossiers } from './features/dossiers/index.js';
 import { knowledgeRoutes } from './features/knowledge/index.js';
 import { listenForNotifications, notificationRoutes } from './features/notifications/index.js';
@@ -218,6 +220,10 @@ export function createApi(): Hono {
   v1.route('/search', searchRoutes);
   // One space per subject (spec 034).
   v1.route('/dossiers', dossierRoutes);
+  // The organization's templates and each person's documents (spec 038).
+  v1.route('/documents', documentRoutes);
+  // The organization's know-how, as skills (spec 031).
+  v1.route('/skills', skillRoutes);
   v1.route('/assistant', assistantRoutes);
   // Each person's own AI connection, and the organization's policy (spec 026).
   v1.route('/ai', aiRoutes);

@@ -23,6 +23,9 @@ export type Page =
   | 'search'
   | 'library'
   | 'dossiers'
+  | 'documents'
+  | 'skills'
+  | 'admin_templates'
   | 'admin_library'
   | 'my_agents'
   | 'surveys'
@@ -78,6 +81,16 @@ function SpaceNav({ me, current }: { me: Me; current: Page }) {
         <NavItem href="/ressources" icon="library" current={current === 'resources'}>
           {m.nav_resources()}
         </NavItem>
+        {me.modules.skills && (
+          <NavItem href="/competences" icon="learn" current={current === 'skills'}>
+            {m.nav_skills()}
+          </NavItem>
+        )}
+        {me.modules.documents && (
+          <NavItem href="/documents" icon="download" current={current === 'documents'}>
+            {m.nav_documents()}
+          </NavItem>
+        )}
         {me.modules.dossiers && (
           <NavItem href="/dossiers" icon="library" current={current === 'dossiers'}>
             {m.nav_dossiers()}
@@ -205,6 +218,15 @@ function AdminNav({ me, current }: { me: Me; current: Page }) {
           current={current === 'admin_library'}
         >
           {m.nav_admin_library()}
+        </NavItem>
+      )}
+      {me.administrator && me.modules.documents && (
+        <NavItem
+          href="/administration/modeles"
+          icon="download"
+          current={current === 'admin_templates'}
+        >
+          {m.nav_admin_templates()}
         </NavItem>
       )}
       {me.administrator && me.demo && (

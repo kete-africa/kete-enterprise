@@ -3,19 +3,20 @@ import {
   ask,
   askStream,
   BudgetExceededError,
+  extract,
   languageModel,
   modelConfigFromEnv,
-  postgresBudgetStore,
   type ModelConfig,
 } from '@kete/ai';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
 import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { asPerson } from '../../platform/acting.js';
-import { getPool, transaction } from '../../platform/db.js';
+import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { secretsOn } from '../../platform/secrets.js';
+import { usageStore } from '../../platform/usage.js';
 import {
   markSubscriptionUsed,
   modelChoiceFor,
@@ -27,8 +28,12 @@ import {
   type Payer,
 } from '../ai/index.js';
 import { colleagueCard } from '../directory/index.js';
+import { documentsOpen, documentTools } from '../documents/index.js';
 import { knowledgeTool, libraryOpen } from '../knowledge/index.js';
+import { keepSkill, skillsForModel, skillsOf } from '../skills/index.js';
+import { skillFromText, SkillError } from '@kete/skills';
 import { appToolsFor, decideDraft, draftsFor, toolsForPerson } from '../gateway/index.js';
+import { readModules } from '../organization/index.js';
 import { isAdministrator } from '../rights/index.js';
 import { personOfAccount } from '../structure/index.js';
 import { factsFor, type Facts } from '../workspace/index.js';
@@ -93,8 +98,8 @@ function configured(): ModelConfig | null {
   }
 }
 
-let store: ReturnType<typeof postgresBudgetStore> | undefined;
-const budgets = () => (store ??= postgresBudgetStore(getPool()));
+let store: ReturnType<typeof usageStore> | undefined;
+const budgets = () => (store ??= usageStore());
 
 type Model = Parameters<typeof ask>[0]['model'];
 let override: Model | undefined;
@@ -326,6 +331,21 @@ export async function writeBriefing(identity: IdentityVariables['identity'], for
 }
 
 /** The assistant's routes, under /v1/assistant (spec 014). */
+/** What the model writes to keep a skill from a conversation. */
+const skillDraft = z.object({
+  name: z
+    .string()
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/)
+    .max(64)
+    .describe('Le nom, en minuscules et tirets, par exemple « relance-client »'),
+  description: z
+    .string()
+    .min(20)
+    .max(1000)
+    .describe('Ce que fait la compétence, et quand l’utiliser'),
+  instructions: z.string().min(20).max(20_000).describe('Les étapes, en Markdown'),
+});
+
 export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
   // Whether a model answers this person: her own connection, or the organization's (spec 026); and
   // who may pay for her answers, the first by default (spec 026b).
@@ -405,6 +425,65 @@ export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
     if (!found) throw new GestureRefusal(404, 'not_found', 'No such conversation.');
     return c.json(found);
   })
+  // A skill kept from a conversation (spec 031): the model writes its SKILL.md from what worked;
+  // it is hers alone until an administrator opens it to others.
+  .post('/conversations/:conversationId/skill', async (c) => {
+    if (c.get('viewedBy')) throw new GestureRefusal(403, 'view_as_forbidden', 'Hers to keep.');
+    const identity = c.get('identity');
+    const conversation = await transaction(identity.organizationId, async (db) => {
+      if (!(await readModules(db)).skills) {
+        throw new GestureRefusal(403, 'module_disabled', 'Skills are off here.');
+      }
+      return readConversation(db, identity.userId, c.req.param('conversationId'));
+    });
+    if (!conversation) throw new GestureRefusal(404, 'not_found', 'No such conversation.');
+    const choice = await modelFor(identity);
+    if (!choice) throw new GestureRefusal(409, 'assistant_unavailable', 'No model is configured.');
+    const { value } = await extract({
+      model: choice.model,
+      schema: skillDraft,
+      system:
+        'Tu écris une compétence réutilisable (format Agent Skills) à partir d’une conversation qui a réussi : ' +
+        'un nom court en minuscules avec des tirets, une description qui dit ce qu’elle fait et quand l’utiliser, ' +
+        'puis des instructions en Markdown, numérotées, générales (sans les données propres à cette conversation).',
+      prompt: conversation.messages
+        .map((m) => `${m.role === 'user' ? 'Personne' : 'Assistant'} : ${m.content}`)
+        .join('\n\n')
+        .slice(-40_000),
+      metering: {
+        store: meteringStore(choice.personal),
+        context: {
+          organizationId: identity.organizationId,
+          actor: { kind: 'person', id: identity.userId, channel: 'web' },
+          purpose: purposeOf('skills', choice.personal),
+          model: '',
+        },
+      },
+    });
+    let skill;
+    try {
+      skill = skillFromText({
+        'SKILL.md': [
+          '---',
+          `name: ${value.name}`,
+          `description: ${JSON.stringify(value.description)}`,
+          '---',
+          '',
+          value.instructions,
+          '',
+        ].join('\n'),
+      });
+    } catch (error) {
+      if (error instanceof SkillError) {
+        throw new GestureRefusal(422, 'skill_invalid', error.problems.join('; '));
+      }
+      throw error;
+    }
+    const kept = await transaction(identity.organizationId, (db) =>
+      keepSkill(db, identity, skill, 'Gardée depuis une conversation'),
+    );
+    return c.json({ skill: kept.skill }, 201);
+  })
   // The chat, streamed line by line (NDJSON): the conversation, the text as it comes, each tool
   // called and the drafts prepared, then the end. Stopping the request stops the model.
   .post('/chat/stream', (c: Ctx) => streamChat(c))
@@ -476,8 +555,24 @@ export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
         monthlyTokens: budget[0]?.monthly_tokens ?? null,
       };
     });
+    // What it cost, by purpose, model and who asked (spec 037): null where no price is known.
+    const lines = await usageStore().report(identity.organizationId);
+    const costs = new Map<string, number>();
+    for (const line of lines) {
+      if (line.costMicroUsd === null) continue;
+      costs.set(line.purpose, (costs.get(line.purpose) ?? 0) + line.costMicroUsd);
+    }
+    answer.purposes = answer.purposes.map((p) => ({
+      ...p,
+      costMicroUsd: costs.get(p.purpose) ?? null,
+    }));
     const config = configured();
-    return c.json({ ...answer, provider: config?.provider ?? null, model: config?.model ?? null });
+    return c.json({
+      ...answer,
+      lines,
+      provider: config?.provider ?? null,
+      model: config?.model ?? null,
+    });
   })
   .post('/budget', async (c) => {
     const identity = c.get('identity');
@@ -593,12 +688,21 @@ async function streamChat(c: Ctx): Promise<Response> {
   const library =
     answerer.kind === 'model' &&
     (await transaction(organizationId, (db) => libraryOpen(db, identity)).catch(() => false));
+  // The know-how she may use, as skills: the shipped ones and her organization's (spec 031).
+  const skills =
+    answerer.kind === 'model'
+      ? skillsForModel(
+          await transaction(organizationId, (db) => skillsOf(db, identity)).catch(() => []),
+        )
+      : { prompt: '', tools: [] };
+  // The organization's document templates, filled for her (spec 038).
+  const documents = answerer.kind === 'model' && (await documentsOpen(identity).catch(() => false));
   const appTools = (apps?.tools ?? []).filter(
     (t) => named.length === 0 || named.some((n) => t.description.startsWith(n)),
   );
   // Her message as the model reads it: her words, what each command asks, the files' text, the
   // images themselves, and the people she mentioned.
-  const instructions = commandInstructions(mentioned.directives);
+  const instructions = await commandInstructions(mentioned.directives);
   const said = [
     mentioned.plain || parsed.data.message,
     ...instructions,
@@ -658,13 +762,22 @@ async function streamChat(c: Ctx): Promise<Response> {
           await asPerson(identity, async () => {
             const result = await askStream({
               model: answerer.model,
-              system: system(organization, identity.name) + memoryPrompt(memories),
+              system:
+                system(organization, identity.name) +
+                memoryPrompt(memories) +
+                (skills.prompt
+                  ? `
+
+${skills.prompt}`
+                  : ''),
               messages: [...history, { role: 'user', content }],
               tools: [
                 ...(await toolsForPerson(identity)),
                 canvasTool,
                 ...(c.get('viewedBy') ? [] : [scheduleTool(identity), rememberTool(identity)]),
                 ...(library ? [knowledgeTool(identity)] : []),
+                ...(documents && !c.get('viewedBy') ? documentTools(identity) : []),
+                ...skills.tools,
                 ...appTools,
               ],
               maxSteps: 6,

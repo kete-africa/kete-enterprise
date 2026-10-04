@@ -8,6 +8,9 @@ allowBuilds:
   cpu-features: false
   protobufjs: false
   ssh2: false
+  # @kete/files reads with officeparser, which brings Tesseract for an OCR Kete does not use
+  # (scans go to the model).
+  tesseract.js: false
 
 # Kete's own packages are trusted as soon as kete-core publishes them; everything else waits for
 # pnpm's minimum release age.

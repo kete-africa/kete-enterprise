@@ -55,6 +55,9 @@ it watches and signals; it changes nothing.
 - **FR-003**: the worker (the API's image, role `worker`, pg-boss through `@kete/jobs`) wakes the
   agents due; `POST /v1/agents/:id/wake` wakes one now (its responsible person or a manager).
 - **FR-004**: permission `agents:manage`.
+- **FR-004b**: the kill switch: an agent paused by its person, or every agent of the organization
+  when an administrator switches the `agents` module off, wakes and does nothing — whoever wakes it,
+  the worker or a person.
 - **FR-005**: the screen « Agents »: the agents, their job description, their signals; creating,
   pausing and waking one.
 

@@ -33,6 +33,8 @@ sequenceDiagram
 - **Watches** are the features': `registry` (apps without a card or an owner, needs
   `registry:read`), `decisions` (steps waiting too long for its person); compliance's controls plug
   in with `registerWatch` (spec 008).
+- **Stopped**: an agent paused by its person does nothing; the organization's `agents` module
+  switched off stops every agent at once (the kill switch), whoever wakes them.
 - **Running**: `main.ts worker` runs the worker alone; `KETE_WORKER_IN_PROCESS=true` runs it beside
   the API (a small instance, one container).
 

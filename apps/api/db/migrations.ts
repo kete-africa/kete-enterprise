@@ -2,6 +2,9 @@ import {
   aiConnectionsMigrationSql,
   aiSubscriptionsMigrationSql,
 } from '../src/features/ai/index.js';
+import { aiCostMigrationSql } from '@kete/ai';
+import { skillsMigrationSql } from '@kete/skills';
+import { documentsMigrationSql } from '../src/features/documents/index.js';
 import { dossiersMigrationSql } from '../src/features/dossiers/index.js';
 import { knowledgeTablesSql } from '../src/features/knowledge/index.js';
 import { notificationsTablesSql } from '../src/features/notifications/index.js';
@@ -141,4 +144,10 @@ export const migrations: Migration[] = [
   { name: '0028_notifications', sql: (context) => notificationsTablesSql(context) },
   // Dossiers: one space per subject, its members, its links (spec 034).
   { name: '0029_dossiers', sql: (context) => dossiersMigrationSql(context) },
+  // Documents: the organization's Word templates, what each person produced (spec 038).
+  { name: '0030_documents', sql: (context) => documentsMigrationSql(context) },
+  // The organization's skills and their versions (spec 031, @kete/skills).
+  { name: '0031_skills', sql: (context) => skillsMigrationSql(context) },
+  // What each model call cost (spec 037, @kete/ai).
+  { name: '0032_ai_costs', sql: (context) => aiCostMigrationSql(context) },
 ];

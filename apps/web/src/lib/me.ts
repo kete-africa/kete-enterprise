@@ -3,7 +3,15 @@ import { deleteCookie, getRequest, setCookie } from '@tanstack/react-start/serve
 import { callApi, SignInRequired, VIEW_AS_COOKIE } from '@/platform/api';
 
 export type ModuleKey =
-  'surveys' | 'performance' | 'meetings' | 'compliance' | 'agents' | 'knowledge' | 'dossiers';
+  | 'surveys'
+  | 'performance'
+  | 'meetings'
+  | 'compliance'
+  | 'agents'
+  | 'knowledge'
+  | 'dossiers'
+  | 'documents'
+  | 'skills';
 
 export interface Me {
   userId: string;

@@ -11,7 +11,7 @@ import type { SqlExecutor } from '@kete/tenancy';
 import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { transaction } from '../../platform/db.js';
-import { extract, readable } from '../../platform/extract.js';
+import { extract, readable, scanReaderFor } from '../../platform/extract.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { readConversationOf } from '../assistant/index.js';
@@ -222,7 +222,9 @@ export const dossierRoutes = new Hono<{ Variables: IdentityVariables }>()
       throw new GestureRefusal(422, 'file_too_large', '20 MB at most.');
     if (!readable(parsed.data.contentType))
       throw new GestureRefusal(422, 'unsupported_file', 'PDF, Word or text.');
-    const read = await extract(parsed.data.contentType, data).catch(() => null);
+    const read = await extract(parsed.data.contentType, data, {
+      transcribe: scanReaderFor(c.get('identity')),
+    }).catch(() => null);
     if (!read || read.kind !== 'text' || !read.text)
       throw new GestureRefusal(422, 'unreadable_file', 'No text.');
     const identity = c.get('identity');

@@ -12,6 +12,7 @@ import {
   subtreeOf,
 } from './infrastructure/agents.tables.js';
 import { notificationWords, tell } from '../notifications/index.js';
+import { readModules } from '../organization/index.js';
 import { watchNamed } from './watches.js';
 
 export interface WakeReport {
@@ -39,6 +40,8 @@ export async function wakeAgent(organizationId: string, agentId: string): Promis
   return transaction(organizationId, async (db) => {
     const agent = await findAgent(db, agentId);
     if (!agent || agent.status !== 'active') return { agentId, acted: false, raised: 0, closed: 0 };
+    // The organization's kill switch: its agents module off, no agent acts, whoever woke it.
+    if (!(await readModules(db)).agents) return { agentId, acted: false, raised: 0, closed: 0 };
     const userId = await personOfAgent(db, agent);
     if (!userId) {
       await markRun(db, agentId);

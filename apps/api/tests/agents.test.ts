@@ -252,6 +252,18 @@ describe('it sleeps, wakes and signals', () => {
     expect((await post(t.kofi, `/agents/signals/${signal?.signalId}/close`)).status).toBe(403);
     expect((await post(t.awa, `/agents/signals/${signal?.signalId}/close`)).status).toBe(201);
   });
+
+  it('stops acting, every agent at once, when an administrator switches agents off', async () => {
+    await post(t.admin, '/organization/modules', { module: 'agents', enabled: false });
+    try {
+      await db.owner.query(`update agents set next_wake_at = now() - interval '1 minute'`);
+      const reports = await wakeDueAgents(() => dueAgents(db.app));
+      expect(reports.length).toBeGreaterThan(0);
+      expect(reports.every((r) => !r.acted)).toBe(true);
+    } finally {
+      await post(t.admin, '/organization/modules', { module: 'agents', enabled: true });
+    }
+  });
 });
 
 describe("a position's agent", () => {

@@ -9,6 +9,7 @@ import { PayWith, rememberedPayer } from '@/lib/chat/pay-with';
 import { useKeteChat } from '@/lib/chat/runtime';
 import { KeteThread, triggerAdapter } from '@/lib/chat/thread';
 import { refusal } from '@/lib/forms';
+import { keepConversationAsSkill } from '@/lib/skills';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import { fetchAssistant, fetchConversation, fetchConversations, type Payer } from '@/lib/workspace';
@@ -52,6 +53,7 @@ function AssistantPage() {
   const { me } = Route.useRouteContext();
   const { assistant, conversations, current, mentionables, sandboxUrl } = Route.useLoaderData();
   const [error, setError] = useState<string | null>(null);
+  const [kept, setKept] = useState<string | null>(null);
   const [opened, setOpened] = useState<{ title: string; content: string } | null>(null);
   const [closed, setClosed] = useState(false);
   const [payer, setPayer] = useState<Payer | null>(assistant.payers[0] ?? null);
@@ -111,6 +113,28 @@ function AssistantPage() {
         description={m.assistant_explain()}
         actions={
           <>
+            {me.modules.skills && current && (
+              <button
+                type="button"
+                className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
+                onClick={() =>
+                  void keepConversationAsSkill({
+                    data: { conversationId: current.conversationId },
+                  }).then((answer) => {
+                    setError(answer.ok ? null : refusal(answer.error));
+                    setKept(
+                      answer.ok
+                        ? m.skills_kept_notice({
+                            name: (answer.data as { skill: { name: string } }).skill.name,
+                          })
+                        : null,
+                    );
+                  })
+                }
+              >
+                {m.skills_keep_conversation()}
+              </button>
+            )}
             <a
               href="/assistant/memoire"
               className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
@@ -203,10 +227,16 @@ function AssistantPage() {
                 {error}
               </p>
             )}
+            {kept && (
+              <p role="status" className="text-body-sm">
+                {kept}
+              </p>
+            )}
           </div>
           {canvas && (
             <ChatCanvas
               canvas={canvas}
+              pdf={me.modules.documents}
               onClose={() => {
                 setOpened(null);
                 setClosed(true);
