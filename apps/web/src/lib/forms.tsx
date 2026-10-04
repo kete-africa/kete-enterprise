@@ -60,6 +60,9 @@ export function refusal(code: string | null): string {
     file_too_large: m.error_file_too_large,
     unreadable_file: m.error_unreadable_file,
     secrets_off: m.ai_connection_unavailable,
+    subscriptions_off: m.ai_subscription_unavailable,
+    payer_refused: m.error_payer_refused,
+    subscription_lost: m.error_subscription_lost,
   };
   return (messages[code ?? ''] ?? m.error_generic)();
 }

@@ -47,11 +47,16 @@ export const refreshBriefing = createServerFn({ method: 'POST' }).handler(async 
   return answer.ok ? { ok: true, error: null } : { ok: false, error: answer.error };
 });
 
+export type Payer = 'organization' | 'key' | 'subscription';
+
 export const fetchAssistant = createServerFn({ method: 'GET' }).handler(() =>
-  callApi<{ available: boolean; provider: string | null; model: string | null }>(
-    getRequest(),
-    '/v1/assistant',
-  ),
+  callApi<{
+    available: boolean;
+    provider: string | null;
+    model: string | null;
+    /** Who may pay for her answers, the first by default (spec 026b). */
+    payers: Payer[];
+  }>(getRequest(), '/v1/assistant'),
 );
 
 export const fetchUsage = createServerFn({ method: 'GET' }).handler(() =>

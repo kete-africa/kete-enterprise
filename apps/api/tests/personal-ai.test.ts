@@ -58,6 +58,8 @@ describe('a person’s own AI connection', () => {
       policy: 'allowed',
       available: true,
       connection: null,
+      subscriptionsAvailable: false,
+      subscription: null,
     });
     expect(await choice()).toEqual({ config: organizationModel, personal: false });
   });

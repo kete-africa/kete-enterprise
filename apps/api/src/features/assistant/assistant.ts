@@ -15,7 +15,17 @@ import { asPerson } from '../../platform/acting.js';
 import { getPool, transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
-import { modelChoiceFor } from '../ai/index.js';
+import { secretsOn } from '../../platform/secrets.js';
+import {
+  markSubscriptionUsed,
+  modelChoiceFor,
+  payers,
+  payersFor,
+  readSubscription,
+  subscriptionAgent,
+  SubscriptionLostError,
+  type Payer,
+} from '../ai/index.js';
 import { colleagueCard } from '../directory/index.js';
 import { appToolsFor, decideDraft, draftsFor, toolsForPerson } from '../gateway/index.js';
 import { isAdministrator } from '../rights/index.js';
@@ -103,6 +113,65 @@ async function modelFor(identity: {
     modelChoiceFor(db, identity.userId, configured()),
   );
   return choice ? { model: languageModel(choice.config), personal: choice.personal } : null;
+}
+
+/** Who may pay for her answers (spec 026b): the organization, her key, her subscription. */
+const payersOf = (db: SqlExecutor, userId: string) =>
+  payersFor(db, userId, {
+    organizationModel: Boolean(override ?? configured()),
+    keys: secretsOn(),
+    subscriptions: subscriptionAgent().available(),
+  });
+
+/** What answers her in the chat: a model (hers or the organization's), or her own subscription. */
+type Answerer =
+  { kind: 'model'; model: Model; personal: boolean } | { kind: 'subscription'; machineId: string };
+
+/**
+ * The answerer she chose with « Pay with », if the organization's policy lets that payer pay — or
+ * the first one allowed when she did not choose.
+ */
+async function answererFor(
+  identity: { organizationId: string; userId: string },
+  wanted: Payer | undefined,
+): Promise<Answerer> {
+  return transaction(identity.organizationId, async (db) => {
+    const allowed = await payersOf(db, identity.userId);
+    const payer = wanted ?? allowed[0];
+    if (!payer || !allowed.includes(payer)) {
+      throw wanted
+        ? new GestureRefusal(409, 'payer_refused', 'This payer cannot pay for her answers.')
+        : new GestureRefusal(409, 'assistant_unavailable', 'No model is configured here.');
+    }
+    if (payer === 'subscription') {
+      const own = await readSubscription(db, identity.userId);
+      return { kind: 'subscription', machineId: (own as { machineId: string }).machineId };
+    }
+    if (override) return { kind: 'model', model: override, personal: false };
+    const choice = await modelChoiceFor(db, identity.userId, configured(), payer);
+    if (!choice) {
+      throw new GestureRefusal(409, 'assistant_unavailable', 'No model is configured here.');
+    }
+    return { kind: 'model', model: languageModel(choice.config), personal: choice.personal };
+  });
+}
+
+/**
+ * What her subscription reads: the same frame as the assistant's, without Kete Enterprise's tools —
+ * it answers from what she gives it, and runs nothing.
+ */
+function subscriptionPrompt(
+  organization: string,
+  name: string,
+  history: { role: 'user' | 'assistant'; content: string }[],
+  message: string,
+): string {
+  return [
+    system(organization, name),
+    'Ici, tu réponds avec son propre abonnement, sans les outils de Kete Enterprise : appuie-toi seulement sur ce qu’elle te donne, et ne lance aucune commande.',
+    ...history.map((m) => `${m.role === 'user' ? 'Elle' : 'Toi'} : ${m.content}`),
+    `Elle : ${message}`,
+  ].join('\n\n');
 }
 
 /** Her own tokens are journaled, never counted against the organization's budget (spec 026). */
@@ -254,18 +323,19 @@ async function writeBriefing(identity: IdentityVariables['identity'], force: boo
 /** The assistant's routes, under /v1/assistant (spec 014). */
 export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
   // Whether a model answers this person: her own connection, or the organization's (spec 026).
+  // Who may pay for her answers, the first by default (spec 026b).
   .get('/', async (c) => {
     const identity = c.get('identity');
-    const choice = override
-      ? null
-      : await transaction(identity.organizationId, (db) =>
-          modelChoiceFor(db, identity.userId, configured()),
-        );
+    const { choice, payers } = await transaction(identity.organizationId, async (db) => ({
+      choice: override ? null : await modelChoiceFor(db, identity.userId, configured()),
+      payers: await payersOf(db, identity.userId),
+    }));
     return c.json({
-      available: Boolean(override ?? choice),
+      available: Boolean(override ?? choice) || payers.includes('subscription'),
       provider: choice?.config.provider ?? null,
       model: choice?.config.model ?? null,
       personal: choice?.personal ?? false,
+      payers,
     });
   })
   .get('/briefing', async (c) => c.json(await writeBriefing(c.get('identity'), false)))
@@ -431,6 +501,8 @@ const streamInput = z.object({
     .regex(/^cnv_[0-9a-f-]{8,64}$/)
     .optional(),
   message: z.string().trim().min(1).max(4000),
+  /** Who pays for the answer (spec 026b); the first allowed when absent. */
+  payer: z.enum(payers).optional(),
   /** Files attached to this message (spec 027), read when they were attached. */
   attachments: z
     .array(z.string().regex(/^att_[0-9a-f-]{8,64}$/))
@@ -456,11 +528,9 @@ function draftOf(output: unknown): unknown {
 
 async function streamChat(c: Ctx): Promise<Response> {
   const identity = c.get('identity');
-  const choice = await modelFor(identity);
-  if (!choice)
-    throw new GestureRefusal(409, 'assistant_unavailable', 'No model is configured here.');
   const parsed = streamInput.safeParse(await bodyOf(c));
   if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'A message is required.');
+  const answerer = await answererFor(identity, parsed.data.payer);
   const { organizationId, userId } = identity;
   const mentioned = readDirectives(parsed.data.message);
   const { conversationId, history, organization, files, people } = await transaction(
@@ -509,7 +579,9 @@ async function streamChat(c: Ctx): Promise<Response> {
   // administrator views a demo person's space: the token would be hers, not the person's.
   const token = /^Bearer (.+)$/.exec(c.req.header('authorization') ?? '')?.[1];
   const apps =
-    token && !c.get('viewedBy') ? await appToolsFor(identity, token).catch(() => null) : null;
+    token && !c.get('viewedBy') && answerer.kind === 'model'
+      ? await appToolsFor(identity, token).catch(() => null)
+      : null;
   const named = mentioned.directives.filter((d) => d.type === 'app').map((d) => `[${d.label}]`);
   const appTools = (apps?.tools ?? []).filter(
     (t) => named.length === 0 || named.some((n) => t.description.startsWith(n)),
@@ -517,18 +589,14 @@ async function streamChat(c: Ctx): Promise<Response> {
   // Her message as the model reads it: her words, what each command asks, the files' text, the
   // images themselves, and the people she mentioned.
   const instructions = commandInstructions(mentioned.directives);
+  const said = [
+    mentioned.plain || parsed.data.message,
+    ...instructions,
+    ...(people.length ? [`Personnes mentionnées :\n${people.join('\n')}`] : []),
+    ...files.filter((f) => f.kind === 'text').map((f) => `Pièce jointe « ${f.name} » :\n${f.text}`),
+  ].join('\n\n');
   const content = [
-    {
-      type: 'text' as const,
-      text: [
-        mentioned.plain || parsed.data.message,
-        ...instructions,
-        ...(people.length ? [`Personnes mentionnées :\n${people.join('\n')}`] : []),
-        ...files
-          .filter((f) => f.kind === 'text')
-          .map((f) => `Pièce jointe « ${f.name} » :\n${f.text}`),
-      ].join('\n\n'),
-    },
+    { type: 'text' as const, text: said },
     ...files
       .filter((f) => f.kind === 'image' && f.data)
       .map((f) => ({
@@ -548,17 +616,20 @@ async function streamChat(c: Ctx): Promise<Response> {
       const sources: Source[] = [];
       let canvas: { title: string; content: string } | null = null;
       try {
-        await asPerson(identity, async () => {
-          const result = await askStream({
-            model: choice.model,
-            system: system(organization, identity.name),
-            messages: [...history, { role: 'user', content }],
-            tools: [...(await toolsForPerson(identity)), canvasTool, ...appTools],
-            maxSteps: 6,
-            abortSignal: signal,
-            metering: {
-              store: meteringStore(choice.personal),
-              context: {
+        if (answerer.kind === 'subscription') {
+          // Her own subscription answers, on her own machine: the whole answer at once.
+          text = await subscriptionAgent().answer(answerer.machineId, {
+            prompt: subscriptionPrompt(organization, identity.name, history, said),
+            images: files
+              .filter((f) => f.kind === 'image' && f.data)
+              .map((f) => ({ data: new Uint8Array(f.data as Buffer), mediaType: f.contentType })),
+          });
+          send({ type: 'text', delta: text });
+          await transaction(organizationId, (db) => markSubscriptionUsed(db, userId));
+          // Journaled as hers: a call on her subscription, no token counted for the organization.
+          await budgets()
+            .record(
+              {
                 organizationId,
                 actor: {
                   kind: 'agent',
@@ -566,52 +637,80 @@ async function streamChat(c: Ctx): Promise<Response> {
                   channel: 'chat',
                   onBehalfOf: { kind: 'person', id: userId },
                 },
-                purpose: purposeOf('chat', choice.personal),
+                purpose: 'chat:subscription',
                 model: '',
               },
-            },
-          });
-          for await (const part of result.fullStream as AsyncIterable<Record<string, unknown>>) {
-            if (part['type'] === 'text-delta') {
-              const delta = String(part['text'] ?? part['delta'] ?? '');
-              text += delta;
-              send({ type: 'text', delta });
-            } else if (part['type'] === 'tool-call') {
-              send({ type: 'tool', name: part['toolName'], state: 'running' });
-            } else if (part['type'] === 'tool-result') {
-              const output = part['output'] as { status?: string } | null;
-              const state = output?.status === 'refused' ? 'refused' : 'done';
-              tools.push({ name: String(part['toolName']), state });
-              const prepared = draftOf(output);
-              const draft = prepared
-                ? await transaction(organizationId, (db) =>
-                    explainDraft(db, prepared as { values: Record<string, unknown> }),
-                  )
-                : null;
-              if (draft) drafts.push(draft);
-              send({ type: 'tool', name: part['toolName'], state, ...(draft ? { draft } : {}) });
-              const result = (output as { output?: unknown } | null)?.output;
-              if (part['toolName'] === 'canvas_write' && result) {
-                // The document goes to the canvas, beside the conversation.
-                canvas = result as { title: string; content: string };
-                send({ type: 'canvas', ...canvas });
-              } else {
-                for (const source of sourcesOf(result)) {
-                  if (sources.length < 8 && !sources.some((x) => x.href === source.href)) {
-                    sources.push(source);
-                    send({ type: 'source', ...source });
+              { inputTokens: 0, outputTokens: 0, modelCalls: 1 },
+            )
+            .catch(() => undefined);
+        } else {
+          await asPerson(identity, async () => {
+            const result = await askStream({
+              model: answerer.model,
+              system: system(organization, identity.name),
+              messages: [...history, { role: 'user', content }],
+              tools: [...(await toolsForPerson(identity)), canvasTool, ...appTools],
+              maxSteps: 6,
+              abortSignal: signal,
+              metering: {
+                store: meteringStore(answerer.personal),
+                context: {
+                  organizationId,
+                  actor: {
+                    kind: 'agent',
+                    id: 'agt_assistant',
+                    channel: 'chat',
+                    onBehalfOf: { kind: 'person', id: userId },
+                  },
+                  purpose: purposeOf('chat', answerer.personal),
+                  model: '',
+                },
+              },
+            });
+            for await (const part of result.fullStream as AsyncIterable<Record<string, unknown>>) {
+              if (part['type'] === 'text-delta') {
+                const delta = String(part['text'] ?? part['delta'] ?? '');
+                text += delta;
+                send({ type: 'text', delta });
+              } else if (part['type'] === 'tool-call') {
+                send({ type: 'tool', name: part['toolName'], state: 'running' });
+              } else if (part['type'] === 'tool-result') {
+                const output = part['output'] as { status?: string } | null;
+                const state = output?.status === 'refused' ? 'refused' : 'done';
+                tools.push({ name: String(part['toolName']), state });
+                const prepared = draftOf(output);
+                const draft = prepared
+                  ? await transaction(organizationId, (db) =>
+                      explainDraft(db, prepared as { values: Record<string, unknown> }),
+                    )
+                  : null;
+                if (draft) drafts.push(draft);
+                send({ type: 'tool', name: part['toolName'], state, ...(draft ? { draft } : {}) });
+                const result = (output as { output?: unknown } | null)?.output;
+                if (part['toolName'] === 'canvas_write' && result) {
+                  // The document goes to the canvas, beside the conversation.
+                  canvas = result as { title: string; content: string };
+                  send({ type: 'canvas', ...canvas });
+                } else {
+                  for (const source of sourcesOf(result)) {
+                    if (sources.length < 8 && !sources.some((x) => x.href === source.href)) {
+                      sources.push(source);
+                      send({ type: 'source', ...source });
+                    }
                   }
                 }
+              } else if (part['type'] === 'error') {
+                throw part['error'] instanceof Error ? part['error'] : new Error('model error');
               }
-            } else if (part['type'] === 'error') {
-              throw part['error'] instanceof Error ? part['error'] : new Error('model error');
             }
-          }
-        });
+          });
+        }
         send({ type: 'done' });
       } catch (error) {
         if (error instanceof BudgetExceededError) send({ type: 'error', code: 'budget_spent' });
-        else if (!signal.aborted) {
+        else if (error instanceof SubscriptionLostError) {
+          send({ type: 'error', code: 'subscription_lost' });
+        } else if (!signal.aborted) {
           console.error('[chat]', (error as Error).message);
           send({ type: 'error', code: 'model_failed' });
         }

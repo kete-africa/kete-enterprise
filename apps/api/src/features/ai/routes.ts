@@ -14,6 +14,14 @@ import {
   setPolicy,
 } from './connections.js';
 import { checkKey } from './infrastructure/key-check.js';
+import { subscriptionAgent } from './infrastructure/subscription-agent.js';
+import {
+  markConnected,
+  readSubscription,
+  removeSubscription,
+  saveSigningIn,
+  shown,
+} from './subscriptions.js';
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
 
@@ -33,6 +41,8 @@ export const aiRoutes = new Hono<{ Variables: IdentityVariables }>()
         policy: await readPolicy(db),
         available: secretsOn(),
         connection: await readConnection(db, userId),
+        subscriptionsAvailable: subscriptionAgent().available(),
+        subscription: shown(await readSubscription(db, userId)),
       })),
     );
   })
@@ -66,6 +76,57 @@ export const aiRoutes = new Hono<{ Variables: IdentityVariables }>()
     const { organizationId, userId } = c.get('identity');
     await transaction(organizationId, (db) => removeConnection(db, userId));
     return c.json({ connection: null });
+  })
+  // Her own subscription (spec 026b): she signs in on her own machine, with the link and the code
+  // given here; Kete Enterprise keeps only which machine is hers.
+  .post('/subscription', async (c) => {
+    herself(c);
+    const { organizationId, userId } = c.get('identity');
+    const agent = subscriptionAgent();
+    if (!agent.available()) {
+      throw new GestureRefusal(409, 'subscriptions_off', 'This instance runs no subscription.');
+    }
+    const current = await transaction(organizationId, async (db) => {
+      if ((await readPolicy(db)) === 'off') {
+        throw new GestureRefusal(409, 'personal_off', 'The organization pays for every model.');
+      }
+      return readSubscription(db, userId);
+    });
+    const started = await agent.startSignIn(current?.machineId ?? null);
+    const subscription = await transaction(organizationId, async (db) => {
+      await saveSigningIn(db, organizationId, userId, started.machineId);
+      return shown(await readSubscription(db, userId));
+    });
+    return c.json({ url: started.url, code: started.code, subscription }, 201);
+  })
+  .post('/subscription/check', async (c) => {
+    herself(c);
+    const { organizationId, userId } = c.get('identity');
+    const current = await transaction(organizationId, (db) => readSubscription(db, userId));
+    if (!current) throw new GestureRefusal(404, 'not_found', 'No subscription to check.');
+    const agent = subscriptionAgent();
+    const signedIn = await agent.signedIn(current.machineId);
+    const subscription = await transaction(organizationId, async (db) => {
+      if (signedIn === null) await removeSubscription(db, userId);
+      else if (signedIn) await markConnected(db, userId);
+      return shown(await readSubscription(db, userId));
+    });
+    // Signed in: her machine rests until she writes, kept with her sign-in, not billed.
+    if (signedIn) await agent.rest(current.machineId).catch(() => undefined);
+    return c.json({ subscription }, 201);
+  })
+  .post('/subscription/remove', async (c) => {
+    herself(c);
+    const { organizationId, userId } = c.get('identity');
+    const current = await transaction(organizationId, (db) => readSubscription(db, userId));
+    if (current) {
+      // Her machine goes, and her sign-in with it.
+      await subscriptionAgent()
+        .forget(current.machineId)
+        .catch(() => undefined);
+      await transaction(organizationId, (db) => removeSubscription(db, userId));
+    }
+    return c.json({ subscription: null });
   })
   // Who pays for the models is the frame: the organization's administrators decide.
   .post('/policy', async (c) => {

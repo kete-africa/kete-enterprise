@@ -1,15 +1,16 @@
 import { AssistantRuntimeProvider } from '@assistant-ui/react';
 import { EmptyState, Icon, PageHeader, Row, RowList } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { fetchMentionables } from '@/lib/chat/api';
 import { ChatCanvas } from '@/lib/chat/canvas';
+import { PayWith, rememberedPayer } from '@/lib/chat/pay-with';
 import { useKeteChat } from '@/lib/chat/runtime';
 import { KeteThread, triggerAdapter } from '@/lib/chat/thread';
 import { refusal } from '@/lib/forms';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
-import { fetchAssistant, fetchConversation, fetchConversations } from '@/lib/workspace';
+import { fetchAssistant, fetchConversation, fetchConversations, type Payer } from '@/lib/workspace';
 import * as m from '@/paraglide/messages.js';
 
 const isConversation = (value: unknown): value is string =>
@@ -45,9 +46,13 @@ function AssistantPage() {
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState<{ title: string; content: string } | null>(null);
   const [closed, setClosed] = useState(false);
+  const [payer, setPayer] = useState<Payer | null>(assistant.payers[0] ?? null);
+  // The payer she chose last on this device, once the page runs in her browser.
+  useEffect(() => setPayer(rememberedPayer(assistant.payers)), [assistant.payers]);
   const chat = useKeteChat({
     conversationId: current?.conversationId ?? null,
     initial: current?.messages ?? [],
+    payer,
     onError: (code) => setError(code === null ? null : refusal(code)),
   });
   const canvas = opened ?? (closed ? null : chat.canvas);
@@ -147,11 +152,21 @@ function AssistantPage() {
                 ]}
                 mentions={mentions}
                 commands={commands}
-                hint={m.chat_hint({
-                  model: assistant.model
-                    ? m.assistant_hint({ model: assistant.model })
-                    : m.assistant_hint_rules(),
-                })}
+                hint={
+                  <span className="flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      {m.chat_hint({
+                        model:
+                          payer === 'subscription'
+                            ? ''
+                            : assistant.model
+                              ? m.assistant_hint({ model: assistant.model })
+                              : m.assistant_hint_rules(),
+                      })}
+                    </span>
+                    <PayWith payers={assistant.payers} value={payer} onChange={setPayer} />
+                  </span>
+                }
                 views={{
                   openCanvas: (document) => {
                     setClosed(false);

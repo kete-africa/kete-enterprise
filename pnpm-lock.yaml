@@ -65,6 +65,9 @@ importers:
       '@kete/records':
         specifier: npm:@kete-africa/records@^0.1.1
         version: '@kete-africa/records@0.1.1'
+      '@kete/sandbox':
+        specifier: npm:@kete-africa/sandbox@^0.3.0
+        version: '@kete-africa/sandbox@0.3.0'
       '@kete/sdk':
         specifier: npm:@kete-africa/sdk@^0.6.0
         version: '@kete-africa/sdk@0.6.0'
@@ -784,6 +787,9 @@ packages:
 
   '@kete-africa/records@0.1.1':
     resolution: {integrity: sha512-6OZeaKLcuuMC87hLL0+DHxwD7a5JYaKISds1NrSqWx4cjqe+z+kRNvljTxvCHbJ5VEaSSf4la+qg7Hd3hIv6pw==, tarball: https://npm.pkg.github.com/download/@kete-africa/records/0.1.1/91ab0f3b0e4956907c45f4479e2abd67652b5e26}
+
+  '@kete-africa/sandbox@0.3.0':
+    resolution: {integrity: sha512-m0R36eXYxY87c9sUbn6ItrB05z4Kfd4p3/sfLjzjaGp+wF6OiPoZFP2nl8FDBmt5R9JaK5ZLovMX8Nzqiz6bKA==, tarball: https://npm.pkg.github.com/download/@kete-africa/sandbox/0.3.0/f0f01f2b4c852eb0416e2bda15f2d0aec890cf1f}
 
   '@kete-africa/sdk@0.3.0':
     resolution: {integrity: sha512-oA7uqcSAT7Ojg4/2jYPvn/tgCqdsQBQUHhxneKWz7sUDIKrTPsJwDvr/6idj4q80eTQuL9HKePW9WVHM/kU61Q==, tarball: https://npm.pkg.github.com/download/@kete-africa/sdk/0.3.0/edf5c753df3adce29d26d4bbc986bae69a95a321}
@@ -5339,6 +5345,8 @@ snapshots:
       zod: 4.6.5
     transitivePeerDependencies:
       - pg-native
+
+  '@kete-africa/sandbox@0.3.0': {}
 
   '@kete-africa/sdk@0.3.0':
     dependencies:
