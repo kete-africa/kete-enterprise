@@ -18,6 +18,7 @@ import {
   writeBriefing,
 } from './assistant.js';
 import { appendMessage, startConversation } from './conversations.js';
+import { listMemories, memoryPrompt } from './memory.js';
 import {
   claimSchedule,
   createSchedule,
@@ -60,14 +61,17 @@ async function answerQuestion(s: ScheduleRun): Promise<{
   const identity = identityOf(s);
   const choice = await modelFor(identity);
   if (!choice) return { status: 'no_model', conversationId: null, text: '' };
-  const organization = await transaction(s.organizationId, organizationName);
+  const { organization, memories } = await transaction(s.organizationId, async (db) => ({
+    organization: await organizationName(db),
+    memories: await listMemories(db, s.userId),
+  }));
   let text = '';
   let status: 'done' | 'failed' = 'done';
   try {
     const answer = await asPerson(identity, async () =>
       ask({
         model: choice.model,
-        system: `${system(organization, s.name)}\nC’est une tâche planifiée « ${s.title} » : réponds directement, elle lira ta réponse plus tard.`,
+        system: `${system(organization, s.name)}${memoryPrompt(memories)}\nC’est une tâche planifiée « ${s.title} » : réponds directement, elle lira ta réponse plus tard.`,
         prompt: s.prompt ?? s.title,
         tools: await toolsForPerson(identity),
         maxSteps: 6,

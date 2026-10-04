@@ -55,6 +55,7 @@ import {
   sourcesOf,
   type Source,
 } from './chat-tools.js';
+import { listMemories, memoryPrompt, rememberTool, type Memory } from './memory.js';
 import { assistantWords } from './words.js';
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
@@ -168,9 +169,10 @@ function subscriptionPrompt(
   name: string,
   history: { role: 'user' | 'assistant'; content: string }[],
   message: string,
+  memories: Memory[] = [],
 ): string {
   return [
-    system(organization, name),
+    system(organization, name) + memoryPrompt(memories),
     'Ici, tu réponds avec son propre abonnement, sans les outils de Kete Enterprise : appuie-toi seulement sur ce qu’elle te donne, et ne lance aucune commande.',
     ...history.map((m) => `${m.role === 'user' ? 'Elle' : 'Toi'} : ${m.content}`),
     `Elle : ${message}`,
@@ -536,7 +538,7 @@ async function streamChat(c: Ctx): Promise<Response> {
   const answerer = await answererFor(identity, parsed.data.payer);
   const { organizationId, userId } = identity;
   const mentioned = readDirectives(parsed.data.message);
-  const { conversationId, history, organization, files, people } = await transaction(
+  const { conversationId, history, organization, files, people, memories } = await transaction(
     organizationId,
     async (db) => {
       const id =
@@ -573,6 +575,7 @@ async function streamChat(c: Ctx): Promise<Response> {
         organization: await organizationName(db),
         files,
         people,
+        memories: await listMemories(db, userId),
       };
     },
   );
@@ -627,7 +630,7 @@ async function streamChat(c: Ctx): Promise<Response> {
         if (answerer.kind === 'subscription') {
           // Her own subscription answers, on her own machine: the whole answer at once.
           text = await subscriptionAgent().answer(answerer.machineId, {
-            prompt: subscriptionPrompt(organization, identity.name, history, said),
+            prompt: subscriptionPrompt(organization, identity.name, history, said, memories),
             images: files
               .filter((f) => f.kind === 'image' && f.data)
               .map((f) => ({ data: new Uint8Array(f.data as Buffer), mediaType: f.contentType })),
@@ -655,12 +658,12 @@ async function streamChat(c: Ctx): Promise<Response> {
           await asPerson(identity, async () => {
             const result = await askStream({
               model: answerer.model,
-              system: system(organization, identity.name),
+              system: system(organization, identity.name) + memoryPrompt(memories),
               messages: [...history, { role: 'user', content }],
               tools: [
                 ...(await toolsForPerson(identity)),
                 canvasTool,
-                ...(c.get('viewedBy') ? [] : [scheduleTool(identity)]),
+                ...(c.get('viewedBy') ? [] : [scheduleTool(identity), rememberTool(identity)]),
                 ...(library ? [knowledgeTool(identity)] : []),
                 ...appTools,
               ],

@@ -57,10 +57,21 @@ sequenceDiagram
   `assistant_schedules_due()`, in migration `0024_assistant_schedules`.
 - **FR-005**: the page « Mes tâches planifiées » (`/assistant/taches`), linked from the assistant.
 
-## Next
+## The assistant's memory
 
-The assistant's memory — what she asks it to remember, shown and erasable by her — completes this
-spec.
+What a person asks her assistant to remember — « I sign the purchases above 1 000 000 FCFA », « my
+reports in French, amounts in FCFA » — kept for her only (`assistant_memories`, row-level security,
+migration `0027_assistant_memories`), fifty at most. She adds one on « Ce que l'assistant retient de
+vous » (`/assistant/memoire`) or says « retiens que… » in the chat (tool `memory_remember`, level 2);
+her assistant reads them in every conversation and scheduled task, never pay, health nor secrets;
+she forgets one at any time (`POST /v1/assistant/memories/:id/forget`).
+
+```mermaid
+flowchart LR
+  P[« retiens que… » · or the page] --> M[(assistant_memories · hers only)]
+  M --> S[system prompt of her chat, her subscription, her scheduled tasks]
+  M --> F[forget, at any time]
+```
 
 ## Proof
 

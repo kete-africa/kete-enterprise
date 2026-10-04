@@ -4,4 +4,5 @@ export { chatMigrationSql } from './attachments.js';
 export { conversationsMigrationSql, viewsMigrationSql } from './conversations.js';
 export { runDueSchedules, scheduleRoutes } from './schedule-runs.js';
 export { schedulesMigrationSql } from './schedules.js';
+export { memoryMigrationSql, memoryRoutes } from './memory.js';
 export { nextRun } from './when.js';
