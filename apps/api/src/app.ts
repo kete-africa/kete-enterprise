@@ -5,6 +5,7 @@ import { aiRoutes } from './features/ai/index.js';
 import { assistantRoutes, memoryRoutes, scheduleRoutes } from './features/assistant/index.js';
 import { datasetRoutes } from './features/datasets/index.js';
 import { documentRoutes } from './features/documents/index.js';
+import { formRoutes, formsPublicRoutes, listenForForms } from './features/forms/index.js';
 import { skillRoutes } from './features/skills/index.js';
 import { dossierRoutes, listenForDossiers } from './features/dossiers/index.js';
 import { knowledgeRoutes } from './features/knowledge/index.js';
@@ -173,6 +174,8 @@ tellAppsWith(transaction);
 listenForNotifications();
 // A dossier's documents are read by its members (spec 034).
 listenForDossiers();
+// Each form is a subject of the decisions engine (spec 032).
+listenForForms();
 
 export function createApi(): Hono {
   const api = new Hono();
@@ -225,6 +228,8 @@ export function createApi(): Hono {
   v1.route('/documents', documentRoutes);
   // A team's data, its tables summed up (spec 031).
   v1.route('/datasets', datasetRoutes);
+  // Forms, their answers through a circuit, read as data (spec 032).
+  v1.route('/forms', formRoutes);
   // The organization's know-how, as skills (spec 031).
   v1.route('/skills', skillRoutes);
   v1.route('/assistant', assistantRoutes);
@@ -247,6 +252,8 @@ export function createApi(): Hono {
   open.route('/passes', passRoutes);
   open.route('/surveys', surveysPublicRoutes);
   open.route('/performance', performancePublicRoutes);
+  // A form's link, answered without an account (spec 032).
+  open.route('/forms', formsPublicRoutes);
   // The factory's signed reports (spec 021).
   open.route('/factory', factoryReportRoutes);
   // The apps' business events, with their own token (spec 025).

@@ -30,6 +30,7 @@ import {
 import { colleagueCard } from '../directory/index.js';
 import { datasetsOpen, datasetTools } from '../datasets/index.js';
 import { documentsOpen, documentTools } from '../documents/index.js';
+import { formsOpen, formTools } from '../forms/index.js';
 import { knowledgeTool, libraryOpen } from '../knowledge/index.js';
 import { keepSkill, skillsForModel, skillsOf } from '../skills/index.js';
 import { skillFromText, SkillError } from '@kete/skills';
@@ -698,6 +699,8 @@ async function streamChat(c: Ctx): Promise<Response> {
       : { prompt: '', tools: [] };
   // Her teams' data, summed up from their rows (spec 031).
   const teamData = answerer.kind === 'model' && (await datasetsOpen(identity).catch(() => false));
+  // The answers of the forms she runs (spec 032).
+  const forms = answerer.kind === 'model' && (await formsOpen(identity).catch(() => false));
   // The organization's document templates, filled for her (spec 038).
   const documents = answerer.kind === 'model' && (await documentsOpen(identity).catch(() => false));
   const appTools = (apps?.tools ?? []).filter(
@@ -782,6 +785,7 @@ ${skills.prompt}`
                 ...(documents && !c.get('viewedBy') ? documentTools(identity) : []),
                 ...skills.tools,
                 ...(teamData ? datasetTools(identity) : []),
+                ...(forms ? formTools(identity) : []),
                 ...appTools,
               ],
               maxSteps: 6,
