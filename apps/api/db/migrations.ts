@@ -4,6 +4,7 @@ import {
 } from '../src/features/ai/index.js';
 import { aiCostMigrationSql } from '@kete/ai';
 import { skillsMigrationSql } from '@kete/skills';
+import { datasetsMigrationSql } from '../src/features/datasets/index.js';
 import { documentsMigrationSql } from '../src/features/documents/index.js';
 import { dossiersMigrationSql } from '../src/features/dossiers/index.js';
 import { knowledgeTablesSql } from '../src/features/knowledge/index.js';
@@ -155,4 +156,6 @@ export const migrations: Migration[] = [
   { name: '0032_ai_costs', sql: (context) => aiCostMigrationSql(context) },
   // A meeting's transcript and the record the model proposes (spec 035).
   { name: '0033_meeting_records', sql: (context) => meetingRecordsMigrationSql(context) },
+  // A team's tables, kept as rows (spec 031).
+  { name: '0034_team_datasets', sql: (context) => datasetsMigrationSql(context) },
 ];
