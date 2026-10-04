@@ -3,6 +3,7 @@ import {
   aiSubscriptionsMigrationSql,
 } from '../src/features/ai/index.js';
 import { knowledgeTablesSql } from '../src/features/knowledge/index.js';
+import { notificationsTablesSql } from '../src/features/notifications/index.js';
 import { appDecisionsMigrationSql, appEventsMigrationSql } from '../src/features/apps/index.js';
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
@@ -135,4 +136,6 @@ export const migrations: Migration[] = [
   { name: '0026_knowledge', sql: (context) => knowledgeTablesSql(context) },
   // What a person's assistant remembers about her (spec 029).
   { name: '0027_assistant_memories', sql: (context) => memoryMigrationSql(context) },
+  // Her notifications and the devices she is told on (spec 030).
+  { name: '0028_notifications', sql: (context) => notificationsTablesSql(context) },
 ];

@@ -4,6 +4,7 @@ export type { Circuit, DecisionRequest } from './decisions.record.js';
 export {
   knownSubjects,
   onDecided,
+  onWaiting,
   openRequest,
   registerSubject,
   registerSubjectFamily,

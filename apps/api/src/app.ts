@@ -4,6 +4,8 @@ import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
 import { aiRoutes } from './features/ai/index.js';
 import { assistantRoutes, memoryRoutes, scheduleRoutes } from './features/assistant/index.js';
 import { knowledgeRoutes } from './features/knowledge/index.js';
+import { listenForNotifications, notificationRoutes } from './features/notifications/index.js';
+import { searchRoutes } from './features/search/index.js';
 import { compliancePermissions, complianceRoutes } from './features/compliance/index.js';
 import { decisionsPermissions, decisionsRoutes } from './features/decisions/index.js';
 import {
@@ -163,6 +165,8 @@ async function me(c: Ctx) {
  */
 // An app that asked a decision is told once it is decided (spec 023).
 tellAppsWith(transaction);
+// The people a request waits for are told (spec 030).
+listenForNotifications();
 
 export function createApi(): Hono {
   const api = new Hono();
@@ -205,6 +209,10 @@ export function createApi(): Hono {
   v1.route('/views', viewRoutes);
   // The company's library, searched with its citations (spec 028).
   v1.route('/knowledge', knowledgeRoutes);
+  // What she is told, and on which devices (spec 030).
+  v1.route('/notifications', notificationRoutes);
+  // One question across what she may see (spec 030).
+  v1.route('/search', searchRoutes);
   v1.route('/assistant', assistantRoutes);
   // Each person's own AI connection, and the organization's policy (spec 026).
   v1.route('/ai', aiRoutes);

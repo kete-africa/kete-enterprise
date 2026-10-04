@@ -151,6 +151,14 @@ afterAll(async () => {
   await db.drop();
 });
 
+/** The titles of a person's notifications (spec 030). */
+async function told(token: string | undefined): Promise<string[]> {
+  const body = (await call(token ?? '', 'GET', '/notifications')).body as unknown as {
+    notifications: { title: string }[];
+  };
+  return body.notifications.map((n) => n.title);
+}
+
 describe('an approval circuit', () => {
   it("sends a request to the requester's manager, and carries the decision out", async () => {
     const { resource, request } = await promote(
@@ -161,6 +169,9 @@ describe('an approval circuit', () => {
     );
     expect(request).toMatch(/^drq_/);
     expect(await titles(t.kofi)).toEqual(['Nettio']);
+    // The approver is told (spec 030); the requester is not.
+    expect(await told(t.kofi)).toContainEqual(expect.stringContaining('Nettio'));
+    expect(await told(t.awa)).toEqual([]);
     expect(await titles(t.esi)).toEqual([]);
     // Never the requester, never through the registry's direct review.
     expect(
@@ -191,6 +202,7 @@ describe('an approval circuit', () => {
     ).toMatchObject({ status: 'pending', step: 2 });
     expect(await titles(t.kofi)).toEqual([]);
     expect(await titles(t.yaw)).toEqual(['Paie']);
+    expect(await told(t.yaw)).toContainEqual(expect.stringContaining('Paie'));
     expect(
       (await post(t.yaw, `/decisions/requests/${request}/decide`, { decision: 'approve' })).body
         .status,

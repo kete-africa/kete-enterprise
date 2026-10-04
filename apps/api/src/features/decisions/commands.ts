@@ -1,7 +1,7 @@
 import { defineCommand } from '@kete/commands';
 import { z } from 'zod';
 import { currentStep, decideRequestInput, defineCircuitInput } from './decisions.record.js';
-import { mayDecide, settle, subjectsOf } from './engine.js';
+import { announceWaiting, mayDecide, settle, subjectsOf } from './engine.js';
 import {
   decideStep,
   enterStep,
@@ -46,7 +46,7 @@ export const decideRequest = defineCommand({
   // Whether the person is one of the organization's administrators: the API says so, never her.
   input: decideRequestInput.extend({ administrator: z.boolean() }),
   reversibility: { reversible: false },
-  async handler(input, { db, actor }) {
+  async handler(input, { db, actor, organizationId }) {
     const request = await findRequest(db, input.requestId, { lock: true });
     if (!request) throw new DecisionRuleError('not_found', 'The request does not exist here.');
     const step = currentStep(request);
@@ -64,6 +64,7 @@ export const decideRequest = defineCommand({
     const next = request.steps.find((s) => s.position > step.position && s.status === 'pending');
     if (next) {
       await enterStep(db, request.requestId, next.position);
+      await announceWaiting(db, organizationId, request.requestId);
       return { requestId: request.requestId, status: 'pending', step: next.position };
     }
     await settle(db, request, 'approved', actor.id);

@@ -1,5 +1,8 @@
 // The library's only door (spec 028): its tables, its routes, the assistant's tool.
-export { useEmbedder } from './infrastructure/embedder.js';
+export {
+  knowledgeEmbedder as knowledgeEmbedderFor,
+  useEmbedder,
+} from './infrastructure/embedder.js';
 export {
   knowledgeRoutes,
   knowledgeTablesSql,
