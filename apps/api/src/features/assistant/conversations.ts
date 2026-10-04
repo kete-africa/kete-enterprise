@@ -69,7 +69,23 @@ export interface StoredMessage {
   sources: { label: string; href: string }[];
   /** The document the assistant wrote in the canvas, if any. */
   canvas: { title: string; content: string } | null;
+  /** The apps' views shown with their tools' results (spec 030, MCP Apps). */
+  views: AppView[];
   createdAt: string;
+}
+
+/** An app's view, as the chat shows it again: which app, which page, its tool's input and result. */
+export interface AppView {
+  tool: string;
+  resource: string;
+  uri: string;
+  input: Record<string, unknown>;
+  result: unknown;
+}
+
+/** The apps' views of the chat (spec 030): kept with each answer. */
+export function viewsMigrationSql(options: { schema: string }): string {
+  return `alter table ${options.schema}.assistant_messages add column views jsonb not null default '[]';`;
 }
 
 export async function listConversations(db: SqlExecutor, userId: string) {
@@ -102,9 +118,11 @@ export async function readConversation(db: SqlExecutor, userId: string, conversa
     attachments: MessageAttachment[];
     sources: StoredMessage['sources'];
     canvas: StoredMessage['canvas'];
+    views: AppView[];
     created_at: Date;
   }>(
-    `select message_id, role, content, tools, drafts, attachments, sources, canvas, created_at
+    `select message_id, role, content, tools, drafts, attachments, sources, canvas, views,
+            created_at
        from assistant_messages
       where conversation_id = $1 order by created_at, message_id`,
     [conversationId],
@@ -121,6 +139,7 @@ export async function readConversation(db: SqlExecutor, userId: string, conversa
       attachments: m.attachments,
       sources: m.sources,
       canvas: m.canvas,
+      views: m.views,
       createdAt: m.created_at.toISOString(),
     })),
   };
@@ -155,12 +174,13 @@ export async function appendMessage(
     attachments?: MessageAttachment[];
     sources?: StoredMessage['sources'];
     canvas?: StoredMessage['canvas'];
+    views?: AppView[];
   },
 ): Promise<void> {
   await db.query(
     `insert into assistant_messages (message_id, organization_id, conversation_id, role, content,
-       tools, drafts, attachments, sources, canvas)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+       tools, drafts, attachments, sources, canvas, views)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
     [
       newId('msg'),
       organizationId,
@@ -172,6 +192,7 @@ export async function appendMessage(
       JSON.stringify(message.attachments ?? []),
       JSON.stringify(message.sources ?? []),
       message.canvas ? JSON.stringify(message.canvas) : null,
+      JSON.stringify(message.views ?? []),
     ],
   );
   await db.query(

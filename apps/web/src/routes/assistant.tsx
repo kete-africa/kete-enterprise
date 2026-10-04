@@ -3,6 +3,7 @@ import { EmptyState, Icon, PageHeader, Row, RowList } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { fetchMentionables } from '@/lib/chat/api';
+import { fetchViewSandbox } from '@/lib/chat/views';
 import { ChatCanvas } from '@/lib/chat/canvas';
 import { PayWith, rememberedPayer } from '@/lib/chat/pay-with';
 import { useKeteChat } from '@/lib/chat/runtime';
@@ -22,13 +23,20 @@ export const Route = createFileRoute('/assistant')({
   beforeLoad: ({ location }) => requirePerson(location.href),
   loaderDeps: ({ search }) => ({ c: search.c }),
   loader: async ({ deps }) => {
-    const [assistant, list, current, mentionables] = await Promise.all([
+    const [assistant, list, current, mentionables, sandbox] = await Promise.all([
       fetchAssistant(),
       fetchConversations(),
       deps.c ? fetchConversation({ data: { conversationId: deps.c } }) : Promise.resolve(null),
       fetchMentionables(),
+      fetchViewSandbox().catch(() => null),
     ]);
-    return { assistant, conversations: list.conversations, current, mentionables };
+    return {
+      assistant,
+      conversations: list.conversations,
+      current,
+      mentionables,
+      sandboxUrl: sandbox?.url ?? null,
+    };
   },
   component: AssistantPage,
 });
@@ -42,7 +50,7 @@ export const Route = createFileRoute('/assistant')({
  */
 function AssistantPage() {
   const { me } = Route.useRouteContext();
-  const { assistant, conversations, current, mentionables } = Route.useLoaderData();
+  const { assistant, conversations, current, mentionables, sandboxUrl } = Route.useLoaderData();
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState<{ title: string; content: string } | null>(null);
   const [closed, setClosed] = useState(false);
@@ -176,6 +184,7 @@ function AssistantPage() {
                   </span>
                 }
                 views={{
+                  sandboxUrl,
                   openCanvas: (document) => {
                     setClosed(false);
                     setOpened(document);

@@ -989,5 +989,8 @@
   "weekday_4": "Jeudi",
   "weekday_5": "Vendredi",
   "weekday_6": "Samedi",
-  "weekday_7": "Dimanche"
+  "weekday_7": "Dimanche",
+  "view_loading": "Ouverture de la vue…",
+  "view_failed": "Cette vue n'a pas pu s'ouvrir : le résultat reste dans la réponse.",
+  "view_label": "Vue de {app}"
 }
