@@ -134,7 +134,7 @@ export const formRoutes = new Hono<{ Variables: IdentityVariables }>()
       mine: all.filter((f) => admin || f.ownerId === identity.userId),
       toAnswer: all
         .filter((f) => f.answeredBy === 'everyone' && f.open)
-        .map(({ submissions: _count, ...f }) => f),
+        .map(({ submissions, ...form }) => (void submissions, form)),
     });
   })
   .post('/', async (c) => {
