@@ -2,6 +2,7 @@ import {
   aiConnectionsMigrationSql,
   aiSubscriptionsMigrationSql,
 } from '../src/features/ai/index.js';
+import { knowledgeTablesSql } from '../src/features/knowledge/index.js';
 import { appDecisionsMigrationSql, appEventsMigrationSql } from '../src/features/apps/index.js';
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
@@ -129,4 +130,6 @@ export const migrations: Migration[] = [
   { name: '0024_assistant_schedules', sql: (context) => schedulesMigrationSql(context) },
   // The team's apps' views shown in the chat, kept with each answer (spec 030).
   { name: '0025_assistant_views', sql: (context) => viewsMigrationSql(context) },
+  // The company's library: sources, documents, passages, with pgvector (spec 028).
+  { name: '0026_knowledge', sql: (context) => knowledgeTablesSql(context) },
 ];

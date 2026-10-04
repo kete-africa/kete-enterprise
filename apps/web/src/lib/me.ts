@@ -2,7 +2,8 @@ import { createServerFn } from '@tanstack/react-start';
 import { deleteCookie, getRequest, setCookie } from '@tanstack/react-start/server';
 import { callApi, SignInRequired, VIEW_AS_COOKIE } from '@/platform/api';
 
-export type ModuleKey = 'surveys' | 'performance' | 'meetings' | 'compliance' | 'agents';
+export type ModuleKey =
+  'surveys' | 'performance' | 'meetings' | 'compliance' | 'agents' | 'knowledge';
 
 export interface Me {
   userId: string;

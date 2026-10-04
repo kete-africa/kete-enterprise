@@ -1,8 +1,9 @@
 import mammoth from 'mammoth';
 import { extractText } from 'unpdf';
 
-// What a file attached to the chat says, read with existing libraries (spec 027): PDF (unpdf),
-// Word (mammoth), plain text, CSV, Markdown, JSON. An image is kept as it is: the model reads it.
+// What a file says, read with existing libraries (specs 027, 028): PDF (unpdf), Word (mammoth),
+// plain text, CSV, Markdown, JSON. An image is kept as it is: the model reads it. A PDF's text is
+// also kept page by page, so that the library cites its pages.
 
 export type AttachmentKind = 'text' | 'image';
 
@@ -11,6 +12,8 @@ export interface Extracted {
   /** The file's text, for the model (empty for an image). */
   text: string;
   pages: number | null;
+  /** The text page by page (one entry when the file has no pages). */
+  pageTexts: string[];
 }
 
 const images = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
@@ -34,14 +37,16 @@ export function readable(contentType: string): boolean {
 }
 
 export async function extract(contentType: string, data: Buffer): Promise<Extracted> {
-  if (images.has(contentType)) return { kind: 'image', text: '', pages: null };
+  if (images.has(contentType)) return { kind: 'image', text: '', pages: null, pageTexts: [] };
   if (contentType === 'application/pdf') {
-    const { totalPages, text } = await extractText(new Uint8Array(data), { mergePages: true });
-    return { kind: 'text', text: String(text).trim(), pages: totalPages };
+    const { totalPages, text } = await extractText(new Uint8Array(data), { mergePages: false });
+    const pageTexts = (text as string[]).map((t) => String(t).trim());
+    return { kind: 'text', text: pageTexts.join('\n\n').trim(), pages: totalPages, pageTexts };
   }
   if (contentType === word) {
     const { value } = await mammoth.extractRawText({ buffer: data });
-    return { kind: 'text', text: value.trim(), pages: null };
+    return { kind: 'text', text: value.trim(), pages: null, pageTexts: [value.trim()] };
   }
-  return { kind: 'text', text: data.toString('utf8').trim(), pages: null };
+  const text = data.toString('utf8').trim();
+  return { kind: 'text', text, pages: null, pageTexts: [text] };
 }
