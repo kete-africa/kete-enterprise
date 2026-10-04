@@ -7,7 +7,7 @@ import {
 } from '@assistant-ui/react';
 import { useRouter } from '@tanstack/react-router';
 import { useMemo, useRef, useState } from 'react';
-import type { DraftReview, StoredMessage } from '@/lib/workspace';
+import type { DraftReview, Payer, StoredMessage } from '@/lib/workspace';
 import { uploadAttachment } from './api';
 
 // The chat's runtime (spec 027), on assistant-ui's external store: the conversations stay Kete
@@ -141,6 +141,8 @@ const attachments: AttachmentAdapter = {
 export function useKeteChat(options: {
   conversationId: string | null;
   initial: StoredMessage[];
+  /** Who pays for the next answer (spec 026b); the API's default when null. */
+  payer: Payer | null;
   onError: (code: string | null) => void;
 }) {
   const router = useRouter();
@@ -148,6 +150,8 @@ export function useKeteChat(options: {
   const [messages, setMessages] = useState<ChatMessage[]>(options.initial.map(fromStored));
   const [running, setRunning] = useState(false);
   const stopper = useRef<AbortController | null>(null);
+  const payer = useRef(options.payer);
+  payer.current = options.payer;
 
   const patchLast = (change: (last: ChatMessage) => ChatMessage) =>
     setMessages((list) => [...list.slice(0, -1), change(list[list.length - 1] as ChatMessage)]);
@@ -171,6 +175,7 @@ export function useKeteChat(options: {
           message: text,
           attachments: files.map((f) => f.attachmentId),
           ...(conversationId ? { conversationId } : {}),
+          ...(payer.current ? { payer: payer.current } : {}),
         }),
         signal: controller.signal,
       });

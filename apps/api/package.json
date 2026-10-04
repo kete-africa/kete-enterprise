@@ -20,6 +20,7 @@
     "@kete/jobs": "npm:@kete-africa/jobs@^0.1.0",
     "@kete/notify": "npm:@kete-africa/notify@^0.1.0",
     "@kete/records": "npm:@kete-africa/records@^0.1.1",
+    "@kete/sandbox": "npm:@kete-africa/sandbox@^0.3.0",
     "@kete/sdk": "npm:@kete-africa/sdk@^0.6.0",
     "@kete/tenancy": "npm:@kete-africa/tenancy@^0.1.1",
     "@modelcontextprotocol/sdk": "1.31.0",

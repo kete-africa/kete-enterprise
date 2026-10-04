@@ -39,3 +39,20 @@ flowchart LR
   V -->|Validate| C[Same command, her as actor]
   V -->|Refuse| X[Refused, frozen]
 ```
+
+## Pay with (spec 026b)
+
+Under the composer, « Payer avec » lets the person choose who pays for her answers — only among
+what the organization's policy allows: the organization, her own key (spec 026), or her own
+subscription, signed in on a machine of her own. Her subscription answers read-only, without the
+gateway's tools; each of its answers is journaled `chat:subscription`, no token counted against the
+organization's budget. See [spec 026b](../../../../../specs/026b-pay-with/spec.md).
+
+```mermaid
+flowchart LR
+  M[Message + payer] --> P{policy allows this payer?}
+  P -->|no| X[409 payer_refused]
+  P -->|organization · key| A[the model, with her tools]
+  P -->|subscription| S[her machine: the agent of her subscription, read-only]
+  A & S --> T[the thread, kept]
+```

@@ -1,11 +1,15 @@
-import { Button, Facts, PageHeader, Panel, TextField } from '@kete/design';
+import { Button, CopyButton, Facts, PageHeader, Panel, TextField } from '@kete/design';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import {
+  checkSubscription,
   fetchConnection,
   providers,
   removeConnection,
+  removeSubscription,
   saveConnection,
+  startSubscription,
+  type ConnectionScreen,
   type Provider,
 } from '@/lib/ai';
 import { DialogForm, refusal, Select } from '@/lib/forms';
@@ -27,8 +31,9 @@ const providerName: Record<Provider, () => string> = {
 };
 
 /**
- * Her own AI connection (spec 026): her assistant and her agents run on her own tokens, when the
- * organization allows it. She brings her key in a dialog; it is tried, kept sealed, never shown.
+ * Her own AI connection (specs 026, 026b): her assistant and her agents run on her own tokens, when
+ * the organization allows it. She brings her key in a dialog; it is tried, kept sealed, never
+ * shown. Or she connects the subscription she already pays for, on a machine of her own.
  */
 function ConnectionPage() {
   const { me } = Route.useRouteContext();
@@ -154,6 +159,130 @@ function ConnectionPage() {
           <p className="text-body-sm text-fg-muted">{m.ai_connection_none()}</p>
         )}
       </Panel>
+      {screen.policy !== 'off' && <SubscriptionPanel screen={screen} />}
     </AppShell>
+  );
+}
+
+/**
+ * Her own subscription (spec 026b): she opens the sign-in page, enters the code given here, then
+ * says she is done; Kete Enterprise checks it on her machine. Removing it deletes her machine.
+ */
+function SubscriptionPanel({ screen }: { screen: ConnectionScreen }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [signIn, setSignIn] = useState<{ url: string; code: string } | null>(null);
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  const s = screen.subscription;
+  const failed = (error: string | null) => setNotice({ ok: false, text: refusal(error) });
+  const run = (gesture: () => Promise<void>) => {
+    setBusy(true);
+    setNotice(null);
+    void gesture()
+      .catch(() => failed(null))
+      .finally(() => setBusy(false));
+  };
+  const start = () =>
+    run(async () => {
+      const answer = await startSubscription();
+      if (answer.ok) setSignIn({ url: answer.url, code: answer.code });
+      else failed(answer.error);
+      await router.invalidate();
+    });
+  const check = () =>
+    run(async () => {
+      const answer = await checkSubscription();
+      if (!answer.ok) failed(answer.error);
+      else if (answer.subscription?.state === 'connected') {
+        setSignIn(null);
+        setNotice({ ok: true, text: m.ai_connection_done() });
+      } else setNotice({ ok: false, text: m.ai_subscription_waiting() });
+      await router.invalidate();
+    });
+  const remove = () =>
+    run(async () => {
+      const answer = await removeSubscription();
+      if (!answer.ok) failed(answer.error);
+      setSignIn(null);
+      await router.invalidate();
+    });
+  return (
+    <Panel>
+      <h2 className="mb-2 font-heading text-title font-semibold">{m.ai_subscription_title()}</h2>
+      <p className="mb-3">{m.ai_subscription_explain()}</p>
+      {!screen.subscriptionsAvailable ? (
+        <p className="text-body-sm text-state-verify-fg">{m.ai_subscription_unavailable()}</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {s?.state === 'connected' ? (
+            <Facts
+              items={[
+                { label: m.ai_subscription_state(), value: m.ai_subscription_connected() },
+                { label: m.ai_subscription_since(), value: (s.connectedAt ?? '').slice(0, 10) },
+                {
+                  label: m.ai_connection_last_used(),
+                  value: s.lastUsedAt ? s.lastUsedAt.slice(0, 16).replace('T', ' ') : '—',
+                },
+              ]}
+            />
+          ) : s?.state === 'signing_in' && !signIn ? (
+            <p className="text-body-sm text-fg-muted">{m.ai_subscription_signing_in()}</p>
+          ) : !s ? (
+            <p className="text-body-sm text-fg-muted">{m.ai_subscription_none()}</p>
+          ) : null}
+          {signIn && (
+            <div className="flex flex-col gap-2 rounded-box border border-line p-4">
+              <p className="text-body-sm">{m.ai_subscription_step()}</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <span
+                  aria-label={m.ai_subscription_code()}
+                  className="font-number text-title font-semibold tracking-widest"
+                >
+                  {signIn.code}
+                </span>
+                <CopyButton
+                  text={signIn.code}
+                  label={m.ai_subscription_code()}
+                  copiedLabel={m.ai_subscription_copied()}
+                />
+                <a
+                  href={signIn.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
+                >
+                  {m.ai_subscription_open()}
+                </a>
+              </div>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {s?.state === 'signing_in' && (
+              <Button disabled={busy} onClick={check}>
+                {m.ai_subscription_check()}
+              </Button>
+            )}
+            {s?.state !== 'connected' && (
+              <Button variant={s ? 'secondary' : 'primary'} disabled={busy} onClick={start}>
+                {s ? m.ai_subscription_restart() : m.ai_subscription_connect()}
+              </Button>
+            )}
+            {s && (
+              <Button variant="secondary" disabled={busy} onClick={remove}>
+                {m.ai_subscription_remove()}
+              </Button>
+            )}
+          </div>
+          {notice && (
+            <p
+              role={notice.ok ? 'status' : 'alert'}
+              className={`text-body-sm ${notice.ok ? 'text-fg-muted' : 'text-state-error-fg'}`}
+            >
+              {notice.text}
+            </p>
+          )}
+        </div>
+      )}
+    </Panel>
   );
 }

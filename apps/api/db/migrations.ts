@@ -1,4 +1,7 @@
-import { aiConnectionsMigrationSql } from '../src/features/ai/index.js';
+import {
+  aiConnectionsMigrationSql,
+  aiSubscriptionsMigrationSql,
+} from '../src/features/ai/index.js';
 import { appDecisionsMigrationSql, appEventsMigrationSql } from '../src/features/apps/index.js';
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
@@ -118,4 +121,6 @@ export const migrations: Migration[] = [
   { name: '0021_ai_connections', sql: (context) => aiConnectionsMigrationSql(context) },
   // The chat of the current era: attachments, sources, canvas (spec 027).
   { name: '0022_assistant_chat', sql: (context) => chatMigrationSql(context) },
+  // Each person's own AI subscription, on her own machine (spec 026b).
+  { name: '0023_ai_subscriptions', sql: (context) => aiSubscriptionsMigrationSql(context) },
 ];

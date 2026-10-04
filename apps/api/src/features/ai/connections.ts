@@ -135,15 +135,17 @@ export type ModelChoice = { config: ModelConfig; personal: boolean } | null;
 /**
  * The model of a person's assistant and agents, by the organization's policy: her own connection
  * when allowed and present (its last use noted), else the organization's model — unless the
- * policy requires her own, then none.
+ * policy requires her own, then none. When she chooses the organization (spec 026b), her key is
+ * left aside — if the policy lets the organization pay.
  */
 export async function modelChoiceFor(
   db: SqlExecutor,
   userId: string,
   organizationModel: ModelConfig | null,
+  prefer?: 'organization' | 'key',
 ): Promise<ModelChoice> {
   const policy = await readPolicy(db);
-  if (policy !== 'off') {
+  if (policy !== 'off' && !(prefer === 'organization' && policy === 'allowed')) {
     const { rows } = await db.query<{
       provider: PersonalProvider;
       model: string;
