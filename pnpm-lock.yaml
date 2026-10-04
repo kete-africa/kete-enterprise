@@ -57,8 +57,8 @@ importers:
         specifier: npm:@kete-africa/drafts@^0.1.1
         version: '@kete-africa/drafts@0.1.1(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/files':
-        specifier: npm:@kete-africa/files@^0.3.0
-        version: '@kete-africa/files@0.3.0(@napi-rs/canvas@1.0.10)(@types/node@22.20.4)(supports-color@7.2.0)'
+        specifier: npm:@kete-africa/files@^0.3.1
+        version: '@kete-africa/files@0.3.1(@napi-rs/canvas@1.0.10)(@types/node@22.20.4)(supports-color@7.2.0)'
       '@kete/jobs':
         specifier: npm:@kete-africa/jobs@^0.1.0
         version: '@kete-africa/jobs@0.1.0(@kete-africa/notify@0.2.0(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0))'
@@ -1050,8 +1050,8 @@ packages:
   '@kete-africa/drafts@0.1.1':
     resolution: {integrity: sha512-RhcesoPt5EZYK9cxt4+1n18uEqHEdB6hgPAXzkQEHpIEJKcukh0nfG0madcObGdfw5pRCeWZHolWNJpefMiPIg==, tarball: https://npm.pkg.github.com/download/@kete-africa/drafts/0.1.1/e47337f713c7b11eec08f5cde5dc611ebda20102}
 
-  '@kete-africa/files@0.3.0':
-    resolution: {integrity: sha512-SKJxxDMoY9gb/NHDlUVgcKPyprTb2XbgsWxYkXudJNAyFv4zh+rVuyp3Rcpw2t2cRny6hSz9wrl3hKsOdz540w==, tarball: https://npm.pkg.github.com/download/@kete-africa/files/0.3.0/f719072d294ba9d0327124bb75f958397403dddf}
+  '@kete-africa/files@0.3.1':
+    resolution: {integrity: sha512-qU+tdKgd+k+9QRqVG9VbhYqT86U0Wsr0x9st4l6Z1XEhTtjFsmpihXoHZY0O2XI3QPAovQCaravpXT8b9E6kLQ==, tarball: https://npm.pkg.github.com/download/@kete-africa/files/0.3.1/e5e65a3f756ae2d4380745b409f412c947cd7f13}
 
   '@kete-africa/jobs@0.1.0':
     resolution: {integrity: sha512-vEf/bgwOyrx28pwJu+NZ5cpJdyTeKLMr1G4EIqLr79RnjRqQDsv0BhGF5h8vcl6jR9dCM8TCGRHzKxOlAautMA==, tarball: https://npm.pkg.github.com/download/@kete-africa/jobs/0.1.0/35cadaddb703e139d81c7faa36a8f2c51920d3e3}
@@ -6316,7 +6316,7 @@ snapshots:
       - drizzle-orm
       - pg-native
 
-  '@kete-africa/files@0.3.0(@napi-rs/canvas@1.0.10)(@types/node@22.20.4)(supports-color@7.2.0)':
+  '@kete-africa/files@0.3.1(@napi-rs/canvas@1.0.10)(@types/node@22.20.4)(supports-color@7.2.0)':
     dependencies:
       '@aws-sdk/client-s3': 3.1146.0
       '@aws-sdk/s3-request-presigner': 3.1146.0
