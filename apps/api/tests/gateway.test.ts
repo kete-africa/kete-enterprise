@@ -1,8 +1,11 @@
 import { readJournal } from '@kete/commands';
 import { inOrganization } from '@kete/tenancy';
 import type { TestSchema } from '@kete/testing';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import {
+  Client,
+  StreamableHTTPClientTransport,
+  type ElicitResult,
+} from '@modelcontextprotocol/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApi } from '../src/app.js';
 import { useCardReader } from '../src/features/registry/index.js';
@@ -30,16 +33,30 @@ const post = async (token: string | undefined, path: string, body: object) =>
     })
   ).json() as Promise<Record<string, string>>;
 
-/** A copilot connected with the person's token. */
-async function copilot(token: string | undefined): Promise<Client> {
-  const client = new Client({ name: 'copilot-test', version: '0.0.0' });
+/** A copilot connected with the person's token; `answer` is her reply to a form it shows her. */
+async function copilot(
+  token: string | undefined,
+  answer?: (message: string) => ElicitResult,
+): Promise<Client> {
+  const client = new Client(
+    { name: 'copilot-test', version: '0.0.0' },
+    {
+      versionNegotiation: { mode: { pin: '2026-07-28' } },
+      ...(answer ? { capabilities: { elicitation: { form: {} } } } : {}),
+    },
+  );
+  if (answer) {
+    client.setRequestHandler('elicitation/create', async (request) =>
+      answer(String((request.params as { message?: string }).message ?? '')),
+    );
+  }
   const transport = new StreamableHTTPClientTransport(new URL('https://api.kete.test/mcp'), {
     requestInit: {
       headers: { authorization: `Bearer ${token ?? ''}`, 'user-agent': 'copilot-test' },
     },
     fetch: async (url, init) => api.request(url.toString(), init),
   });
-  await client.connect(transport as unknown as Parameters<Client['connect']>[0]);
+  await client.connect(transport);
   return client;
 }
 
@@ -91,6 +108,7 @@ beforeAll(async () => {
   const awa = (
     await post(t.admin, '/structure/people', { name: 'Awa Mensah', accountUserId: 'usr_awa' })
   ).personId;
+  ids.awa = awa ?? '';
   await post(t.admin, '/structure/assignments', {
     personId: awa,
     positionId: position,
@@ -201,6 +219,32 @@ describe('the copilot acts for her, within her rights', () => {
   });
 });
 
+describe('a draft prepared by her copilot (MCP 2026-07-28)', () => {
+  it('is put to her in her copilot, and decided as she says, never by the model', async () => {
+    await post(t.admin, '/organization/modules', { module: 'meetings', enabled: true });
+    const asked: string[] = [];
+    const client = await copilot(t.admin, (message) => {
+      asked.push(message);
+      return { action: 'accept', content: { decision: 'validate' } };
+    });
+    const result = (await client.callTool({
+      name: 'actions_propose',
+      arguments: {
+        title: 'Relancer le client Mensah',
+        responsiblePersonId: ids.awa,
+        dueOn: '2026-11-15',
+      },
+    })) as { structuredContent?: Record<string, unknown> };
+    expect(asked[0]).toContain('Relancer le client Mensah');
+    expect(result.structuredContent).toMatchObject({ status: 'validated' });
+    await client.close();
+    const [entry] = await inOrganization(db.app, 'org_kya', (tx) =>
+      readJournal(tx, { name: 'create-action' }),
+    );
+    expect(entry).toMatchObject({ actor: { kind: 'person', id: 'usr_ama' }, channel: 'view' });
+  });
+});
+
 describe('a copilot signed in with the identity', () => {
   it("reaches the gateway with a token bound to its address, and not with another server's", async () => {
     const bound = await tokenFor('usr_awa', {
@@ -245,6 +289,9 @@ describe('every call traced', () => {
     const other = await api.request('/v1/gateway/calls', {
       headers: { authorization: `Bearer ${t.admin}` },
     });
-    expect(((await other.json()) as { calls: unknown[] }).calls).toEqual([]);
+    // Hers only — and her draft decided in her copilot counts once, not once per round.
+    expect(
+      ((await other.json()) as { calls: { tool: string }[] }).calls.map((c) => c.tool),
+    ).toEqual(['actions_propose']);
   });
 });

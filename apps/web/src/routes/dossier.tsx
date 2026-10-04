@@ -97,7 +97,7 @@ function DossierPage() {
             id="dossier-file"
             type="file"
             hidden
-            accept=".pdf,.docx,.txt,.md,.csv,.json,application/pdf"
+            accept=".pdf,.docx,.xlsx,.pptx,.odt,.ods,.odp,.rtf,.txt,.md,.csv,.json,application/pdf"
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = '';

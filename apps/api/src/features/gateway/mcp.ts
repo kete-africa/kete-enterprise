@@ -138,7 +138,9 @@ function toolsCalled(body: string): string[] {
         (m): m is { method: string; params?: { name?: unknown } } =>
           typeof m === 'object' &&
           m !== null &&
-          (m as { method?: unknown }).method === 'tools/call',
+          (m as { method?: unknown }).method === 'tools/call' &&
+          // A retry carrying the person's answer (MCP 2026-07-28) is the same call, traced once.
+          !(m as { params?: { inputResponses?: unknown } }).params?.inputResponses,
       )
       .map((m) => (typeof m.params?.name === 'string' ? m.params.name : 'unknown'));
   } catch {
@@ -168,6 +170,9 @@ export async function handleGateway(request: Request): Promise<Response> {
           }
         : null,
     resourceMetadataUrl: `${new URL(resourceUrl(request)).origin}/.well-known/oauth-protected-resource`,
+    // A draft is put to the person in her copilot's form when it can show one (MCP 2026-07-28);
+    // otherwise, and for level 4, her To do is the way back.
+    draftUrl: () => `${env.publicWebUrl}/a-faire`,
   });
   if (!identity) return handler(request);
   // The body is read once, for the trace, and handed on as it came.

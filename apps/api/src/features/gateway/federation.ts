@@ -1,6 +1,5 @@
 import type { CapabilityTool } from '@kete/capabilities';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { jsonSchema } from 'ai';
 import { transaction } from '../../platform/db.js';
 import { tokenForAgent, type Agent } from '../../platform/mandates.js';
@@ -37,7 +36,7 @@ export async function appClient(
 ): Promise<Client | null> {
   const resource = (await appsOf(identity)).find((r) => r.resourceId === resourceId);
   if (!resource) return null;
-  const client = new Client({ name: 'kete-enterprise', version: '1' });
+  const client = newClient();
   await withTimeout(client.connect(transportTo(resource.address ?? '', token)));
   return client;
 }
@@ -55,13 +54,20 @@ async function appsOf(identity: Parameters<typeof registryFor>[1] & { organizati
   );
 }
 
+/**
+ * A client to an app: it probes for the 2026-07-28 revision and falls back to the 2025 one, as
+ * the team's apps move at their own pace (spec 039).
+ */
+const newClient = () =>
+  new Client({ name: 'kete-enterprise', version: '1' }, { versionNegotiation: { mode: 'auto' } });
+
 function transportTo(address: string, token: string): Parameters<Client['connect']>[0] {
   const base = address.replace(/\/$/, '');
   const endpoint = new URL(base.endsWith('/mcp') ? base : `${base}/mcp`);
   return new StreamableHTTPClientTransport(endpoint, {
     requestInit: { headers: { authorization: `Bearer ${token}` } },
     ...(appFetch ? { fetch: appFetch } : {}),
-  }) as unknown as Parameters<Client['connect']>[0];
+  });
 }
 
 /**
@@ -89,7 +95,7 @@ export async function appToolsFor(
   const clients: Client[] = [];
   const found = await Promise.all(
     resources.map(async (resource) => {
-      const client = new Client({ name: 'kete-enterprise', version: '1' });
+      const client = newClient();
       try {
         await withTimeout(client.connect(transportTo(resource.address ?? '', token)));
         clients.push(client);

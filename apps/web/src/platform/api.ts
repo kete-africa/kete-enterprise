@@ -123,3 +123,26 @@ export async function streamApi(request: Request, path: string, body: unknown): 
     },
   });
 }
+
+/**
+ * A file the API serves to the person of this request (her document, spec 038), passed on as it
+ * is: its type and its name; nothing else crosses. Without a session, she signs in again.
+ */
+export async function fileOfApi(request: Request, path: string): Promise<Response> {
+  let headers: Record<string, string>;
+  try {
+    headers = await headersFor(request);
+  } catch {
+    return new Response(null, { status: 302, headers: { location: '/auth/connexion' } });
+  }
+  const response = await fetch(`${env.apiUrl}${path}`, { headers: { ...headers, accept: '*/*' } });
+  if (!response.ok)
+    return new Response('Not found', { status: response.status === 401 ? 401 : 404 });
+  return new Response(response.body, {
+    headers: {
+      'content-type': response.headers.get('content-type') ?? 'application/octet-stream',
+      'content-disposition': response.headers.get('content-disposition') ?? 'attachment',
+      'cache-control': 'private, no-store',
+    },
+  });
+}

@@ -1,5 +1,7 @@
 import { CopyButton, Icon, IconButton, Markdown } from '@kete/design';
 import { useEffect, useId, useState } from 'react';
+import { canvasPdf } from '@/lib/documents';
+import { refusal } from '@/lib/forms';
 import * as m from '@/paraglide/messages.js';
 
 /**
@@ -9,14 +11,31 @@ import * as m from '@/paraglide/messages.js';
  */
 export function ChatCanvas({
   canvas,
+  pdf = false,
   onClose,
 }: {
   canvas: { title: string; content: string };
+  /** Whether the organization turns documents into PDF (spec 038). */
+  pdf?: boolean;
   onClose: () => void;
 }) {
   const titleId = useId();
   const [text, setText] = useState(canvas.content);
   const [editing, setEditing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [refused, setRefused] = useState<string | null>(null);
+  // Her edited text becomes her PDF, kept with her documents; the browser downloads it.
+  const exportPdf = () => {
+    setExporting(true);
+    setRefused(null);
+    void canvasPdf({ data: { title: canvas.title, markdown: text } })
+      .then((answer) => {
+        if (!answer.ok) return setRefused(refusal(answer.error));
+        window.location.assign((answer.data as { document: { href: string } }).document.href);
+      })
+      .catch(() => setRefused(m.error_generic()))
+      .finally(() => setExporting(false));
+  };
   useEffect(() => {
     setText(canvas.content);
     setEditing(false);
@@ -47,6 +66,16 @@ export function ChatCanvas({
             {editing ? m.canvas_preview() : m.canvas_edit()}
           </button>
           <CopyButton text={text} label={m.canvas_copy()} copiedLabel={m.common_copied()} />
+          {pdf && (
+            <button
+              type="button"
+              disabled={exporting}
+              onClick={exportPdf}
+              className="rounded-control px-2 py-1 text-body-sm font-semibold text-fg hover:bg-surface-hover"
+            >
+              {m.canvas_pdf()}
+            </button>
+          )}
           <IconButton label={m.canvas_download()} onClick={download}>
             <Icon name="download" size={18} />
           </IconButton>
@@ -55,6 +84,11 @@ export function ChatCanvas({
           </IconButton>
         </div>
       </header>
+      {refused && (
+        <p role="alert" className="px-5 pt-3 text-body-sm text-state-error-fg">
+          {refused}
+        </p>
+      )}
       <div className="flex-1 overflow-auto px-5 py-4">
         {editing ? (
           <textarea

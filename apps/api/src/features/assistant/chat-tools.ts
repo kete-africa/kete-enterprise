@@ -1,6 +1,7 @@
 import type { CapabilityTool } from '@kete/capabilities';
 import { z } from 'zod';
 import { transaction } from '../../platform/db.js';
+import { commandSkill } from '../skills/index.js';
 import { createSchedule, scheduleInput, ScheduleLimitError } from './schedules.js';
 
 // What the chat of the current era adds around the model (spec 027): the mentions and commands a
@@ -25,22 +26,14 @@ export function readDirectives(text: string): { plain: string; directives: Direc
   return { plain: plain.replace(/\s{2,}/g, ' ').trim(), directives };
 }
 
-/** What each command asks of the assistant: model-facing instructions, not words on a screen. */
-const commands: Record<string, string> = {
-  summarize:
-    'Résume la conversation et les pièces jointes en quelques points, les décisions et les actions à part.',
-  write:
-    'Rédige le document demandé dans le canevas (outil canvas_write), puis dis en une phrase ce que tu as écrit.',
-  table: 'Présente la réponse sous forme de tableau.',
-  explain: 'Explique simplement, comme à quelqu’un qui découvre le sujet.',
-  actions:
-    'Propose les actions qui en découlent, chacune avec un responsable et une échéance, en brouillons à valider.',
-};
-
-export function commandInstructions(directives: Directive[]): string[] {
-  return directives
-    .filter((d) => d.type === 'command' && d.id && commands[d.id])
-    .map((d) => commands[d.id as string] as string);
+/**
+ * What each command asks of the assistant: the instructions of the shipped skill it names
+ * (`apps/api/skills`, spec 031) — model-facing, changed by editing the skill, not the code.
+ */
+export async function commandInstructions(directives: Directive[]): Promise<string[]> {
+  const asked = directives.filter((d) => d.type === 'command' && d.id);
+  const skills = await Promise.all(asked.map((d) => commandSkill(d.id as string)));
+  return skills.filter((s) => s !== undefined).map((s) => s.instructions);
 }
 
 const canvasInput = z.object({

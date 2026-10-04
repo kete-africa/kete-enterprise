@@ -1,52 +1,66 @@
-import mammoth from 'mammoth';
-import { extractText } from 'unpdf';
+import { languageModel, modelConfigFromEnv, scanReader, type ModelConfig } from '@kete/ai';
+import {
+  readable,
+  readDocument,
+  type ReadDocument,
+  type ReadKind,
+  type Transcriber,
+} from '@kete/files';
+import { usageStore } from './usage.js';
 
-// What a file says, read with existing libraries (specs 027, 028): PDF (unpdf), Word (mammoth),
-// plain text, CSV, Markdown, JSON. An image is kept as it is: the model reads it. A PDF's text is
-// also kept page by page, so that the library cites its pages.
+// What a file says (specs 027, 028, 035), read by @kete/files: PDF, Word, Excel, PowerPoint,
+// OpenDocument, RTF, text — page by page. A scan (an image, a PDF without text) is read by the
+// organization's model when a caller asks for its text, its use journaled like any model call.
 
-export type AttachmentKind = 'text' | 'image';
+export type AttachmentKind = ReadKind;
+export type Extracted = ReadDocument;
+export { readable };
 
-export interface Extracted {
-  kind: AttachmentKind;
-  /** The file's text, for the model (empty for an image). */
-  text: string;
-  pages: number | null;
-  /** The text page by page (one entry when the file has no pages). */
-  pageTexts: string[];
+let override: Transcriber | null | undefined;
+
+/** Tests: read scans another way (`null`: as if no model were configured). */
+export function useTranscriber(next: Transcriber | null | undefined): void {
+  override = next;
 }
 
-const images = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
-const texts = new Set([
-  'text/plain',
-  'text/csv',
-  'text/markdown',
-  'application/json',
-  'text/tab-separated-values',
-]);
-const word = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+function organizationModel(): ModelConfig | null {
+  try {
+    return modelConfigFromEnv('KETE_AI');
+  } catch {
+    return null;
+  }
+}
 
-/** Whether the chat reads this kind of file. */
-export function readable(contentType: string): boolean {
-  return (
-    images.has(contentType) ||
-    texts.has(contentType) ||
-    contentType === 'application/pdf' ||
-    contentType === word
+/** Who reads a scan for this person: the organization's model, journaled as `reading`. */
+export function scanReaderFor(caller: {
+  organizationId: string;
+  userId: string;
+}): Transcriber | undefined {
+  if (override !== undefined) return override ?? undefined;
+  const config = organizationModel();
+  if (!config) return undefined;
+  return scanReader({
+    model: languageModel(config),
+    metering: {
+      store: usageStore(),
+      context: {
+        organizationId: caller.organizationId,
+        actor: { kind: 'person', id: caller.userId, channel: 'web' },
+        purpose: 'reading',
+        model: '',
+      },
+    },
+  });
+}
+
+export async function extract(
+  contentType: string,
+  data: Buffer,
+  options: { transcribe?: Transcriber | undefined } = {},
+): Promise<Extracted> {
+  return readDocument(
+    contentType,
+    new Uint8Array(data),
+    options.transcribe ? { transcribe: options.transcribe } : {},
   );
-}
-
-export async function extract(contentType: string, data: Buffer): Promise<Extracted> {
-  if (images.has(contentType)) return { kind: 'image', text: '', pages: null, pageTexts: [] };
-  if (contentType === 'application/pdf') {
-    const { totalPages, text } = await extractText(new Uint8Array(data), { mergePages: false });
-    const pageTexts = (text as string[]).map((t) => String(t).trim());
-    return { kind: 'text', text: pageTexts.join('\n\n').trim(), pages: totalPages, pageTexts };
-  }
-  if (contentType === word) {
-    const { value } = await mammoth.extractRawText({ buffer: data });
-    return { kind: 'text', text: value.trim(), pages: null, pageTexts: [value.trim()] };
-  }
-  const text = data.toString('utf8').trim();
-  return { kind: 'text', text, pages: null, pageTexts: [text] };
 }

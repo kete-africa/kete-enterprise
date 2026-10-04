@@ -1,6 +1,5 @@
 import type { TestSchema } from '@kete/testing';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import { simulateReadableStream } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -23,51 +22,52 @@ let resourceId = '';
 /** The tokens the app received, in order. */
 const seen: string[] = [];
 
-/** An app served in memory: one tool with its view, one tool for the view only. */
+/** An app served in memory (MCP 2026-07-28 and 2025): one tool with its view, one for the view only. */
+const supportServer = createMcpHandler(
+  () => {
+    const server = new McpServer({ name: 'support', version: '1' });
+    server.registerResource(
+      'table',
+      'ui://kete/table',
+      { mimeType: 'text/html;profile=mcp-app' },
+      async () => ({
+        contents: [
+          { uri: 'ui://kete/table', mimeType: 'text/html;profile=mcp-app', text: '<p>table</p>' },
+        ],
+      }),
+    );
+    server.registerTool(
+      'tickets_open',
+      {
+        description: 'The open tickets.',
+        inputSchema: z.object({}),
+        _meta: { ui: { resourceUri: 'ui://kete/table' } },
+      },
+      async () => ({
+        content: [{ type: 'text', text: '{}' }],
+        structuredContent: { title: 'Tickets', rows: [{ id: 'T-1', subject: 'Onduleur' }] },
+      }),
+    );
+    server.registerTool(
+      'kete_draft_validate',
+      {
+        description: 'The person validates the draft.',
+        inputSchema: z.object({ draftId: z.string() }),
+        _meta: { ui: { resourceUri: 'ui://kete/review', visibility: ['app'] } },
+      },
+      async ({ draftId }) => ({
+        content: [{ type: 'text', text: '{}' }],
+        structuredContent: { status: 'validated', draftId },
+      }),
+    );
+    return server;
+  },
+  { responseMode: 'json' },
+);
+
 async function supportApp(request: Request): Promise<Response> {
   seen.push(request.headers.get('authorization') ?? '');
-  const server = new McpServer({ name: 'support', version: '1' });
-  server.registerResource(
-    'table',
-    'ui://kete/table',
-    { mimeType: 'text/html;profile=mcp-app' },
-    async () => ({
-      contents: [
-        { uri: 'ui://kete/table', mimeType: 'text/html;profile=mcp-app', text: '<p>table</p>' },
-      ],
-    }),
-  );
-  server.registerTool(
-    'tickets_open',
-    {
-      description: 'The open tickets.',
-      inputSchema: z.object({}),
-      _meta: { ui: { resourceUri: 'ui://kete/table' } },
-    },
-    async () => ({
-      content: [{ type: 'text', text: '{}' }],
-      structuredContent: { title: 'Tickets', rows: [{ id: 'T-1', subject: 'Onduleur' }] },
-    }),
-  );
-  server.registerTool(
-    'kete_draft_validate',
-    {
-      description: 'The person validates the draft.',
-      inputSchema: z.object({ draftId: z.string() }),
-      _meta: { ui: { resourceUri: 'ui://kete/review', visibility: ['app'] } },
-    },
-    async ({ draftId }) => ({
-      content: [{ type: 'text', text: '{}' }],
-      structuredContent: { status: 'validated', draftId },
-    }),
-  );
-  const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
-  await server.connect(transport);
-  try {
-    return await transport.handleRequest(request);
-  } finally {
-    await server.close();
-  }
+  return supportServer.fetch(request);
 }
 
 async function call(token: string, method: 'GET' | 'POST', path: string, body?: object) {

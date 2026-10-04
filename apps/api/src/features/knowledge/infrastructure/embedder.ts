@@ -1,11 +1,6 @@
-import {
-  embeddingModel,
-  modelConfigFromEnv,
-  postgresBudgetStore,
-  type ModelConfig,
-} from '@kete/ai';
+import { embeddingModel, modelConfigFromEnv, type ModelConfig } from '@kete/ai';
 import { aiEmbedder, type Embedder } from '@kete/knowledge';
-import { getPool } from '../../../platform/db.js';
+import { usageStore } from '../../../platform/usage.js';
 
 // The library's embedding model (spec 028): `KETE_EMBEDDING_PROVIDER`, `KETE_EMBEDDING_MODEL` and
 // the provider's usual key; without them, the organization's provider with its small embedding
@@ -47,7 +42,7 @@ export function knowledgeEmbedder(caller: {
   if (override) return override;
   const c = config();
   if (!c) return null;
-  const store = postgresBudgetStore(getPool());
+  const store = usageStore();
   return aiEmbedder(embeddingModel(c), {
     dimensions: KNOWLEDGE_DIMENSIONS,
     onUsage: (tokens) => {
