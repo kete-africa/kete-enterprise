@@ -63,12 +63,24 @@ export async function readerKeys(db: SqlExecutor, identity: Identity): Promise<s
   const today = new Date().toISOString().slice(0, 10);
   const [card, chart] = await Promise.all([myCard(db, identity, today), readChartAt(db, today)]);
   const own = (card?.positions ?? []).map((p) => p.unitId);
+  const more = (
+    await Promise.all(readerKeyProviders.map((provide) => provide(db, identity)))
+  ).flat();
   return [
     'everyone',
     `user:${identity.userId}`,
     ...(isAdministrator(identity) ? ['role:admin'] : []),
     ...unitKeys(own, chart.units),
+    ...more,
   ];
+}
+
+/** Other features open sources to their own audiences: a dossier to its members (spec 034). */
+export type ReaderKeyProvider = (db: SqlExecutor, identity: Identity) => Promise<string[]>;
+const readerKeyProviders: ReaderKeyProvider[] = [];
+
+export function addReaderKeys(provider: ReaderKeyProvider): void {
+  if (!readerKeyProviders.includes(provider)) readerKeyProviders.push(provider);
 }
 
 /** An audience as an administrator sets it: everyone, units, administrators, people. */

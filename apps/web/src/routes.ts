@@ -14,6 +14,8 @@ export const routes = rootRoute('__root.tsx', [
   route('/mes-agents', 'my-agents.tsx'),
   route('/ressources', 'resources.tsx'),
   route('/bibliotheque', 'library.tsx'),
+  route('/dossiers', 'dossiers.tsx'),
+  route('/dossiers/$dossierId', 'dossier.tsx'),
   route('/ressources/demandes', 'app-requests.tsx'),
   route('/ressources/demandes/nouvelle', 'app-request-new.tsx'),
   route('/ressources/demandes/$requestId', 'app-request.tsx'),

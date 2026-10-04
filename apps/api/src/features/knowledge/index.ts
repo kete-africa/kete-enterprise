@@ -4,10 +4,12 @@ export {
   useEmbedder,
 } from './infrastructure/embedder.js';
 export {
+  addReaderKeys,
   knowledgeRoutes,
   knowledgeTablesSql,
   knowledgeTool,
   libraryOpen,
   readerKeys,
   unitKeys,
+  type ReaderKeyProvider,
 } from './knowledge.js';
