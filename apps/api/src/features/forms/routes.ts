@@ -324,3 +324,24 @@ export function formTools(identity: Identity): CapabilityTool[] {
     },
   ];
 }
+
+/**
+ * A form's answers summed up for a reader (dashboards, spec 033): null unless she runs the form —
+ * its owner or an administrator.
+ */
+export async function queryFormFor(
+  db: SqlExecutor,
+  identity: Identity,
+  collectionId: string,
+  spec: z.infer<typeof querySpec>,
+): Promise<{ name: string; rows: ReturnType<typeof aggregate> } | null> {
+  const collection = await getCollection(db, collectionId);
+  if (!collection || (collection.ownerId !== identity.userId && !isAdministrator(identity))) {
+    return null;
+  }
+  const { columns, rows } = asData(collection, await submissionsOf(db, collection.collectionId));
+  const dated = rows.filter(
+    (r) => (!spec.from || r.answered_on >= spec.from) && (!spec.to || r.answered_on <= spec.to),
+  );
+  return { name: collection.name, rows: aggregate(columns, dated, spec) };
+}
