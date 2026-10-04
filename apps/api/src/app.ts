@@ -2,7 +2,7 @@ import { healthHandler, manifestHandler } from '@kete/sdk';
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
 import { aiRoutes } from './features/ai/index.js';
-import { assistantRoutes } from './features/assistant/index.js';
+import { assistantRoutes, scheduleRoutes } from './features/assistant/index.js';
 import { compliancePermissions, complianceRoutes } from './features/compliance/index.js';
 import { decisionsPermissions, decisionsRoutes } from './features/decisions/index.js';
 import { gatewayResourceMetadata, gatewayRoutes, handleGateway } from './features/gateway/index.js';
@@ -188,6 +188,8 @@ export function createApi(): Hono {
   v1.route('/performance', performanceRoutes);
   v1.route('/meetings', meetingsRoutes);
   v1.route('/actions', actionsRoutes);
+  // Her scheduled tasks: her morning briefing, her questions at a set time (spec 029).
+  v1.route('/assistant/schedules', scheduleRoutes);
   v1.route('/assistant', assistantRoutes);
   // Each person's own AI connection, and the organization's policy (spec 026).
   v1.route('/ai', aiRoutes);
