@@ -74,6 +74,17 @@ describe('when the next run falls', () => {
     expect(at({ cadence: 'weekly', weekday: 1, time: '08:00', timeZone: 'Europe/Paris' })).toBe(
       '2026-10-05T06:00:00.000Z',
     );
+    // Sunday is day 7 for her, 0 for a cron pattern.
+    expect(at({ cadence: 'weekly', weekday: 7, time: '09:00', timeZone: 'Africa/Lome' })).toBe(
+      '2026-10-04T09:00:00.000Z',
+    );
+    // Paris leaves summer time on 25 October: 8:00 is then 7:00 UTC.
+    expect(
+      nextRun(
+        { cadence: 'daily', weekday: null, time: '08:00', timeZone: 'Europe/Paris' },
+        new Date('2026-10-24T07:00:00Z'),
+      ).toISOString(),
+    ).toBe('2026-10-25T07:00:00.000Z');
   });
 });
 
