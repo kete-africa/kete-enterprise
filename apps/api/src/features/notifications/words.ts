@@ -8,6 +8,7 @@ const catalog = {
     taskAdded: (source: string, title: string) => `${source} : ${title}`,
     agentSignal: (subject: string) => `Votre agent signale : ${subject}`,
     agentTaskDone: (agent: string) => `${agent} a terminé la tâche que vous lui avez confiée`,
+    decisionComment: (author: string, title: string) => `${author} a écrit sur « ${title} »`,
   },
   en: {
     decisionWaiting: (title: string) => `Your decision is awaited: ${title}`,
@@ -15,6 +16,7 @@ const catalog = {
     taskAdded: (source: string, title: string) => `${source}: ${title}`,
     agentSignal: (subject: string) => `Your agent reports: ${subject}`,
     agentTaskDone: (agent: string) => `${agent} finished the task you gave it`,
+    decisionComment: (author: string, title: string) => `${author} wrote on “${title}”`,
   },
 } as const;
 

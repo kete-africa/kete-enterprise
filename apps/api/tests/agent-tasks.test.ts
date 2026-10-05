@@ -194,6 +194,25 @@ describe('a task given to an agent', () => {
     expect(told[0]?.title).toContain('Agent de suivi');
   });
 
+  it('lands on her « Aujourd’hui », its draft counted beside « À faire » (spec 046)', async () => {
+    const { task } = await read(ids.first);
+    const today = (await call(t.awa, 'GET', '/today')).body as {
+      day: { kind: string; href: string }[];
+      done: { taskId: string; agentName: string; status: string; draftCount: number }[];
+    };
+    expect(today.done[0]).toMatchObject({
+      taskId: ids.first,
+      agentName: 'Agent de suivi',
+      status: 'done',
+      draftCount: 1,
+    });
+    expect(today.day).toContainEqual(
+      expect.objectContaining({ kind: 'draft', href: `/a-faire?item=draft:${task.draftIds[0]}` }),
+    );
+    expect((await call(t.awa, 'GET', '/me')).body.waiting).toBe(today.day.length);
+    expect((await call(t.kofi, 'GET', '/today')).body.done).toEqual([]);
+  });
+
   it('waits for her decisions once its budget of drafts is spent', async () => {
     const second = await give(ids.planner, 'Prépare une autre action.');
     useTaskModel(

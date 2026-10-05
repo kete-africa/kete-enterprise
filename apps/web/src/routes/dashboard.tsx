@@ -1,22 +1,22 @@
 import { Button, PageHeader, Panel, Tag, TextField } from '@kete/design';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Chart, axesOf } from '@/lib/chart';
+import { CardView } from '@/lib/dashboard-card';
 import { fetchCollections } from '@/lib/collections';
 import {
   dashboardGesture,
+  pinDashboard,
   fetchDashboard,
-  type Card,
   type Fn,
   type View,
   type Widget,
 } from '@/lib/dashboards';
 import { fetchDatasets } from '@/lib/datasets';
 import { DialogForm, refusal, Select } from '@/lib/forms';
+import { useAssistantPage } from '@/lib/chat/panel';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import * as m from '@/paraglide/messages.js';
-import { getLocale } from '@/paraglide/runtime.js';
 
 export const Route = createFileRoute('/tableaux-de-bord/$dashboardId')({
   beforeLoad: ({ location }) => requirePerson(location.href),
@@ -72,62 +72,15 @@ const viewLabels: Record<View, () => string> = {
   table: m.dashboards_view_table,
 };
 
-/** One card: its figure, chart or table, or a word that its source is not hers to read. */
-function CardView({ card }: { card: Card }) {
-  const format = new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 2 });
-  if (!card.visible) return <p className="text-body-sm text-fg-muted">{m.dashboards_hidden()}</p>;
-  if (card.rows.length === 0)
-    return <p className="text-body-sm text-fg-muted">{m.dashboards_empty_card()}</p>;
-  if (card.view === 'number') {
-    const { value } = axesOf(card);
-    const n = value ? card.rows[0]?.[value] : null;
-    return (
-      <p className="font-number text-display font-semibold">
-        {typeof n === 'number' ? format.format(n) : '—'}
-      </p>
-    );
-  }
-  if (card.view === 'table') {
-    const columns = Object.keys(card.rows[0] ?? {});
-    return (
-      <div className="overflow-x-auto">
-        <table className="w-full text-body-sm">
-          <thead>
-            <tr>
-              {columns.map((c) => (
-                <th key={c} className="px-2 py-1 text-left font-semibold">
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {card.rows.map((r, i) => (
-              <tr key={i} className="border-t border-line">
-                {columns.map((c) => (
-                  <td
-                    key={c}
-                    className={
-                      typeof r[c] === 'number' ? 'px-2 py-1 text-right font-number' : 'px-2 py-1'
-                    }
-                  >
-                    {typeof r[c] === 'number' ? format.format(r[c] as number) : (r[c] ?? '—')}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
-  return <Chart card={card} />;
-}
-
 /** A dashboard (spec 033): its cards; for its owner, a new card, keeping a proposal, removing it. */
 function DashboardPage() {
   const { me } = Route.useRouteContext();
-  const { dashboard, manage, cards, sources } = Route.useLoaderData();
+  const { dashboard, manage, pinned, cards, sources } = Route.useLoaderData();
+  useAssistantPage({
+    kind: m.nav_dashboards(),
+    title: dashboard.name,
+    href: `/tableaux-de-bord/${dashboard.dashboardId}`,
+  });
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -178,147 +131,162 @@ function DashboardPage() {
         title={dashboard.name}
         {...(dashboard.description ? { description: dashboard.description } : {})}
         actions={
-          manage ? (
-            <>
-              {dashboard.status === 'proposed' && (
-                <Button
-                  disabled={busy}
-                  onClick={() =>
-                    run(() =>
-                      dashboardGesture({
-                        data: { dashboardId: dashboard.dashboardId, keep: true },
-                      }),
-                    )
-                  }
-                >
-                  {m.dashboards_keep()}
-                </Button>
-              )}
-              <DialogForm
-                title={m.dashboards_card_add()}
-                busy={busy}
-                ready={Boolean(
-                  draft.title.trim() && source && (draft.fn === 'count' || draft.column),
-                )}
-                onSubmit={() => {
-                  const card = newCard();
-                  if (card)
-                    run(() =>
-                      dashboardGesture({
-                        data: {
-                          dashboardId: dashboard.dashboardId,
-                          widgets: [...dashboard.widgets, card],
-                        },
-                      }),
-                    );
-                }}
+          <>
+            {!me.viewedBy && (
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() =>
+                  run(() =>
+                    pinDashboard({ data: { dashboardId: dashboard.dashboardId, pinned: !pinned } }),
+                  )
+                }
               >
-                <TextField
-                  label={m.dashboards_card_title()}
-                  value={draft.title}
-                  maxLength={160}
-                  onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-                />
-                <Select
-                  label={m.dashboards_card_source()}
-                  value={draft.source}
-                  onChange={(e) =>
-                    setDraft({ ...draft, source: e.target.value, group: '', column: '' })
-                  }
+                {pinned ? m.dashboards_unpin() : m.dashboards_pin()}
+              </Button>
+            )}
+            {manage && (
+              <>
+                {dashboard.status === 'proposed' && (
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      run(() =>
+                        dashboardGesture({
+                          data: { dashboardId: dashboard.dashboardId, keep: true },
+                        }),
+                      )
+                    }
+                  >
+                    {m.dashboards_keep()}
+                  </Button>
+                )}
+                <DialogForm
+                  title={m.dashboards_card_add()}
+                  busy={busy}
+                  ready={Boolean(
+                    draft.title.trim() && source && (draft.fn === 'count' || draft.column),
+                  )}
+                  onSubmit={() => {
+                    const card = newCard();
+                    if (card)
+                      run(() =>
+                        dashboardGesture({
+                          data: {
+                            dashboardId: dashboard.dashboardId,
+                            widgets: [...dashboard.widgets, card],
+                          },
+                        }),
+                      );
+                  }}
                 >
-                  <option value="" />
-                  {sources.map((s) => (
-                    <option key={`${s.kind}:${s.id}`} value={`${s.kind}:${s.id}`}>
-                      {s.label}
-                    </option>
-                  ))}
-                </Select>
-                <Select
-                  label={m.dashboards_card_group()}
-                  value={draft.group}
-                  onChange={(e) => setDraft({ ...draft, group: e.target.value })}
-                >
-                  <option value="">{m.dashboards_card_group_none()}</option>
-                  {(source?.columns ?? [])
-                    .filter((c) => c.type !== 'number')
-                    .map((c) => (
-                      <option key={c.name} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
-                </Select>
-                <Select
-                  label={m.dashboards_card_measure()}
-                  value={draft.fn}
-                  onChange={(e) => setDraft({ ...draft, fn: e.target.value as Fn })}
-                >
-                  {(Object.keys(fnLabels) as Fn[]).map((fn) => (
-                    <option key={fn} value={fn}>
-                      {fnLabels[fn]()}
-                    </option>
-                  ))}
-                </Select>
-                {draft.fn !== 'count' && (
+                  <TextField
+                    label={m.dashboards_card_title()}
+                    value={draft.title}
+                    maxLength={160}
+                    onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                  />
                   <Select
-                    label={m.dashboards_card_column()}
-                    value={draft.column}
-                    onChange={(e) => setDraft({ ...draft, column: e.target.value })}
+                    label={m.dashboards_card_source()}
+                    value={draft.source}
+                    onChange={(e) =>
+                      setDraft({ ...draft, source: e.target.value, group: '', column: '' })
+                    }
                   >
                     <option value="" />
+                    {sources.map((s) => (
+                      <option key={`${s.kind}:${s.id}`} value={`${s.kind}:${s.id}`}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select
+                    label={m.dashboards_card_group()}
+                    value={draft.group}
+                    onChange={(e) => setDraft({ ...draft, group: e.target.value })}
+                  >
+                    <option value="">{m.dashboards_card_group_none()}</option>
                     {(source?.columns ?? [])
-                      .filter((c) => c.type === 'number')
+                      .filter((c) => c.type !== 'number')
                       .map((c) => (
                         <option key={c.name} value={c.name}>
                           {c.name}
                         </option>
                       ))}
                   </Select>
-                )}
-                <Select
-                  label={m.dashboards_card_view()}
-                  value={draft.view}
-                  onChange={(e) => setDraft({ ...draft, view: e.target.value as View })}
-                >
-                  {(Object.keys(viewLabels) as View[]).map((view) => (
-                    <option key={view} value={view}>
-                      {viewLabels[view]()}
-                    </option>
-                  ))}
-                </Select>
-              </DialogForm>
-              <Button
-                variant="secondary"
-                disabled={busy}
-                onClick={() =>
-                  run(() =>
-                    dashboardGesture({
-                      data: {
-                        dashboardId: dashboard.dashboardId,
-                        audience: shared ? `user:${dashboard.ownerId}` : 'everyone',
-                      },
-                    }),
-                  )
-                }
-              >
-                {shared ? m.dashboards_keep_owner() : m.dashboards_open_everyone()}
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={busy}
-                onClick={() =>
-                  run(
-                    () =>
+                  <Select
+                    label={m.dashboards_card_measure()}
+                    value={draft.fn}
+                    onChange={(e) => setDraft({ ...draft, fn: e.target.value as Fn })}
+                  >
+                    {(Object.keys(fnLabels) as Fn[]).map((fn) => (
+                      <option key={fn} value={fn}>
+                        {fnLabels[fn]()}
+                      </option>
+                    ))}
+                  </Select>
+                  {draft.fn !== 'count' && (
+                    <Select
+                      label={m.dashboards_card_column()}
+                      value={draft.column}
+                      onChange={(e) => setDraft({ ...draft, column: e.target.value })}
+                    >
+                      <option value="" />
+                      {(source?.columns ?? [])
+                        .filter((c) => c.type === 'number')
+                        .map((c) => (
+                          <option key={c.name} value={c.name}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </Select>
+                  )}
+                  <Select
+                    label={m.dashboards_card_view()}
+                    value={draft.view}
+                    onChange={(e) => setDraft({ ...draft, view: e.target.value as View })}
+                  >
+                    {(Object.keys(viewLabels) as View[]).map((view) => (
+                      <option key={view} value={view}>
+                        {viewLabels[view]()}
+                      </option>
+                    ))}
+                  </Select>
+                </DialogForm>
+                <Button
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() =>
+                    run(() =>
                       dashboardGesture({
-                        data: { dashboardId: dashboard.dashboardId, remove: true },
+                        data: {
+                          dashboardId: dashboard.dashboardId,
+                          audience: shared ? `user:${dashboard.ownerId}` : 'everyone',
+                        },
                       }),
-                    () => void router.navigate({ to: '/tableaux-de-bord' }),
-                  )
-                }
-              >
-                {m.dashboards_remove()}
-              </Button>
-            </>
-          ) : undefined
+                    )
+                  }
+                >
+                  {shared ? m.dashboards_keep_owner() : m.dashboards_open_everyone()}
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() =>
+                    run(
+                      () =>
+                        dashboardGesture({
+                          data: { dashboardId: dashboard.dashboardId, remove: true },
+                        }),
+                      () => void router.navigate({ to: '/tableaux-de-bord' }),
+                    )
+                  }
+                >
+                  {m.dashboards_remove()}
+                </Button>
+              </>
+            )}
+          </>
         }
       />
       {dashboard.status === 'proposed' && <Tag tone="info">{m.dashboards_proposed()}</Tag>}

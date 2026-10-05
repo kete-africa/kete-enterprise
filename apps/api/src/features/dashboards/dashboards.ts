@@ -28,6 +28,24 @@ grant select, insert, update, delete on ${s}.dashboards to ${options.appRole};
 `;
 }
 
+/** The dashboards a person pinned on her « Aujourd'hui » (spec 046): hers alone, in order. */
+export function dashboardPinsMigrationSql(options: { schema: string; appRole: string }): string {
+  const s = options.schema;
+  return `
+create table ${s}.dashboard_pins (
+  organization_id text not null,
+  user_id text not null,
+  dashboard_id text not null,
+  pinned_at timestamptz not null default now(),
+  primary key (organization_id, user_id, dashboard_id),
+  foreign key (organization_id, dashboard_id)
+    references ${s}.dashboards (organization_id, dashboard_id) on delete cascade
+);
+${organizationPolicySql({ schema: s, table: 'dashboard_pins', appRole: options.appRole })}
+grant select, insert, delete on ${s}.dashboard_pins to ${options.appRole};
+`;
+}
+
 /** A card: its title, where its rows come from, the query that sums them up, how it is shown. */
 export const widget = z.object({
   title: z.string().trim().min(1).max(160),
@@ -163,4 +181,32 @@ export async function removeDashboard(db: SqlExecutor, dashboardId: string): Pro
     [dashboardId],
   );
   return rows.length > 0;
+}
+
+/** Pins a dashboard on her « Aujourd'hui », or unpins it. */
+export async function pinDashboard(
+  db: SqlExecutor,
+  input: { organizationId: string; userId: string; dashboardId: string; pinned: boolean },
+): Promise<void> {
+  if (input.pinned) {
+    await db.query(
+      `insert into dashboard_pins (organization_id, user_id, dashboard_id) values ($1, $2, $3)
+        on conflict do nothing`,
+      [input.organizationId, input.userId, input.dashboardId],
+    );
+  } else {
+    await db.query(`delete from dashboard_pins where user_id = $1 and dashboard_id = $2`, [
+      input.userId,
+      input.dashboardId,
+    ]);
+  }
+}
+
+/** The dashboards she pinned, oldest pin first. */
+export async function pinnedIdsOf(db: SqlExecutor, userId: string): Promise<string[]> {
+  const { rows } = await db.query<{ dashboard_id: string }>(
+    `select dashboard_id from dashboard_pins where user_id = $1 order by pinned_at`,
+    [userId],
+  );
+  return rows.map((r) => r.dashboard_id);
 }

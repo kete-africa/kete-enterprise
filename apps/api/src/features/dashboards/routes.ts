@@ -15,6 +15,8 @@ import {
   dashboardInput,
   getDashboard,
   listDashboards,
+  pinDashboard,
+  pinnedIdsOf,
   removeDashboard,
   updateDashboard,
   widget,
@@ -74,9 +76,13 @@ export const dashboardRoutes = new Hono<{ Variables: IdentityVariables }>()
   .get('/', async (c) => {
     const identity = c.get('identity');
     const admin = isAdministrator(identity) && !c.get('viewedBy');
-    const dashboards = await transaction(identity.organizationId, async (db) =>
-      listDashboards(db, admin ? null : await readerKeys(db, identity)),
-    );
+    const dashboards = await transaction(identity.organizationId, async (db) => {
+      const pinned = new Set(await pinnedIdsOf(db, identity.userId));
+      return (await listDashboards(db, admin ? null : await readerKeys(db, identity))).map((d) => ({
+        ...d,
+        pinned: pinned.has(d.dashboardId),
+      }));
+    });
     return c.json({ dashboards });
   })
   .post('/', async (c) => {
@@ -100,7 +106,13 @@ export const dashboardRoutes = new Hono<{ Variables: IdentityVariables }>()
     return c.json(
       await transaction(identity.organizationId, async (db) => {
         const { dashboard, manage } = await visible(c, db);
-        return { dashboard, manage, cards: await cardsFor(db, identity, dashboard.widgets) };
+        const pinned = (await pinnedIdsOf(db, identity.userId)).includes(dashboard.dashboardId);
+        return {
+          dashboard,
+          manage,
+          pinned,
+          cards: await cardsFor(db, identity, dashboard.widgets),
+        };
       }),
     );
   })
@@ -134,6 +146,23 @@ export const dashboardRoutes = new Hono<{ Variables: IdentityVariables }>()
     });
     return c.json({ dashboard });
   })
+  // She pins a dashboard she may read on her « Aujourd'hui », or unpins it (spec 046).
+  .post('/:dashboardId/pin', async (c) => {
+    if (c.get('viewedBy')) throw new GestureRefusal(403, 'view_as_forbidden', 'Hers to pin.');
+    const parsed = z.object({ pinned: z.boolean() }).safeParse(await bodyOf(c));
+    if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'Pinned or not.');
+    const identity = c.get('identity');
+    await transaction(identity.organizationId, async (db) => {
+      const { dashboard } = await visible(c, db);
+      await pinDashboard(db, {
+        organizationId: identity.organizationId,
+        userId: identity.userId,
+        dashboardId: dashboard.dashboardId,
+        pinned: parsed.data.pinned,
+      });
+    });
+    return c.json({ pinned: parsed.data.pinned });
+  })
   .post('/:dashboardId/remove', async (c) => {
     const identity = c.get('identity');
     const removed = await transaction(identity.organizationId, async (db) => {
@@ -144,13 +173,41 @@ export const dashboardRoutes = new Hono<{ Variables: IdentityVariables }>()
     return c.json({ removed });
   });
 
+/**
+ * The dashboards she pinned and may still read, with their cards' figures read with her rights —
+ * for her « Aujourd'hui » (spec 046). A dashboard closed to her since stays pinned, unseen.
+ */
+export async function pinnedDashboardsFor(
+  db: SqlExecutor,
+  identity: Identity,
+  options: { admin: boolean; limit: number },
+): Promise<{ dashboard: Dashboard; cards: Card[] }[]> {
+  const ids = await pinnedIdsOf(db, identity.userId);
+  if (ids.length === 0) return [];
+  const keys = new Set(await readerKeys(db, identity));
+  const pinned: { dashboard: Dashboard; cards: Card[] }[] = [];
+  for (const id of ids) {
+    if (pinned.length >= options.limit) break;
+    const dashboard = await getDashboard(db, id);
+    if (!dashboard || (!options.admin && !dashboard.audience.some((k) => keys.has(k)))) continue;
+    pinned.push({ dashboard, cards: await cardsFor(db, identity, dashboard.widgets) });
+  }
+  return pinned;
+}
+
 /** Whether her organization uses dashboards. */
 export async function dashboardsOpen(identity: Identity): Promise<boolean> {
   return transaction(identity.organizationId, async (db) => (await readModules(db)).dashboards);
 }
 
 /** A proposal has its cards: an empty dashboard is the person's own to start. */
-const proposeInput = dashboardInput.extend({ widgets: z.array(widget).min(1).max(12) });
+const proposeInput = dashboardInput.extend({
+  widgets: z.array(widget).min(1).max(12),
+  pin: z
+    .boolean()
+    .optional()
+    .describe('Épingler sur son « Aujourd’hui » — seulement si elle le demande.'),
+});
 
 /**
  * The assistant proposes a dashboard (level 2: it only adds a proposal for her, which she keeps or
@@ -169,14 +226,25 @@ export function dashboardTools(identity: Identity): CapabilityTool[] {
         const parsed = proposeInput.safeParse(input);
         if (!parsed.success)
           return { status: 'refused', reason: 'invalid_input', issues: parsed.error.issues };
-        const dashboard: Dashboard = await transaction(identity.organizationId, (db) =>
-          createDashboard(db, {
-            ...parsed.data,
+        const { pin, ...proposal } = parsed.data;
+        const dashboard: Dashboard = await transaction(identity.organizationId, async (db) => {
+          const created = await createDashboard(db, {
+            ...proposal,
             organizationId: identity.organizationId,
             ownerId: identity.userId,
             status: 'proposed',
-          }),
-        );
+          });
+          // Pinned at her word (spec 048): a view on her « Aujourd'hui », which she unpins.
+          if (pin) {
+            await pinDashboard(db, {
+              organizationId: identity.organizationId,
+              userId: identity.userId,
+              dashboardId: created.dashboardId,
+              pinned: true,
+            });
+          }
+          return created;
+        });
         return {
           status: 'done',
           output: { name: dashboard.name, href: `/tableaux-de-bord/${dashboard.dashboardId}` },

@@ -5,6 +5,7 @@ export { agentsMigrationSql, dueAgents } from './infrastructure/agents.tables.js
 export { agentsPermissions, agentsRoutes } from './routes.js';
 export {
   agentTasksMigrationSql,
+  finishedFor,
   runQueuedTasks,
   runTask,
   useTaskModel,

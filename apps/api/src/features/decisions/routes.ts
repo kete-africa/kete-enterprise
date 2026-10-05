@@ -136,3 +136,34 @@ export async function inboxFor(db: SqlExecutor, identity: Pick<KeteIdentity, 'ro
   }
   return { toDecide, mine };
 }
+
+/**
+ * One request as a reader sees it (spec 047): whoever asked it, whoever may decide its current
+ * step, whoever decided one of its steps, an administrator — null for anyone else.
+ */
+export async function requestFor(
+  db: SqlExecutor,
+  identity: Pick<KeteIdentity, 'role' | 'userId'>,
+  requestId: string,
+): Promise<{ request: ReturnType<typeof forInbox>; mayDecide: boolean } | null> {
+  const request = await findRequest(db, requestId);
+  if (!request) return null;
+  const administrator = isAdministrator(identity);
+  const decides =
+    request.status === 'pending' &&
+    (await mayDecide(db, request, identity.userId, isAdministrator(identity)));
+  const involved =
+    administrator ||
+    decides ||
+    request.requesterUserId === identity.userId ||
+    request.steps.some((s) => s.decidedBy === identity.userId);
+  if (!involved) return null;
+  const circuit = await findCircuit(db, request.circuitId);
+  const labels = new Map(
+    (await subjectsOf(db)).flatMap((s) => (s.label ? [[s.subject, s.label] as const] : [])),
+  );
+  return {
+    request: forInbox(request, circuit?.remindAfterHours ?? 48, labels),
+    mayDecide: decides,
+  };
+}

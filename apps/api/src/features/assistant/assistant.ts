@@ -611,7 +611,27 @@ const streamInput = z.object({
     .array(z.string().regex(/^att_[0-9a-f-]{8,64}$/))
     .max(10)
     .default([]),
+  /** The page she asks from, when she asks beside it (spec 048): what she is looking at. */
+  page: z
+    .object({
+      kind: z.string().trim().min(1).max(40),
+      title: z.string().trim().min(1).max(300),
+      href: z
+        .string()
+        .trim()
+        .regex(/^\/[^\s]{0,299}$/),
+    })
+    .optional(),
 });
+
+/** What she is looking at, for the model: its kind, its title, its address in the space. */
+const pagePrompt = (page: z.infer<typeof streamInput>['page']) =>
+  page
+    ? `
+
+Elle te parle depuis la page ${page.href} : ${page.kind} « ${page.title} ». ` +
+      'Quand elle dit « ceci » ou « cette page », c’est de cela qu’il s’agit ; lis-le avec tes outils.'
+    : '';
 
 const attachmentInput = z.object({
   name: z.string().trim().min(1).max(200),
@@ -776,6 +796,7 @@ async function streamChat(c: Ctx): Promise<Response> {
               model: answerer.model,
               system:
                 system(organization, identity.name) +
+                pagePrompt(parsed.data.page) +
                 memoryPrompt(memories) +
                 (skills.prompt
                   ? `

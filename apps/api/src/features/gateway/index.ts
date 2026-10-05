@@ -7,6 +7,7 @@ export {
   decideDraft,
   DRAFT_BUDGET,
   draftsFor,
+  preparedDraftCount,
   gatewayResourceMetadata,
   handleGateway,
   toolsForAgent,

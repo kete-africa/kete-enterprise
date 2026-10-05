@@ -15,7 +15,7 @@ export function subjectLabel(subject: string, words?: { fr: string; en: string }
   return labels[subject]?.() ?? subject;
 }
 
-function statusLabel(status: string): string {
+export function statusLabel(status: string): string {
   const labels: Record<string, () => string> = {
     pending: m.status_pending,
     approved: m.status_approved,
@@ -25,7 +25,7 @@ function statusLabel(status: string): string {
   return labels[status]?.() ?? status;
 }
 
-function ruleLabel(rule: Rule): string {
+export function ruleLabel(rule: Rule): string {
   return {
     manager: m.rule_manager,
     role: m.rule_role,

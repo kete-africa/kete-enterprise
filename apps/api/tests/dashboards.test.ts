@@ -179,3 +179,48 @@ describe('a dashboard', () => {
     });
   });
 });
+
+describe('a pinned dashboard (spec 046)', () => {
+  it('shows on her « Aujourd’hui » with its figures, hers alone', async () => {
+    const created = await call(t.ama, 'POST', '/dashboards', {
+      name: 'Épinglé',
+      widgets: withSources().slice(0, 1),
+    });
+    const dashboardId = (created.body.dashboard as { dashboardId: string }).dashboardId;
+    expect(
+      (await call(t.ama, 'POST', `/dashboards/${dashboardId}/pin`, { pinned: true })).status,
+    ).toBe(200);
+    expect(
+      (await call(t.kofi, 'POST', `/dashboards/${dashboardId}/pin`, { pinned: true })).status,
+    ).toBe(404);
+    const today = (await call(t.ama, 'GET', '/today')).body as {
+      pinned: { dashboard: { dashboardId: string }; cards: { visible: boolean }[] }[];
+    };
+    expect(today.pinned.map((p) => p.dashboard.dashboardId)).toEqual([dashboardId]);
+    expect(today.pinned[0]?.cards[0]?.visible).toBe(true);
+    expect(((await call(t.kofi, 'GET', '/today')).body.pinned as unknown[]).length).toBe(0);
+    const listed = (await call(t.ama, 'GET', '/dashboards')).body.dashboards as {
+      dashboardId: string;
+      pinned: boolean;
+    }[];
+    expect(listed.find((d) => d.dashboardId === dashboardId)?.pinned).toBe(true);
+    await call(t.ama, 'POST', `/dashboards/${dashboardId}/pin`, { pinned: false });
+    expect(((await call(t.ama, 'GET', '/today')).body.pinned as unknown[]).length).toBe(0);
+  });
+
+  it('is pinned by her assistant when she asks it to (spec 048)', async () => {
+    const [propose] = dashboardTools({
+      organizationId: 'org_kya',
+      userId: 'usr_ama',
+      name: 'Ama Agbeko',
+      role: 'member',
+    } as Parameters<typeof dashboardTools>[0]);
+    await propose?.execute({ name: 'Vue épinglée', widgets: withSources().slice(1, 2), pin: true });
+    const today = (await call(t.ama, 'GET', '/today')).body as {
+      pinned: { dashboard: { name: string; status: string } }[];
+    };
+    expect(today.pinned.map((p) => p.dashboard)).toEqual([
+      expect.objectContaining({ name: 'Vue épinglée', status: 'proposed' }),
+    ]);
+  });
+});

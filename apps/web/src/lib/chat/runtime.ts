@@ -153,6 +153,10 @@ export function useKeteChat(options: {
   /** Who pays for the next answer (spec 026b); the API's default when null. */
   payer: Payer | null;
   onError: (code: string | null) => void;
+  /** The page she asks from, beside it (spec 048). */
+  page?: { kind: string; title: string; href: string } | null;
+  /** Whether the address follows the conversation (the assistant's page); not beside a page. */
+  followAddress?: boolean;
 }) {
   const router = useRouter();
   const [conversationId, setConversationId] = useState(options.conversationId);
@@ -161,6 +165,8 @@ export function useKeteChat(options: {
   const stopper = useRef<AbortController | null>(null);
   const payer = useRef(options.payer);
   payer.current = options.payer;
+  const page = useRef(options.page ?? null);
+  page.current = options.page ?? null;
 
   const patchLast = (change: (last: ChatMessage) => ChatMessage) =>
     setMessages((list) => [...list.slice(0, -1), change(list[list.length - 1] as ChatMessage)]);
@@ -185,6 +191,7 @@ export function useKeteChat(options: {
           attachments: files.map((f) => f.attachmentId),
           ...(conversationId ? { conversationId } : {}),
           ...(payer.current ? { payer: payer.current } : {}),
+          ...(page.current ? { page: page.current } : {}),
         }),
         signal: controller.signal,
       });
@@ -209,7 +216,9 @@ export function useKeteChat(options: {
             if (!conversationId) {
               setConversationId(event.conversationId);
               // The address follows the conversation, without reloading the thread.
-              window.history.replaceState(null, '', `/assistant?c=${event.conversationId}`);
+              if (options.followAddress !== false) {
+                window.history.replaceState(null, '', `/assistant?c=${event.conversationId}`);
+              }
             }
           } else if (event.type === 'text') {
             patchLast((last) => ({ ...last, text: last.text + String(event.delta ?? '') }));
@@ -252,7 +261,7 @@ export function useKeteChat(options: {
     } finally {
       stopper.current = null;
       setRunning(false);
-      void router.invalidate();
+      if (options.followAddress !== false) void router.invalidate();
     }
   }
 
@@ -288,5 +297,5 @@ export function useKeteChat(options: {
 
   /** The latest document the assistant wrote in the canvas, if any. */
   const canvas = [...messages].reverse().find((m) => m.canvas)?.canvas ?? null;
-  return { runtime, canvas, send };
+  return { runtime, canvas, send, conversationId, running };
 }
