@@ -45,6 +45,7 @@ export interface Tell {
     | 'task.added'
     | 'agent.signal'
     | 'agent.task'
+    | 'decision.comment'
     | 'app.ready';
   title: string;
   body?: string;

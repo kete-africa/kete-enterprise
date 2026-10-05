@@ -12,6 +12,7 @@ import { datasetsMigrationSql } from '../src/features/datasets/index.js';
 import { documentsMigrationSql } from '../src/features/documents/index.js';
 import { formsMigrationSql } from '../src/features/forms/index.js';
 import { dossiersMigrationSql } from '../src/features/dossiers/index.js';
+import { todoMigrationSql } from '../src/features/todo/index.js';
 import { knowledgeTablesSql } from '../src/features/knowledge/index.js';
 import { notificationsTablesSql } from '../src/features/notifications/index.js';
 import { appDecisionsMigrationSql, appEventsMigrationSql } from '../src/features/apps/index.js';
@@ -171,4 +172,6 @@ export const migrations: Migration[] = [
   { name: '0037_agent_tasks', sql: (context) => agentTasksMigrationSql(context) },
   // Dashboards pinned on a person's « Aujourd'hui » (spec 046).
   { name: '0038_dashboard_pins', sql: (context) => dashboardPinsMigrationSql(context) },
+  // A decision's analysis for its reader, and its discussion (spec 047).
+  { name: '0039_decision_todo', sql: (context) => todoMigrationSql(context) },
 ];

@@ -61,6 +61,7 @@ import { transaction } from './platform/db.js';
 import { GestureRefusal, runCommand } from './platform/gestures.js';
 import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
+import { todoRoutes } from './features/todo/index.js';
 import { appTasksRoutes, factsFor, todayFor, waitingCount } from './features/workspace/index.js';
 import { appRequestRoutes, factoryReportRoutes } from './features/app-requests/index.js';
 import { appEventRoutes, appPermissions, appRoutes, tellAppsWith } from './features/apps/index.js';
@@ -254,6 +255,8 @@ export function createApi(): Hono {
     const identity = c.get('identity');
     return c.json(await transaction(identity.organizationId, (db) => factsFor(db, identity)));
   });
+  // « À faire »: a decision's analysis and discussion (spec 047).
+  v1.route('/todo', todoRoutes);
   // « Aujourd'hui »: what to do, the views she pinned, what her agents did (spec 046).
   v1.get('/today', async (c) => {
     const identity = c.get('identity');

@@ -13,4 +13,4 @@ export {
 } from './engine.js';
 export { findRequest } from './infrastructure/decisions.tables.js';
 export { decisionsMigrationSql } from './infrastructure/decisions.tables.js';
-export { decisionsPermissions, decisionsRoutes, inboxFor } from './routes.js';
+export { decisionsPermissions, decisionsRoutes, inboxFor, requestFor } from './routes.js';
