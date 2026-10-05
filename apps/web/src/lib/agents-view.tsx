@@ -2,8 +2,8 @@ import { Button, Panel, Tag, TextField } from '@kete/design';
 import { useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import * as m from '@/paraglide/messages.js';
-import { changeAgents, type AgentsScreen, type AgentView } from './agents';
-import { GestureForm, refusal, Select } from './forms';
+import { changeAgents, type AgentsScreen, type AgentTask, type AgentView } from './agents';
+import { DialogForm, GestureForm, refusal, Select } from './forms';
 import { permissionLabel } from './rights-view';
 
 export function signalLabel(kind: string): string {
@@ -40,6 +40,90 @@ function useGesture() {
     });
   };
   return { error, send };
+}
+
+const taskLabel = (status: AgentTask['status']) =>
+  ({
+    queued: m.agent_task_queued,
+    running: m.agent_task_running,
+    done: m.agent_task_done,
+    failed: m.agent_task_failed,
+    stopped: m.agent_task_stopped,
+  })[status]();
+
+/** The tasks given to the agent (spec 036): a new one, the latest with their answers. */
+function AgentTasks({
+  agent,
+  send,
+}: {
+  agent: AgentView;
+  send: (path: string, body?: object) => void;
+}) {
+  const [instruction, setInstruction] = useState('');
+  const tasks = agent.tasks ?? [];
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-body-sm font-semibold">{m.agent_tasks()}</h3>
+        {agent.status === 'active' && (
+          <DialogForm
+            title={m.agent_give_task()}
+            ready={instruction.trim().length > 0}
+            onSubmit={() => {
+              send(`/${agent.agentId}/tasks`, { instruction });
+              setInstruction('');
+            }}
+          >
+            <p className="text-body-sm text-fg-muted">{m.agent_task_explain()}</p>
+            <label className="grid gap-1.5 text-body-sm font-semibold">
+              {m.agent_task_instruction()}
+              <textarea
+                className="min-h-28 rounded-control border border-line-control bg-surface-control p-3 font-normal"
+                value={instruction}
+                maxLength={4000}
+                onChange={(e) => setInstruction(e.target.value)}
+              />
+            </label>
+          </DialogForm>
+        )}
+      </div>
+      {tasks.length === 0 ? (
+        <p className="text-body-sm text-fg-muted">{m.agent_no_task()}</p>
+      ) : (
+        <ul className="grid gap-2">
+          {tasks.map((t) => (
+            <li
+              key={t.taskId}
+              className="grid gap-1 rounded-box border border-line p-3 text-body-sm"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Tag
+                  tone={
+                    t.status === 'done' ? 'validated' : t.status === 'failed' ? 'error' : 'info'
+                  }
+                >
+                  {taskLabel(t.status)}
+                </Tag>
+                {t.parentTaskId && <Tag tone="agent">{m.agent_task_delegated()}</Tag>}
+                <span className="font-semibold">{t.instruction}</span>
+                {(t.status === 'queued' || t.status === 'running') && (
+                  <Button variant="secondary" onClick={() => send(`/tasks/${t.taskId}/stop`)}>
+                    {m.agent_task_stop()}
+                  </Button>
+                )}
+              </div>
+              {t.answer && <p className="whitespace-pre-line">{t.answer}</p>}
+              {t.draftIds.length > 0 && (
+                <a href="/a-faire" className="font-semibold text-link underline">
+                  {m.agent_task_drafts({ count: t.draftIds.length })}
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 function AgentCard({ agent, unitName }: { agent: AgentView; unitName: Map<string, string> }) {
@@ -87,6 +171,7 @@ function AgentCard({ agent, unitName }: { agent: AgentView; unitName: Map<string
             {agent.status === 'active' ? m.agent_pause() : m.agent_resume()}
           </Button>
         </div>
+        <AgentTasks agent={agent} send={send} />
         <div>
           <h3 className="mb-2 text-body-sm font-semibold">{m.agent_signals()}</h3>
           {agent.signals.length === 0 ? (

@@ -1,3 +1,4 @@
+import type { Actor } from '@kete/commands';
 import {
   createCapabilityRegistry,
   createMcpHandler,
@@ -64,6 +65,52 @@ export async function toolsForPerson(identity: { organizationId: string; userId:
               : tool.execute(input),
         },
   );
+}
+
+/**
+ * An agent's tools for a task given to it (spec 036): its person's capabilities — the same
+ * registry, her rights — narrowed to its job description: the permissions it lists, its highest
+ * autonomy level, its budget of open drafts. Call it, and the tools, inside `asPerson`.
+ */
+export async function toolsForAgent(
+  person: { organizationId: string; userId: string },
+  actor: Actor,
+  limits: { permissions: string[]; autonomyMax: number; draftBudget: number },
+) {
+  const caller = { organizationId: person.organizationId, actor };
+  const allowed = new Set(limits.permissions);
+  const permissionOf = new Map(
+    (await registry.list(caller)).map((capability) => [capability.name, capability.permission]),
+  );
+  const tools = (await registry.tools(caller)).filter(
+    (tool) =>
+      tool.autonomy <= limits.autonomyMax &&
+      (allowed.has(permissionOf.get(tool.name) ?? '') ||
+        permissionOf.get(tool.name) === GATEWAY_PERMISSION),
+  );
+  return tools.map((tool) =>
+    tool.autonomy < 3
+      ? tool
+      : {
+          ...tool,
+          execute: async (input: unknown) =>
+            (await openDraftsOf(person, actor.id)) >= limits.draftBudget
+              ? // Its budget spent, the agent waits for her decisions before preparing more.
+                ({ status: 'refused', reason: 'not_allowed' } as const)
+              : tool.execute(input),
+        },
+  );
+}
+
+async function openDraftsOf(identity: { organizationId: string; userId: string }, agentId: string) {
+  return transaction(identity.organizationId, async (db) => {
+    const { rows } = await db.query<{ count: string }>(
+      `select count(*) from kete_drafts
+        where status = 'prepared' and on_behalf_of_id = $1 and prepared_by_id = $2`,
+      [identity.userId, agentId],
+    );
+    return Number(rows[0]?.count ?? 0);
+  });
 }
 
 async function openDraftsFor(identity: { organizationId: string; userId: string }) {

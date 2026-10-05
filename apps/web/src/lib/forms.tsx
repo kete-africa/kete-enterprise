@@ -22,6 +22,7 @@ export function refusal(code: string | null): string {
     no_cases: m.error_no_cases,
     invalid_query: m.error_invalid_query,
     invalid_answer: m.error_invalid_answer,
+    agent_paused: m.error_agent_paused,
     invalid_input: m.error_invalid_input,
     duplicate: m.error_duplicate,
     unknown_permission: m.error_invalid_input,

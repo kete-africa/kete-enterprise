@@ -1266,5 +1266,19 @@
   "dashboards_view_pie": "Secteurs",
   "dashboards_view_table": "Tableau",
   "dashboards_source_dataset": "Données : {name}",
-  "dashboards_source_form": "Formulaire : {name}"
+  "dashboards_source_form": "Formulaire : {name}",
+  "agent_tasks": "Tâches confiées",
+  "agent_give_task": "Confier une tâche",
+  "agent_task_instruction": "Ce que l’agent doit faire",
+  "agent_task_explain": "L’agent la traite en arrière-plan avec vos droits, limités à sa fiche de poste ; ce qui engage vous attend en brouillon. Vous êtes notifiée à la fin.",
+  "agent_no_task": "Aucune tâche confiée.",
+  "agent_task_stop": "Arrêter",
+  "agent_task_queued": "En attente",
+  "agent_task_running": "En cours",
+  "agent_task_done": "Terminée",
+  "agent_task_failed": "Échouée",
+  "agent_task_stopped": "Arrêtée",
+  "agent_task_drafts": "{count} brouillon(s) à décider dans « À faire »",
+  "agent_task_delegated": "Confiée par un autre agent",
+  "error_agent_paused": "Cet agent est en pause."
 }

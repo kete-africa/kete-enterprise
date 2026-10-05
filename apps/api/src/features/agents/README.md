@@ -38,15 +38,8 @@ sequenceDiagram
 - **Running**: `main.ts worker` runs the worker alone; `KETE_WORKER_IN_PROCESS=true` runs it beside
   the API (a small instance, one container).
 
-Not yet: agents preparing drafts (level 3) and the enforcement of their budget, agents delegating to
-agents — with the first agent that needs them.
-
-## Routes
-
-| Route                               | What                                                                            |
-| ----------------------------------- | ------------------------------------------------------------------------------- |
-| `GET /v1/agents`                    | The agents acting for the person (all for a manager), signals                   |
-| `POST /v1/agents`                   | `create-agent`: one's own; a position's or the system's needs « agents:manage » |
-| `POST /v1/agents/:agentId/status`   | `update-agent-status`: pause or resume                                          |
-| `POST /v1/agents/:agentId/wake`     | Wake it now                                                                     |
-| `POST /v1/agents/signals/:id/close` | `close-signal`: its person marks it handled                                     |
+**Tasks given (spec 036).** A person gives one of her agents a task; the worker runs it every
+minute with her capabilities narrowed to its job description (permissions, autonomy, budget of
+drafts), every commitment a draft she decides; it may hand part of it to another of her agents
+(`delegate_task`, the chain carried, four agents at most); she sees each task's answer, steps and
+drafts, is told when it ends, and stops it. See [spec 036](../../../../../specs/036-agents/spec.md).
