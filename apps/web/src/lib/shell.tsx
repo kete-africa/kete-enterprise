@@ -27,6 +27,7 @@ export type Page =
   | 'skills'
   | 'datasets'
   | 'forms'
+  | 'dashboards'
   | 'admin_templates'
   | 'admin_library'
   | 'my_agents'
@@ -83,6 +84,11 @@ function SpaceNav({ me, current }: { me: Me; current: Page }) {
         <NavItem href="/ressources" icon="library" current={current === 'resources'}>
           {m.nav_resources()}
         </NavItem>
+        {me.modules.dashboards && (
+          <NavItem href="/tableaux-de-bord" icon="apps" current={current === 'dashboards'}>
+            {m.nav_dashboards()}
+          </NavItem>
+        )}
         {me.modules.forms && (
           <NavItem href="/formulaires" icon="check" current={current === 'forms'}>
             {m.nav_forms()}

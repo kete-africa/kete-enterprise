@@ -13,7 +13,8 @@ export type ModuleKey =
   | 'documents'
   | 'skills'
   | 'datasets'
-  | 'forms';
+  | 'forms'
+  | 'dashboards';
 
 export interface Me {
   userId: string;

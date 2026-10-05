@@ -3,6 +3,7 @@ import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
 import { aiRoutes } from './features/ai/index.js';
 import { assistantRoutes, memoryRoutes, scheduleRoutes } from './features/assistant/index.js';
+import { dashboardRoutes } from './features/dashboards/index.js';
 import { datasetRoutes } from './features/datasets/index.js';
 import { documentRoutes } from './features/documents/index.js';
 import { formRoutes, formsPublicRoutes, listenForForms } from './features/forms/index.js';
@@ -230,6 +231,8 @@ export function createApi(): Hono {
   v1.route('/datasets', datasetRoutes);
   // Forms, their answers through a circuit, read as data (spec 032).
   v1.route('/forms', formRoutes);
+  // Dashboards, read with each reader's rights (spec 033).
+  v1.route('/dashboards', dashboardRoutes);
   // The organization's know-how, as skills (spec 031).
   v1.route('/skills', skillRoutes);
   v1.route('/assistant', assistantRoutes);

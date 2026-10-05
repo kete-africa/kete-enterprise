@@ -16,6 +16,7 @@ export const moduleKeys = [
   'skills',
   'datasets',
   'forms',
+  'dashboards',
 ] as const;
 export type ModuleKey = (typeof moduleKeys)[number];
 
@@ -32,6 +33,7 @@ export const onByDefault: Readonly<Record<ModuleKey, boolean>> = {
   skills: false,
   datasets: false,
   forms: false,
+  dashboards: false,
 };
 
 export const setModuleInput = z.object({

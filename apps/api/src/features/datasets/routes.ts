@@ -314,3 +314,21 @@ export function datasetTools(identity: Identity): CapabilityTool[] {
     },
   ];
 }
+
+/**
+ * A data set summed up for a reader (dashboards, spec 033): null when she may not read it — the
+ * reader's rights, whoever composed the query.
+ */
+export async function queryDatasetFor(
+  db: SqlExecutor,
+  identity: Identity,
+  datasetId: string,
+  spec: z.infer<typeof querySpec>,
+): Promise<{ name: string; rows: ReturnType<typeof aggregate> } | null> {
+  const dataset = await getDataset(db, datasetId);
+  const keys = new Set(await readerKeys(db, identity));
+  const admin = isAdministrator(identity);
+  if (!dataset || (!admin && !dataset.audience.some((k) => keys.has(k)))) return null;
+  const { rows } = await readRows(db, dataset, { from: spec.from, to: spec.to, limit: QUERY_ROWS });
+  return { name: dataset.name, rows: aggregate(dataset.columns, rows, spec) };
+}

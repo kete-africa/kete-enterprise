@@ -4,6 +4,7 @@ import {
 } from '../src/features/ai/index.js';
 import { aiCostMigrationSql } from '@kete/ai';
 import { skillsMigrationSql } from '@kete/skills';
+import { dashboardsMigrationSql } from '../src/features/dashboards/index.js';
 import { datasetsMigrationSql } from '../src/features/datasets/index.js';
 import { documentsMigrationSql } from '../src/features/documents/index.js';
 import { formsMigrationSql } from '../src/features/forms/index.js';
@@ -161,4 +162,6 @@ export const migrations: Migration[] = [
   { name: '0034_team_datasets', sql: (context) => datasetsMigrationSql(context) },
   // Forms: collections answered by link or in the space, through a circuit (spec 032).
   { name: '0035_forms', sql: (context) => formsMigrationSql(context) },
+  // Dashboards over the organization's data (spec 033).
+  { name: '0036_dashboards', sql: (context) => dashboardsMigrationSql(context) },
 ];

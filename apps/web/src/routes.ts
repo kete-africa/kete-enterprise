@@ -20,6 +20,8 @@ export const routes = rootRoute('__root.tsx', [
   route('/competences', 'skills.tsx'),
   route('/donnees', 'datasets.tsx'),
   route('/formulaires', 'forms.tsx'),
+  route('/tableaux-de-bord', 'dashboards.tsx'),
+  route('/tableaux-de-bord/$dashboardId', 'dashboard.tsx'),
   route('/formulaires/$collectionId', 'form.tsx'),
   route('/donnees/$datasetId', 'dataset.tsx'),
   route('/api/skills/$skillId', 'api/skill-file.ts'),

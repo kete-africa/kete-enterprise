@@ -30,6 +30,7 @@ const modules: { key: ModuleKey; name: () => string; explain: () => string }[] =
   { key: 'skills', name: m.nav_skills, explain: m.module_skills },
   { key: 'datasets', name: m.nav_datasets, explain: m.module_datasets },
   { key: 'forms', name: m.nav_forms, explain: m.module_forms },
+  { key: 'dashboards', name: m.nav_dashboards, explain: m.module_dashboards },
 ];
 
 /** Which business tools the organization uses (spec 010): switched off, the data stays. */
