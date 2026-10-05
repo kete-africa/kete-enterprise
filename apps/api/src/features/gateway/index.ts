@@ -9,6 +9,7 @@ export {
   draftsFor,
   gatewayResourceMetadata,
   handleGateway,
+  toolsForAgent,
   toolsForPerson,
 } from './mcp.js';
 export { gatewayRoutes } from './routes.js';

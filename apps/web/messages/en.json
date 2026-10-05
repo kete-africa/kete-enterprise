@@ -1266,5 +1266,19 @@
   "dashboards_view_pie": "Pie",
   "dashboards_view_table": "Table",
   "dashboards_source_dataset": "Data: {name}",
-  "dashboards_source_form": "Form: {name}"
+  "dashboards_source_form": "Form: {name}",
+  "agent_tasks": "Tasks given",
+  "agent_give_task": "Give a task",
+  "agent_task_instruction": "What the agent should do",
+  "agent_task_explain": "The agent works on it in the background with your rights, limited to its job description; what commits waits for you as a draft. You are told when it ends.",
+  "agent_no_task": "No task given.",
+  "agent_task_stop": "Stop",
+  "agent_task_queued": "Waiting",
+  "agent_task_running": "Running",
+  "agent_task_done": "Done",
+  "agent_task_failed": "Failed",
+  "agent_task_stopped": "Stopped",
+  "agent_task_drafts": "{count} draft(s) to decide in “To do”",
+  "agent_task_delegated": "Handed on by another agent",
+  "error_agent_paused": "This agent is paused."
 }

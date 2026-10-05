@@ -29,6 +29,8 @@ export interface AgentView {
   nextWakeAt: string;
   lastRunAt: string | null;
   signals: AgentSignal[];
+  /** Its latest tasks (spec 036). */
+  tasks?: AgentTask[];
 }
 
 export interface AgentsScreen {
@@ -38,6 +40,18 @@ export interface AgentsScreen {
   permissions: string[];
   me: string;
   chart: Chart;
+}
+
+/** A task given to an agent (spec 036), as the screens show it. */
+export interface AgentTask {
+  taskId: string;
+  agentId: string;
+  parentTaskId: string | null;
+  instruction: string;
+  status: 'queued' | 'running' | 'done' | 'failed' | 'stopped';
+  answer: string | null;
+  draftIds: string[];
+  createdAt: string;
 }
 
 export const fetchAgents = createServerFn({ method: 'GET' }).handler(
@@ -72,8 +86,27 @@ export const fetchAgents = createServerFn({ method: 'GET' }).handler(
         raisedAt: s.raisedAt,
       })),
     }));
+    // Each agent's latest tasks (spec 036).
+    const tasks = await Promise.all(
+      agents.map((a) =>
+        callApi<{ tasks: AgentTask[] }>(request, `/v1/agents/${a.agentId}/tasks`)
+          .then((r) =>
+            r.tasks.slice(0, 5).map((t) => ({
+              taskId: t.taskId,
+              agentId: t.agentId,
+              parentTaskId: t.parentTaskId,
+              instruction: t.instruction,
+              status: t.status,
+              answer: t.answer,
+              draftIds: t.draftIds,
+              createdAt: t.createdAt,
+            })),
+          )
+          .catch(() => [] as AgentTask[]),
+      ),
+    );
     return {
-      agents,
+      agents: agents.map((a, i) => ({ ...a, tasks: tasks[i] ?? [] })),
       watches: screen.watches,
       manages: screen.manages,
       permissions: permissions.permissions,
@@ -83,7 +116,8 @@ export const fetchAgents = createServerFn({ method: 'GET' }).handler(
   },
 );
 
-const paths = /^\/(|agt_[0-9a-f-]+\/(status|wake)|signals\/sig_[0-9a-f-]+\/close)$/;
+const paths =
+  /^\/(|agt_[0-9a-f-]+\/(status|wake|tasks)|signals\/sig_[0-9a-f-]+\/close|tasks\/tsk_[0-9a-f-]+\/stop)$/;
 
 export const changeAgents = createServerFn({ method: 'POST' })
   .validator((input: unknown) => {

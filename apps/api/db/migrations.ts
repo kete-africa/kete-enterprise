@@ -14,7 +14,7 @@ import { notificationsTablesSql } from '../src/features/notifications/index.js';
 import { appDecisionsMigrationSql, appEventsMigrationSql } from '../src/features/apps/index.js';
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
-import { agentsMigrationSql } from '../src/features/agents/index.js';
+import { agentsMigrationSql, agentTasksMigrationSql } from '../src/features/agents/index.js';
 import { complianceMigrationSql } from '../src/features/compliance/index.js';
 import { decisionsMigrationSql } from '../src/features/decisions/index.js';
 import { gatewayAppendOnlySql, gatewayMigrationSql } from '../src/features/gateway/index.js';
@@ -164,4 +164,6 @@ export const migrations: Migration[] = [
   { name: '0035_forms', sql: (context) => formsMigrationSql(context) },
   // Dashboards over the organization's data (spec 033).
   { name: '0036_dashboards', sql: (context) => dashboardsMigrationSql(context) },
+  // Tasks given to agents, run in the background, handed on between agents (spec 036).
+  { name: '0037_agent_tasks', sql: (context) => agentTasksMigrationSql(context) },
 ];

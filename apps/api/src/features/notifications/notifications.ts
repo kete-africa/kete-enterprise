@@ -39,7 +39,13 @@ function push(): PushSender | null {
 }
 
 export interface Tell {
-  kind: 'decision.waiting' | 'schedule.answered' | 'task.added' | 'agent.signal' | 'app.ready';
+  kind:
+    | 'decision.waiting'
+    | 'schedule.answered'
+    | 'task.added'
+    | 'agent.signal'
+    | 'agent.task'
+    | 'app.ready';
   title: string;
   body?: string;
   href?: string;

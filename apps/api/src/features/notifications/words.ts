@@ -7,12 +7,14 @@ const catalog = {
     scheduleAnswered: (title: string) => `Votre tâche « ${title} » a répondu`,
     taskAdded: (source: string, title: string) => `${source} : ${title}`,
     agentSignal: (subject: string) => `Votre agent signale : ${subject}`,
+    agentTaskDone: (agent: string) => `${agent} a terminé la tâche que vous lui avez confiée`,
   },
   en: {
     decisionWaiting: (title: string) => `Your decision is awaited: ${title}`,
     scheduleAnswered: (title: string) => `Your task « ${title} » answered`,
     taskAdded: (source: string, title: string) => `${source}: ${title}`,
     agentSignal: (subject: string) => `Your agent reports: ${subject}`,
+    agentTaskDone: (agent: string) => `${agent} finished the task you gave it`,
   },
 } as const;
 
