@@ -28,6 +28,7 @@
     "@kete/tenancy": "npm:@kete-africa/tenancy@^0.1.1",
     "@modelcontextprotocol/client": "2.3.0",
     "ai": "^7.0.122",
+    "croner": "^10.0.1",
     "hono": "^4.13.12",
     "pg": "^8.23.0",
     "tsx": "^4.23.15",
