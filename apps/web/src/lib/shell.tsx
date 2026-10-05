@@ -452,6 +452,14 @@ function Palette({
   );
 }
 
+/** Two letters for a person's mark: her first and last names'. */
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const first = words[0]?.[0] ?? '';
+  const last = words.length > 1 ? (words[words.length - 1]?.[0] ?? '') : '';
+  return (first + last).toUpperCase();
+}
+
 /** A round icon link of the toolbar, with a count when something waits there. */
 function ToolbarLink({
   href,
@@ -517,15 +525,29 @@ export function AppShell({
     <Shell
       brand={m.app_name()}
       footer={
-        <ThemeChoice
-          label={m.theme_label()}
-          value={theme}
-          onChange={(choice) => {
-            setTheme(choice);
-            applyTheme(choice);
-          }}
-          labels={{ dark: m.theme_dark(), light: m.theme_light(), auto: m.theme_auto() }}
-        />
+        <div className="grid gap-4">
+          <div className="flex items-center gap-3">
+            <span
+              aria-hidden="true"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-action text-[13px] font-semibold text-on-action"
+            >
+              {initials(me.name)}
+            </span>
+            <span className="grid min-w-0">
+              <span className="truncate font-semibold">{me.name}</span>
+              <span className="truncate text-body-sm text-fg-muted">{me.email}</span>
+            </span>
+          </div>
+          <ThemeChoice
+            label={m.theme_label()}
+            value={theme}
+            onChange={(choice) => {
+              setTheme(choice);
+              applyTheme(choice);
+            }}
+            labels={{ dark: m.theme_dark(), light: m.theme_light(), auto: m.theme_auto() }}
+          />
+        </div>
       }
       navLabel={m.nav_label()}
       showNavLabel={m.nav_show()}

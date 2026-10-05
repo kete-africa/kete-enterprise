@@ -139,8 +139,8 @@ importers:
         specifier: npm:@kete-africa/auth@^0.3.0
         version: '@kete-africa/auth@0.3.0'
       '@kete/design':
-        specifier: npm:@kete-africa/design@^0.5.0
-        version: '@kete-africa/design@0.5.0(react@19.3.0)(supports-color@7.2.0)'
+        specifier: npm:@kete-africa/design@^0.6.0
+        version: '@kete-africa/design@0.6.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
       '@mcp-ui/client':
         specifier: 7.1.1
         version: 7.1.1(@cfworker/json-schema@4.1.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
@@ -1048,8 +1048,8 @@ packages:
   '@kete-africa/commands@0.2.0':
     resolution: {integrity: sha512-/uLLszL5C8CXzXZk6v7+jyWMCB0yG+eJDZ9JdDKHtTyc8esvUt1CyOMUbA4AbJz9+9ZZIVskrbIjpabypv2P/w==, tarball: https://npm.pkg.github.com/download/@kete-africa/commands/0.2.0/f0c9b37636e81c356275698065a86ee90114e76a}
 
-  '@kete-africa/design@0.5.0':
-    resolution: {integrity: sha512-XKMP7qBE/elejwcxkb5sk39hat4oPob3YbhunuiFuKAv/rkeyDsrgl9SZc73ZTwgQY98uIik5d8w8GjklyB0MQ==, tarball: https://npm.pkg.github.com/download/@kete-africa/design/0.5.0/c53e3ac5f3aaf09a93530fe82f17e6f7d9d377c4}
+  '@kete-africa/design@0.6.0':
+    resolution: {integrity: sha512-XpQuoxYy+JlupbnJrJBwUuI7hwttXhpBjtBdyNZ62a7MYsDkjiy88jVdzI/wb+ugFAPgltsFE0E4uNw+liKirw==, tarball: https://npm.pkg.github.com/download/@kete-africa/design/0.6.0/837309cc1925431b5627a10e4390c272cbf89d65}
     peerDependencies:
       react: ^19
 
@@ -3128,6 +3128,12 @@ packages:
   cliui@8.0.1:
     resolution: {integrity: sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==}
     engines: {node: '>=12'}
+
+  cmdk@1.1.1:
+    resolution: {integrity: sha512-Vsv7kFaXm+ptHDMZ7izaRsP70GgrW9NBNGswt9OZaVBLlE0SNpDq8eu/VGXyF9r7M0azK3Wy7OlYXsuyYLFzHg==}
+    peerDependencies:
+      react: ^18 || ^19 || ^19.0.0-rc
+      react-dom: ^18 || ^19 || ^19.0.0-rc
 
   color-convert@2.0.1:
     resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
@@ -6314,15 +6320,19 @@ snapshots:
       - drizzle-orm
       - pg-native
 
-  '@kete-africa/design@0.5.0(react@19.3.0)(supports-color@7.2.0)':
+  '@kete-africa/design@0.6.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
     dependencies:
       '@fontsource-variable/archivo': 5.3.0
       '@fontsource-variable/instrument-sans': 5.3.0
       '@fontsource-variable/inter': 5.3.0
       '@fontsource-variable/jetbrains-mono': 5.3.0
       '@google/design.md': 0.4.0(supports-color@7.2.0)
+      cmdk: 1.1.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react: 19.3.0
     transitivePeerDependencies:
+      - '@types/react'
+      - '@types/react-dom'
+      - react-dom
       - supports-color
 
   '@kete-africa/drafts@0.1.1(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))':
@@ -8554,6 +8564,18 @@ snapshots:
       string-width: 4.2.3
       strip-ansi: 6.0.1
       wrap-ansi: 7.0.0
+
+  cmdk@1.1.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+    dependencies:
+      '@radix-ui/react-compose-refs': 1.1.5(@types/react@19.3.0)(react@19.3.0)
+      '@radix-ui/react-dialog': 1.1.23(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@radix-ui/react-id': 1.1.4(@types/react@19.3.0)(react@19.3.0)
+      '@radix-ui/react-primitive': 2.1.10(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+    transitivePeerDependencies:
+      - '@types/react'
+      - '@types/react-dom'
 
   color-convert@2.0.1:
     dependencies:
