@@ -1,7 +1,8 @@
-import { Button, Icon, Markdown, PageSection, PageTitle, Tag, type IconName } from '@kete/design';
+import { Button, Icon, Markdown, PageSection, PageTitle, Tag } from '@kete/design';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useState, type ReactNode } from 'react';
 import { CardView } from '@/lib/dashboard-card';
+import { kindIcon, why } from '@/lib/day';
 import { pinDashboard } from '@/lib/dashboards';
 import { refusal } from '@/lib/forms';
 import { AppShell } from '@/lib/shell';
@@ -14,10 +15,7 @@ import { getLocale } from '@/paraglide/runtime.js';
 export const Route = createFileRoute('/')({
   beforeLoad: ({ location }) => requirePerson(location.href),
   loader: async () => {
-    const [today, briefing] = await Promise.all([
-      fetchToday(),
-      fetchBriefing().catch(() => null),
-    ]);
+    const [today, briefing] = await Promise.all([fetchToday(), fetchBriefing().catch(() => null)]);
     return { today, briefing };
   },
   component: Today,
@@ -25,43 +23,6 @@ export const Route = createFileRoute('/')({
 
 /** How many things the day shows; the rest wait in « À faire ». */
 const SHOWN = 6;
-
-const kindIcon: Record<DayItem['kind'], IconName> = {
-  decision: 'check',
-  draft: 'sparkle',
-  app_task: 'flag',
-  form: 'teach',
-  action: 'people',
-  note: 'file',
-};
-
-const day = (value: string) =>
-  new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'long' }).format(new Date(value));
-
-/** Why a thing is on the day, in words: where it comes from, when it is due. */
-function why(item: DayItem): string {
-  const source = item.source ?? '';
-  switch (item.kind) {
-    case 'decision':
-      return m.today_why_decision({ source });
-    case 'draft':
-      return m.today_why_draft({ source });
-    case 'app_task':
-      return item.dueAt
-        ? m.today_why_app_task_due({ source, date: day(item.dueAt) })
-        : m.today_why_app_task({ source });
-    case 'form':
-      return m.today_why_form({
-        done: String(item.progress?.done ?? 0),
-        total: String(item.progress?.total ?? 0),
-        date: item.dueAt ? day(item.dueAt) : '—',
-      });
-    case 'action':
-      return m.today_why_action({ date: item.dueAt ? day(item.dueAt) : '—' });
-    case 'note':
-      return m.today_why_note();
-  }
-}
 
 const linkButton =
   'inline-flex h-(--control-height) items-center rounded-control px-(--control-padding) font-semibold';

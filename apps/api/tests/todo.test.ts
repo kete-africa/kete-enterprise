@@ -11,7 +11,7 @@ import { startApi, tokenFor } from './support.js';
 
 let db: TestSchema;
 const api = createApi();
-const t: Record<string, string> = {};
+const t = { admin: '', awa: '', kofi: '', zoe: '' };
 let requestId = '';
 let key = 0;
 
@@ -57,7 +57,7 @@ beforeAll(async () => {
     },
   }));
   t.admin = await tokenFor('usr_ama', { role: 'admin' });
-  for (const who of ['awa', 'kofi', 'zoe']) {
+  for (const who of ['awa', 'kofi', 'zoe'] as const) {
     t[who] = await tokenFor(`usr_${who}`, { role: 'member', name: who });
   }
   const kofi = field(

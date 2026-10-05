@@ -76,7 +76,11 @@ function AssistantPage() {
   useEffect(() => {
     if (!q || asked.current || !assistant.available) return;
     asked.current = true;
-    window.history.replaceState(null, '', current ? `/assistant?c=${current.conversationId}` : '/assistant');
+    window.history.replaceState(
+      null,
+      '',
+      current ? `/assistant?c=${current.conversationId}` : '/assistant',
+    );
     void chat.send(q, []);
   }, [q, assistant.available, chat, current]);
 

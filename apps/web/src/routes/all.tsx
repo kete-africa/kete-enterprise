@@ -37,7 +37,12 @@ function Everything() {
         <PageSection title={m.nav_team_apps()}>
           <AppGrid layout="list" label={m.nav_team_apps()}>
             {me.apps.map((a) => (
-              <AppCard key={a.resourceId} href={a.address} icon={<Icon name="apps" />} name={a.name} />
+              <AppCard
+                key={a.resourceId}
+                href={a.address}
+                icon={<Icon name="apps" />}
+                name={a.name}
+              />
             ))}
           </AppGrid>
         </PageSection>

@@ -56,6 +56,7 @@ contract (kete-core spec 049): what an app declares, Kete Enterprise grants, ans
 | `038-documents`                | The organization's Word templates filled in Word or PDF, by the assistant or by hand; the canvas as PDF; every file read (Office, scans)       | Mme Owusu's intervention letter produced from KYA's template, in PDF                                 |
 | `039-mcp-2026`                 | MCP 2026-07-28: the gateway and the apps on the SDK v2; a copilot's draft decided by the person in her copilot                                 | Claude prepares an action, the person validates it in Claude                                         |
 | `046-shell-and-today`          | The Kete 2026 shell: five places, Ctrl K to go, find or ask, the phone's tab bar; « Aujourd'hui »: things to do, pinned views, what agents did | Abla's morning settled from « Aujourd'hui »; a question asked from Ctrl K answered with its sources  |
+| `047-todo`                     | « À faire » beside the list: J/K, A/R/C; a decision with its sourced analysis, its steps, its discussion                                       | A purchase decided from « À faire » with the assistant's sourced analysis                            |
 
 New apps, each in its own repository, created by the factory: `kete-fieldwork`, `kete-assets`,
 `kete-inventory`, `kete-projects`, `kete-lab`, `kete-correspondence`; then Frappe's flows, one by
