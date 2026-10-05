@@ -1361,5 +1361,17 @@
   "todo_no_comment": "Nobody has written yet.",
   "todo_write": "Write to those the request concerns…",
   "todo_send": "Send",
-  "todo_loading": "Loading…"
+  "todo_loading": "Loading…",
+  "panel_welcome": "What would you like to know?",
+  "panel_seeing": "I see: {title}. What would you like to know?",
+  "panel_seeing_short": "I see:",
+  "panel_explain_page": "Sum up what I am looking at",
+  "panel_next_step": "What should I do next?",
+  "panel_pin": "Pin to Today",
+  "panel_pin_ask": "Turn your answer into a view and pin it to my Today.",
+  "panel_every_monday": "Every Monday",
+  "panel_every_monday_ask": "Ask me this same question every Monday at 8.",
+  "panel_continue": "Continue in the Assistant",
+  "panel_open_full": "Open the Assistant",
+  "panel_close": "Close"
 }

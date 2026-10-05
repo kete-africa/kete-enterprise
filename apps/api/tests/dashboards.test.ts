@@ -207,4 +207,20 @@ describe('a pinned dashboard (spec 046)', () => {
     await call(t.ama, 'POST', `/dashboards/${dashboardId}/pin`, { pinned: false });
     expect(((await call(t.ama, 'GET', '/today')).body.pinned as unknown[]).length).toBe(0);
   });
+
+  it('is pinned by her assistant when she asks it to (spec 048)', async () => {
+    const [propose] = dashboardTools({
+      organizationId: 'org_kya',
+      userId: 'usr_ama',
+      name: 'Ama Agbeko',
+      role: 'member',
+    } as Parameters<typeof dashboardTools>[0]);
+    await propose?.execute({ name: 'Vue épinglée', widgets: withSources().slice(1, 2), pin: true });
+    const today = (await call(t.ama, 'GET', '/today')).body as {
+      pinned: { dashboard: { name: string; status: string } }[];
+    };
+    expect(today.pinned.map((p) => p.dashboard)).toEqual([
+      expect.objectContaining({ name: 'Vue épinglée', status: 'proposed' }),
+    ]);
+  });
 });

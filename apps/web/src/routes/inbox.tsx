@@ -9,6 +9,7 @@ import { changeAgents } from '@/lib/agents';
 import { DialogForm, refusal } from '@/lib/forms';
 import { fetchMeetings } from '@/lib/meetings';
 import { NoteCard } from '@/lib/meetings-view';
+import { useAssistantPage } from '@/lib/chat/panel';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import { fetchToday, type DayItem } from '@/lib/today';
@@ -87,6 +88,15 @@ function TodoPage() {
         : null,
   );
   const current = items.find((i) => keyOf(i) === selected) ?? null;
+  useAssistantPage(
+    current
+      ? {
+          kind: kindLabel(current.kind),
+          title: current.title,
+          href: `/a-faire?item=${keyOf(current)}`,
+        }
+      : null,
+  );
   const select = useCallback(
     (key: string) => {
       setSelected(key);

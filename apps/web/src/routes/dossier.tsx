@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { fetchMentionables } from '@/lib/chat/api';
 import { dossierGesture, fetchDossier, searchDossier } from '@/lib/dossiers';
 import { DialogForm, refusal, Select } from '@/lib/forms';
+import { useAssistantPage } from '@/lib/chat/panel';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import * as m from '@/paraglide/messages.js';
@@ -32,6 +33,11 @@ const toBase64 = (file: File) =>
 function DossierPage() {
   const { me } = Route.useRouteContext();
   const { dossier, members, links, documents, people } = Route.useLoaderData();
+  useAssistantPage({
+    kind: m.nav_dossiers(),
+    title: dossier.name,
+    href: `/dossiers/${dossier.dossierId}`,
+  });
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

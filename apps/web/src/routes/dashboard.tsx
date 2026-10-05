@@ -13,6 +13,7 @@ import {
 } from '@/lib/dashboards';
 import { fetchDatasets } from '@/lib/datasets';
 import { DialogForm, refusal, Select } from '@/lib/forms';
+import { useAssistantPage } from '@/lib/chat/panel';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import * as m from '@/paraglide/messages.js';
@@ -75,6 +76,11 @@ const viewLabels: Record<View, () => string> = {
 function DashboardPage() {
   const { me } = Route.useRouteContext();
   const { dashboard, manage, pinned, cards, sources } = Route.useLoaderData();
+  useAssistantPage({
+    kind: m.nav_dashboards(),
+    title: dashboard.name,
+    href: `/tableaux-de-bord/${dashboard.dashboardId}`,
+  });
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

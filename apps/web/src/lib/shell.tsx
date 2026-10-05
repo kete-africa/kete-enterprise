@@ -20,6 +20,7 @@ import {
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import * as m from '@/paraglide/messages.js';
 import { administers, opens, viewAs, type Me } from './me';
+import { AssistantPanel, useShownPage } from './chat/panel';
 import { searchEverywhere, type SearchResult } from './notifications';
 
 /** Where a screen sits: the person's space, or the Administration (spec 010). */
@@ -368,10 +369,12 @@ function Palette({
   me,
   open,
   onOpenChange,
+  onAsk,
 }: {
   me: Me;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onAsk: (question: string) => void;
 }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -440,7 +443,9 @@ function Palette({
         heading: m.palette_ask(),
         label: (q) => m.palette_ask_item({ question: q }),
         onAsk: (q) => {
-          window.location.href = `/assistant?q=${encodeURIComponent(q)}`;
+          onOpenChange(false);
+          setQuery('');
+          onAsk(q);
         },
       }}
     />
@@ -486,6 +491,23 @@ export function AppShell({
   const [theme, setTheme] = useState<ThemeChoiceValue>('dark');
   const [palette, setPalette] = useState(false);
   const openPalette = useCallback(() => setPalette(true), []);
+  // The assistant beside the page (spec 048): what the page shows, a question from Ctrl K.
+  const [panel, setPanel] = useState(false);
+  const [question, setQuestion] = useState<{ text: string; at: number } | null>(null);
+  const page = useShownPage();
+  const closePanel = useCallback(() => setPanel(false), []);
+  const ask = useCallback(
+    (text: string) => {
+      // On the assistant's own page, the question goes to its thread.
+      if (current === 'assistant') {
+        window.location.href = `/assistant?q=${encodeURIComponent(text)}`;
+        return;
+      }
+      setQuestion({ text, at: Date.now() });
+      setPanel(true);
+    },
+    [current],
+  );
   useCommandShortcut(openPalette);
   useEffect(() => {
     const current = document.documentElement.getAttribute('data-theme');
@@ -517,7 +539,22 @@ export function AppShell({
       }
       toolbar={
         <div className="flex items-center gap-2">
-          <ToolbarLink href="/assistant" label={m.nav_assistant()} icon="sparkle" />
+          {current === 'assistant' ? (
+            <ToolbarLink href="/assistant" label={m.nav_assistant()} icon="sparkle" />
+          ) : (
+            <button
+              type="button"
+              aria-label={m.nav_assistant()}
+              title={m.nav_assistant()}
+              aria-pressed={panel}
+              onClick={() => setPanel((open) => !open)}
+              className={`inline-flex size-(--icon-button-size) items-center justify-center rounded-control text-fg hover:bg-surface-hover ${
+                panel ? 'bg-surface-selected' : ''
+              }`}
+            >
+              <Icon name="sparkle" />
+            </button>
+          )}
           <ToolbarLink
             href="/notifications"
             label={m.nav_notifications()}
@@ -549,7 +586,10 @@ export function AppShell({
     >
       {me.viewedBy && <ViewingBanner me={me} />}
       {children}
-      <Palette me={me} open={palette} onOpenChange={setPalette} />
+      <Palette me={me} open={palette} onOpenChange={setPalette} onAsk={ask} />
+      {current !== 'assistant' && (
+        <AssistantPanel open={panel} onClose={closePanel} page={page} question={question} />
+      )}
     </Shell>
   );
 }

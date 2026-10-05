@@ -201,7 +201,13 @@ export async function dashboardsOpen(identity: Identity): Promise<boolean> {
 }
 
 /** A proposal has its cards: an empty dashboard is the person's own to start. */
-const proposeInput = dashboardInput.extend({ widgets: z.array(widget).min(1).max(12) });
+const proposeInput = dashboardInput.extend({
+  widgets: z.array(widget).min(1).max(12),
+  pin: z
+    .boolean()
+    .optional()
+    .describe('Épingler sur son « Aujourd’hui » — seulement si elle le demande.'),
+});
 
 /**
  * The assistant proposes a dashboard (level 2: it only adds a proposal for her, which she keeps or
@@ -220,14 +226,25 @@ export function dashboardTools(identity: Identity): CapabilityTool[] {
         const parsed = proposeInput.safeParse(input);
         if (!parsed.success)
           return { status: 'refused', reason: 'invalid_input', issues: parsed.error.issues };
-        const dashboard: Dashboard = await transaction(identity.organizationId, (db) =>
-          createDashboard(db, {
-            ...parsed.data,
+        const { pin, ...proposal } = parsed.data;
+        const dashboard: Dashboard = await transaction(identity.organizationId, async (db) => {
+          const created = await createDashboard(db, {
+            ...proposal,
             organizationId: identity.organizationId,
             ownerId: identity.userId,
             status: 'proposed',
-          }),
-        );
+          });
+          // Pinned at her word (spec 048): a view on her « Aujourd'hui », which she unpins.
+          if (pin) {
+            await pinDashboard(db, {
+              organizationId: identity.organizationId,
+              userId: identity.userId,
+              dashboardId: created.dashboardId,
+              pinned: true,
+            });
+          }
+          return created;
+        });
         return {
           status: 'done',
           output: { name: dashboard.name, href: `/tableaux-de-bord/${dashboard.dashboardId}` },
