@@ -1,208 +1,285 @@
-import {
-  AppCard,
-  AppGrid,
-  Button,
-  Icon,
-  KpiGrid,
-  KpiTile,
-  Markdown,
-  PageHeader,
-  PageSection,
-  Panel,
-  Tag,
-} from '@kete/design';
+import { Button, Icon, Markdown, PageSection, PageTitle, Tag, type IconName } from '@kete/design';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { CardView } from '@/lib/dashboard-card';
+import { pinDashboard } from '@/lib/dashboards';
 import { refusal } from '@/lib/forms';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
-import { fetchBriefing, refreshBriefing } from '@/lib/workspace';
+import { fetchToday, type DayItem } from '@/lib/today';
+import { decideDraft, fetchBriefing } from '@/lib/workspace';
 import * as m from '@/paraglide/messages.js';
 import { getLocale } from '@/paraglide/runtime.js';
 
 export const Route = createFileRoute('/')({
   beforeLoad: ({ location }) => requirePerson(location.href),
-  loader: () => fetchBriefing(),
-  component: Home,
+  loader: async () => {
+    const [today, briefing] = await Promise.all([
+      fetchToday(),
+      fetchBriefing().catch(() => null),
+    ]);
+    return { today, briefing };
+  },
+  component: Today,
 });
 
-const percent = (value: number | null) =>
-  value === null ? '—' : `${Math.round(value * 1000) / 10} %`;
+/** How many things the day shows; the rest wait in « À faire ». */
+const SHOWN = 6;
+
+const kindIcon: Record<DayItem['kind'], IconName> = {
+  decision: 'check',
+  draft: 'sparkle',
+  app_task: 'flag',
+  form: 'teach',
+  action: 'people',
+  note: 'file',
+};
+
+const day = (value: string) =>
+  new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'long' }).format(new Date(value));
+
+/** Why a thing is on the day, in words: where it comes from, when it is due. */
+function why(item: DayItem): string {
+  const source = item.source ?? '';
+  switch (item.kind) {
+    case 'decision':
+      return m.today_why_decision({ source });
+    case 'draft':
+      return m.today_why_draft({ source });
+    case 'app_task':
+      return item.dueAt
+        ? m.today_why_app_task_due({ source, date: day(item.dueAt) })
+        : m.today_why_app_task({ source });
+    case 'form':
+      return m.today_why_form({
+        done: String(item.progress?.done ?? 0),
+        total: String(item.progress?.total ?? 0),
+        date: item.dueAt ? day(item.dueAt) : '—',
+      });
+    case 'action':
+      return m.today_why_action({ date: item.dueAt ? day(item.dueAt) : '—' });
+    case 'note':
+      return m.today_why_note();
+  }
+}
+
+const linkButton =
+  'inline-flex h-(--control-height) items-center rounded-control px-(--control-padding) font-semibold';
+const secondaryLink = `${linkButton} border border-line-control text-fg hover:bg-surface-hover`;
+const primaryLink = `${linkButton} bg-action text-on-action hover:bg-action-strong`;
+
+/** One line of the day: what it is, why it is there, the gesture that settles it. */
+function DayLine({ item, actions }: { item: DayItem; actions: ReactNode }) {
+  return (
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 max-[760px]:items-start">
+      <span
+        className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full ${
+          item.overdue
+            ? 'bg-state-error-surface text-state-error-fg'
+            : 'bg-surface-selected text-fg-muted'
+        }`}
+      >
+        <Icon name={kindIcon[item.kind]} size={18} />
+      </span>
+      <span className="flex min-w-0 flex-1 basis-60 flex-col">
+        <span className="font-semibold">{item.title}</span>
+        <span className="text-body-sm text-fg-muted">
+          {item.overdue && <span className="text-state-error-fg">{m.today_overdue()} · </span>}
+          {why(item)}
+        </span>
+      </span>
+      <span className="flex flex-wrap gap-2 max-[760px]:basis-full max-[760px]:pl-13">
+        {actions}
+      </span>
+    </li>
+  );
+}
 
 /**
- * Home (spec 014): the morning briefing, what waits, where she stands, her team, her apps — each
- * read from the registers with her rights. The briefing is written by the model when one is
- * configured, by rules otherwise.
+ * « Aujourd'hui » (spec 046): the briefing become things to do, each with its gesture; the views
+ * she pinned, up to date; what her agents did for her since yesterday. Read with her rights.
  */
-function Home() {
+function Today() {
   const { me } = Route.useRouteContext();
-  const briefing = Route.useLoaderData();
-  const facts = briefing.facts;
+  const { today, briefing } = Route.useLoaderData();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const overdue = facts.actions.filter((a) => a.overdue).length;
-  const at = new Intl.DateTimeFormat(getLocale(), { timeStyle: 'short' }).format(
-    new Date(briefing.at),
-  );
-  const counts = [
-    { label: m.home_forms(), value: facts.forms.length, href: '/a-faire' },
-    { label: m.home_decisions(), value: facts.decisions.length, href: '/a-faire' },
-    {
-      label: m.home_actions(),
-      value: facts.actions.length,
-      extra: overdue ? m.home_overdue({ count: String(overdue) }) : null,
-      href: '/actions',
-    },
-    { label: m.home_notes(), value: facts.notes.length, href: '/a-faire' },
-  ];
+  const run = (work: () => Promise<{ ok: boolean; error: string | null }>) => {
+    setBusy(true);
+    setError(null);
+    void work()
+      .then(async (answer) => {
+        if (!answer.ok) return setError(refusal(answer.error));
+        await router.invalidate();
+      })
+      .finally(() => setBusy(false));
+  };
+  const date = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'full' }).format(new Date());
+  const shown = today.day.slice(0, SHOWN);
+  const more = today.day.length - shown.length;
+
   return (
     <AppShell me={me} current="home">
-      <PageHeader
-        title={m.home_title({ name: facts.name })}
-        actions={
-          <a
-            href="/assistant"
-            className="inline-flex h-(--control-height) items-center rounded-control bg-action px-(--control-padding) font-semibold text-on-action hover:bg-action-strong"
-          >
-            {m.home_ask_assistant()}
-          </a>
-        }
-      />
-      <KpiGrid label={m.home_waiting()}>
-        {counts.map((c) => (
-          <KpiTile
-            key={c.label}
-            label={c.label}
-            value={c.value}
-            href={c.href}
-            {...(c.extra ? { hint: <span className="text-state-error-fg">{c.extra}</span> } : {})}
-          />
-        ))}
-      </KpiGrid>
-      <PageSection first title={m.home_briefing()}>
-        <Panel>
-          <Markdown text={briefing.text} />
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-body-sm text-fg-muted">
-            <Tag tone={briefing.generatedBy === 'model' ? 'agent' : 'neutral'}>
-              {briefing.generatedBy === 'model' ? m.home_briefing_model() : m.home_briefing_rules()}
-            </Tag>
-            <span>{m.home_briefing_at({ at })}</span>
-            <Button
-              variant="secondary"
-              disabled={busy}
-              onClick={() => {
-                setBusy(true);
-                setError(null);
-                void refreshBriefing()
-                  .then(async (answer) => {
-                    if (!answer.ok) return setError(refusal(answer.error));
-                    await router.invalidate();
-                  })
-                  .finally(() => setBusy(false));
-              }}
-            >
-              {m.home_briefing_refresh()}
-            </Button>
-          </div>
-          {error && (
-            <p role="alert" className="mt-2 text-body-sm text-state-error-fg">
-              {error}
-            </p>
-          )}
-        </Panel>
-      </PageSection>
-      {facts.performance.length > 0 && (
-        <PageSection title={m.home_my_performance()}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {facts.performance.map((p) => (
-              <Panel key={p.position} title={p.position}>
-                <p className="font-number text-title font-semibold">{percent(p.factor)}</p>
-                <p className="text-body-sm text-fg-muted">
-                  {m.home_reds({ reds: String(p.reds.length), oranges: String(p.oranges.length) })}
-                </p>
-                {p.reds.length > 0 && (
-                  <p className="mt-1 text-body-sm">{p.reds.slice(0, 3).join(' · ')}</p>
-                )}
-              </Panel>
-            ))}
-          </div>
-        </PageSection>
+      <p className="mb-2 text-body-sm font-semibold text-fg-muted first-letter:uppercase">{date}</p>
+      <PageTitle>{m.home_title({ name: today.name })}</PageTitle>
+      {error && (
+        <p role="alert" className="mb-4 text-state-error-fg">
+          {error}
+        </p>
       )}
-      {facts.team.length > 0 && (
-        <PageSection title={m.home_my_team({ count: String(facts.team.length) })}>
-          <Panel>
-            <ul className="grid gap-1 text-body-sm">
-              {facts.team.map((p) => (
-                <li key={p.name} className="flex flex-wrap justify-between gap-2">
-                  <span>{p.name}</span>
-                  <span className="text-fg-muted">
-                    {m.home_team_line({ reds: String(p.reds), factor: percent(p.factor) })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-body-sm">
-              <a className="text-link underline" href="/mon-equipe">
-                {m.nav_team()}
-              </a>
-            </p>
-          </Panel>
-        </PageSection>
-      )}
-      {facts.appNews.length > 0 && (
-        <PageSection title={m.home_app_news()}>
-          <Panel>
-            <ul className="grid gap-1 text-body-sm">
-              {facts.appNews.map((n) => (
-                <li key={`${n.app}-${n.type}`} className="flex flex-wrap justify-between gap-2">
-                  <span>
-                    <span className="font-semibold">{n.app}</span> · {n.description}
-                  </span>
-                  <span className="text-fg-muted">
-                    {m.home_app_news_count({ count: String(n.count) })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </Panel>
-        </PageSection>
-      )}
-      <PageSection title={m.home_my_apps()}>
-        {facts.apps.length === 0 ? (
-          <p className="text-body-sm text-fg-muted">{m.home_no_apps()}</p>
+
+      <PageSection first title={m.today_day()}>
+        {shown.length === 0 ? (
+          <p className="text-fg-muted">{m.today_nothing()}</p>
         ) : (
-          <AppGrid layout="list">
-            {facts.apps.map((a) => (
-              <AppCard
-                key={a.name}
-                {...(a.address ? { href: a.address } : {})}
-                icon={<Icon name={a.kind === 'mcp' ? 'agent' : 'apps'} />}
-                name={a.name}
-                description={a.kind === 'mcp' ? m.home_app_mcp() : m.home_app()}
+          <ul className="divide-y divide-line overflow-hidden rounded-box border border-line bg-surface">
+            {shown.map((item) => (
+              <DayLine
+                key={`${item.kind}-${item.id}`}
+                item={item}
+                actions={
+                  item.kind === 'draft' && !me.viewedBy ? (
+                    <>
+                      <a className={secondaryLink} href={item.href}>
+                        {m.today_see()}
+                      </a>
+                      <Button
+                        disabled={busy}
+                        onClick={() =>
+                          run(() => decideDraft({ data: { draftId: item.id, action: 'validate' } }))
+                        }
+                      >
+                        {m.today_validate()}
+                      </Button>
+                    </>
+                  ) : (
+                    <a className={item.overdue ? primaryLink : secondaryLink} href={item.href}>
+                      {item.kind === 'decision' ? m.today_decide() : m.today_open()}
+                    </a>
+                  )
+                }
               />
             ))}
-          </AppGrid>
+          </ul>
         )}
-        <p className="mt-3 text-body-sm">
-          <a className="text-link underline" href="/ressources">
-            {m.nav_resources()}
-          </a>
-        </p>
+        {more > 0 && (
+          <p className="mt-3 text-body-sm">
+            <a className="text-link underline" href="/a-faire">
+              {m.today_more({ count: String(more) })}
+            </a>
+          </p>
+        )}
       </PageSection>
-      {facts.meetings.length > 0 && (
-        <PageSection title={m.home_recent_meetings()}>
-          <div className="grid gap-3">
-            {facts.meetings.map((mt) => (
-              <Panel key={`${mt.title}-${mt.when}`} title={`${mt.title} — ${mt.when}`}>
-                <ul className="list-disc pl-5 text-body-sm">
-                  {mt.decisions.map((d) => (
-                    <li key={d}>{d}</li>
-                  ))}
-                </ul>
-              </Panel>
+
+      {me.modules.dashboards && (
+        <PageSection title={m.today_pinned()}>
+          {today.pinned.length === 0 ? (
+            <p className="text-fg-muted">
+              {m.today_pinned_empty()}{' '}
+              <a className="text-link underline" href="/tableaux-de-bord">
+                {m.today_choose_view()}
+              </a>
+            </p>
+          ) : (
+            <div className="grid gap-4">
+              {today.pinned.map(({ dashboard, cards }) => (
+                <section
+                  key={dashboard.dashboardId}
+                  aria-label={dashboard.name}
+                  className="rounded-box border border-line bg-surface"
+                >
+                  <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+                    <a
+                      href={`/tableaux-de-bord/${dashboard.dashboardId}`}
+                      className="flex min-w-0 items-center gap-2 font-semibold text-fg"
+                    >
+                      <Icon name="sparkle" size={18} />
+                      <span className="truncate">{dashboard.name}</span>
+                    </a>
+                    {!me.viewedBy && (
+                      <button
+                        type="button"
+                        aria-label={m.dashboards_unpin()}
+                        title={m.dashboards_unpin()}
+                        disabled={busy}
+                        className="inline-flex size-(--icon-button-size) items-center justify-center rounded-control text-fg-muted hover:bg-surface-hover"
+                        onClick={() =>
+                          run(() =>
+                            pinDashboard({
+                              data: { dashboardId: dashboard.dashboardId, pinned: false },
+                            }),
+                          )
+                        }
+                      >
+                        <Icon name="close" size={18} />
+                      </button>
+                    )}
+                  </header>
+                  <div className="grid gap-4 p-4 sm:grid-cols-2">
+                    {cards.map((card, index) => (
+                      <div key={index} className="min-w-0">
+                        <h3 className="mb-2 text-body-sm font-semibold text-fg-muted">
+                          {card.title}
+                        </h3>
+                        <CardView card={card} />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </PageSection>
+      )}
+
+      {today.done.length > 0 && (
+        <PageSection title={m.today_done()}>
+          <ul className="divide-y divide-line overflow-hidden rounded-box border border-line bg-surface">
+            {today.done.map((t) => (
+              <li key={t.taskId} className="grid gap-1 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Tag tone="agent">{t.agentName}</Tag>
+                  {t.status === 'failed' && <Tag tone="error">{m.today_failed()}</Tag>}
+                  <span className="font-semibold">{t.instruction}</span>
+                </div>
+                {t.answer && <p className="text-body-sm whitespace-pre-line">{t.answer}</p>}
+                {t.draftCount > 0 && (
+                  <a className="text-body-sm font-semibold text-link underline" href="/a-faire">
+                    {m.agent_task_drafts({ count: String(t.draftCount) })}
+                  </a>
+                )}
+              </li>
             ))}
-          </div>
+          </ul>
+        </PageSection>
+      )}
+
+      {briefing && (
+        <PageSection title={m.home_briefing()}>
+          <details className="rounded-box border border-line bg-surface px-4 py-3">
+            <summary className="cursor-pointer font-semibold">{m.today_read_briefing()}</summary>
+            <div className="mt-3">
+              <Markdown text={briefing.text} />
+            </div>
+          </details>
+          {briefing.facts.appNews.length > 0 && (
+            <div className="mt-4">
+              <h3 className="mb-2 font-semibold">{m.home_app_news()}</h3>
+              <ul className="grid gap-1 text-body-sm">
+                {briefing.facts.appNews.map((n) => (
+                  <li key={`${n.app}-${n.type}`} className="flex flex-wrap justify-between gap-2">
+                    <span>
+                      <span className="font-semibold">{n.app}</span> · {n.description}
+                    </span>
+                    <span className="text-fg-muted">
+                      {m.home_app_news_count({ count: String(n.count) })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </PageSection>
       )}
     </AppShell>

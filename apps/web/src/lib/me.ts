@@ -33,6 +33,10 @@ export interface Me {
   viewedBy: string | null;
   /** The team's apps she may open, from the registry (spec 016). */
   apps: { resourceId: string; name: string; address: string }[];
+  /** How many things wait for her: the count beside « À faire » (spec 046). */
+  waiting: number;
+  /** Her unread notifications. */
+  unread: number;
 }
 
 /** The signed-in person and her organization, as the API sees them; null without a session. */

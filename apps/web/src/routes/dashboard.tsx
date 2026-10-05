@@ -1,10 +1,11 @@
 import { Button, PageHeader, Panel, Tag, TextField } from '@kete/design';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Chart, axesOf } from '@/lib/chart';
+import { CardView } from '@/lib/dashboard-card';
 import { fetchCollections } from '@/lib/collections';
 import {
   dashboardGesture,
+  pinDashboard,
   fetchDashboard,
   type Card,
   type Fn,
@@ -72,62 +73,10 @@ const viewLabels: Record<View, () => string> = {
   table: m.dashboards_view_table,
 };
 
-/** One card: its figure, chart or table, or a word that its source is not hers to read. */
-function CardView({ card }: { card: Card }) {
-  const format = new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 2 });
-  if (!card.visible) return <p className="text-body-sm text-fg-muted">{m.dashboards_hidden()}</p>;
-  if (card.rows.length === 0)
-    return <p className="text-body-sm text-fg-muted">{m.dashboards_empty_card()}</p>;
-  if (card.view === 'number') {
-    const { value } = axesOf(card);
-    const n = value ? card.rows[0]?.[value] : null;
-    return (
-      <p className="font-number text-display font-semibold">
-        {typeof n === 'number' ? format.format(n) : '—'}
-      </p>
-    );
-  }
-  if (card.view === 'table') {
-    const columns = Object.keys(card.rows[0] ?? {});
-    return (
-      <div className="overflow-x-auto">
-        <table className="w-full text-body-sm">
-          <thead>
-            <tr>
-              {columns.map((c) => (
-                <th key={c} className="px-2 py-1 text-left font-semibold">
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {card.rows.map((r, i) => (
-              <tr key={i} className="border-t border-line">
-                {columns.map((c) => (
-                  <td
-                    key={c}
-                    className={
-                      typeof r[c] === 'number' ? 'px-2 py-1 text-right font-number' : 'px-2 py-1'
-                    }
-                  >
-                    {typeof r[c] === 'number' ? format.format(r[c] as number) : (r[c] ?? '—')}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
-  return <Chart card={card} />;
-}
-
 /** A dashboard (spec 033): its cards; for its owner, a new card, keeping a proposal, removing it. */
 function DashboardPage() {
   const { me } = Route.useRouteContext();
-  const { dashboard, manage, cards, sources } = Route.useLoaderData();
+  const { dashboard, manage, pinned, cards, sources } = Route.useLoaderData();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -178,7 +127,21 @@ function DashboardPage() {
         title={dashboard.name}
         {...(dashboard.description ? { description: dashboard.description } : {})}
         actions={
-          manage ? (
+          <>
+            {!me.viewedBy && (
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() =>
+                  run(() =>
+                    pinDashboard({ data: { dashboardId: dashboard.dashboardId, pinned: !pinned } }),
+                  )
+                }
+              >
+                {pinned ? m.dashboards_unpin() : m.dashboards_pin()}
+              </Button>
+            )}
+            {manage && (
             <>
               {dashboard.status === 'proposed' && (
                 <Button
@@ -318,7 +281,8 @@ function DashboardPage() {
                 {m.dashboards_remove()}
               </Button>
             </>
-          ) : undefined
+            )}
+          </>
         }
       />
       {dashboard.status === 'proposed' && <Tag tone="info">{m.dashboards_proposed()}</Tag>}

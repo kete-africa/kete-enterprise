@@ -77,7 +77,7 @@ export const fetchDashboard = createServerFn({ method: 'GET' })
     dashboardId: idOf((input as { dashboardId?: unknown } | null)?.dashboardId),
   }))
   .handler(({ data }) =>
-    callApi<{ dashboard: Dashboard; manage: boolean; cards: Card[] }>(
+    callApi<{ dashboard: Dashboard; manage: boolean; pinned: boolean; cards: Card[] }>(
       getRequest(),
       `/v1/dashboards/${data.dashboardId}`,
     ),
@@ -94,6 +94,23 @@ export const createDashboard = createServerFn({ method: 'POST' })
         getRequest(),
         '/v1/dashboards',
         data,
+        crypto.randomUUID(),
+      ),
+    ),
+  );
+
+/** She pins a dashboard on her « Aujourd'hui », or unpins it (spec 046). */
+export const pinDashboard = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    return { dashboardId: idOf(v.dashboardId), pinned: v.pinned === true };
+  })
+  .handler(async ({ data }) =>
+    answerOf(
+      await sendGesture<{ pinned: boolean }>(
+        getRequest(),
+        `/v1/dashboards/${data.dashboardId}/pin`,
+        { pinned: data.pinned },
         crypto.randomUUID(),
       ),
     ),

@@ -1,7 +1,7 @@
 import { AssistantRuntimeProvider } from '@assistant-ui/react';
 import { EmptyState, Icon, PageHeader, Row, RowList } from '@kete/design';
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchMentionables } from '@/lib/chat/api';
 import { fetchViewSandbox } from '@/lib/chat/views';
 import { ChatCanvas } from '@/lib/chat/canvas';
@@ -19,8 +19,13 @@ const isConversation = (value: unknown): value is string =>
   typeof value === 'string' && /^cnv_[0-9a-f-]{8,64}$/.test(value);
 
 export const Route = createFileRoute('/assistant')({
-  validateSearch: (search: Record<string, unknown>): { c?: string } =>
-    isConversation(search['c']) ? { c: search['c'] } : {},
+  validateSearch: (search: Record<string, unknown>): { c?: string; q?: string } => ({
+    ...(isConversation(search['c']) ? { c: search['c'] } : {}),
+    // A question asked from Ctrl K (spec 046), sent once the page runs.
+    ...(typeof search['q'] === 'string' && search['q'].trim()
+      ? { q: search['q'].slice(0, 4000) }
+      : {}),
+  }),
   beforeLoad: ({ location }) => requirePerson(location.href),
   loaderDeps: ({ search }) => ({ c: search.c }),
   loader: async ({ deps }) => {
@@ -66,6 +71,14 @@ function AssistantPage() {
     onError: (code) => setError(code === null ? null : refusal(code)),
   });
   const canvas = opened ?? (closed ? null : chat.canvas);
+  const { q } = Route.useSearch();
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!q || asked.current || !assistant.available) return;
+    asked.current = true;
+    window.history.replaceState(null, '', current ? `/assistant?c=${current.conversationId}` : '/assistant');
+    void chat.send(q, []);
+  }, [q, assistant.available, chat, current]);
 
   const mentions = useMemo(
     () =>
