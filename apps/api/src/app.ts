@@ -1,3 +1,4 @@
+import { unreadCount } from '@kete/notify';
 import { healthHandler, manifestHandler } from '@kete/sdk';
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
@@ -162,6 +163,8 @@ async function me(c: Ctx) {
         .map((r) => ({ resourceId: r.resourceId, name: r.name, address: r.address })),
       // What waits for her: the count beside « À faire » (spec 046).
       waiting: await waitingCount(db, identity),
+      // Her unread notifications: the count on the bell.
+      unread: await unreadCount(db, userId),
     };
   });
 }
