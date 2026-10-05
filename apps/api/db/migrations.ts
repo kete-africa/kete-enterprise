@@ -4,7 +4,10 @@ import {
 } from '../src/features/ai/index.js';
 import { aiCostMigrationSql } from '@kete/ai';
 import { skillsMigrationSql } from '@kete/skills';
-import { dashboardsMigrationSql } from '../src/features/dashboards/index.js';
+import {
+  dashboardPinsMigrationSql,
+  dashboardsMigrationSql,
+} from '../src/features/dashboards/index.js';
 import { datasetsMigrationSql } from '../src/features/datasets/index.js';
 import { documentsMigrationSql } from '../src/features/documents/index.js';
 import { formsMigrationSql } from '../src/features/forms/index.js';
@@ -166,4 +169,6 @@ export const migrations: Migration[] = [
   { name: '0036_dashboards', sql: (context) => dashboardsMigrationSql(context) },
   // Tasks given to agents, run in the background, handed on between agents (spec 036).
   { name: '0037_agent_tasks', sql: (context) => agentTasksMigrationSql(context) },
+  // Dashboards pinned on a person's « Aujourd'hui » (spec 046).
+  { name: '0038_dashboard_pins', sql: (context) => dashboardPinsMigrationSql(context) },
 ];

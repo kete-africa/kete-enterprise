@@ -60,7 +60,7 @@ import { transaction } from './platform/db.js';
 import { GestureRefusal, runCommand } from './platform/gestures.js';
 import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
-import { appTasksRoutes, factsFor } from './features/workspace/index.js';
+import { appTasksRoutes, factsFor, todayFor, waitingCount } from './features/workspace/index.js';
 import { appRequestRoutes, factoryReportRoutes } from './features/app-requests/index.js';
 import { appEventRoutes, appPermissions, appRoutes, tellAppsWith } from './features/apps/index.js';
 import { directoryRoutes } from './features/directory/index.js';
@@ -160,6 +160,8 @@ async function me(c: Ctx) {
       apps: (await registryFor(db, identity)).resources
         .filter((r) => r.kind === 'app' && r.status === 'active' && r.address)
         .map((r) => ({ resourceId: r.resourceId, name: r.name, address: r.address })),
+      // What waits for her: the count beside « À faire » (spec 046).
+      waiting: await waitingCount(db, identity),
     };
   });
 }
@@ -248,6 +250,16 @@ export function createApi(): Hono {
   v1.get('/workspace', async (c) => {
     const identity = c.get('identity');
     return c.json(await transaction(identity.organizationId, (db) => factsFor(db, identity)));
+  });
+  // « Aujourd'hui »: what to do, the views she pinned, what her agents did (spec 046).
+  v1.get('/today', async (c) => {
+    const identity = c.get('identity');
+    return c.json(
+      await todayFor(identity, {
+        admin: isAdministrator(identity) && !c.get('viewedBy'),
+        viewedBy: c.get('viewedBy') ?? null,
+      }),
+    );
   });
   api.route('/v1', v1);
 

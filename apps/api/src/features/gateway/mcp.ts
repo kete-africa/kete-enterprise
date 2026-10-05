@@ -1,3 +1,4 @@
+import type { SqlExecutor } from '@kete/tenancy';
 import type { Actor } from '@kete/commands';
 import {
   createCapabilityRegistry,
@@ -144,6 +145,15 @@ export async function draftsFor(identity: { organizationId: string; userId: stri
   const caller = personCaller(identity);
   const reviews = await Promise.all(ids.map((id) => registry.review(caller, id)));
   return reviews.filter((r) => r !== null);
+}
+
+/** How many drafts wait for her decision: the count beside « À faire » (spec 046). */
+export async function preparedDraftCount(db: SqlExecutor, userId: string): Promise<number> {
+  const { rows } = await db.query<{ count: string }>(
+    `select count(*) as count from kete_drafts where status = 'prepared' and on_behalf_of_id = $1`,
+    [userId],
+  );
+  return Number(rows[0]?.count ?? 0);
 }
 
 /** The person decides a draft from her screen: the same command, journaled with her as actor. */

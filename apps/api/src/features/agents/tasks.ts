@@ -155,6 +155,22 @@ export async function tasksOf(db: SqlExecutor, agentId: string): Promise<AgentTa
 }
 
 /** The tasks a task handed on, to watch the whole of a delegated work. */
+/** What her agents finished for her since a moment: done or failed, newest first (spec 046). */
+export async function finishedFor(
+  db: SqlExecutor,
+  userId: string,
+  since: Date,
+): Promise<(AgentTask & { agentName: string })[]> {
+  const { rows } = await db.query<TaskRow & { agent_name: string }>(
+    `select ${COLUMNS.replace(/(\w+)/g, 't.$1')}, a.name as agent_name
+       from agent_tasks t join agents a on a.agent_id = t.agent_id
+      where t.given_by = $1 and t.status in ('done', 'failed') and t.finished_at >= $2
+      order by t.finished_at desc limit 20`,
+    [userId, since],
+  );
+  return rows.map((r) => ({ ...taskOf(r), agentName: r.agent_name }));
+}
+
 export async function childrenOf(db: SqlExecutor, taskId: string): Promise<AgentTask[]> {
   const { rows } = await db.query<TaskRow>(
     `select ${COLUMNS} from agent_tasks where parent_task_id = $1 order by created_at`,
