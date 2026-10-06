@@ -1,6 +1,7 @@
 // The assistant feature's only door: the chat, the morning briefing, the use of models (spec 014).
 export { assistantMigrationSql, assistantRoutes, briefingByRules, useModel } from './assistant.js';
 export { chatMigrationSql } from './attachments.js';
+export { feedbackMigrationSql, feedbackRoutes, feedbackShare } from './feedback.js';
 export { commandInstructions } from './chat-tools.js';
 export {
   conversationsMigrationSql,

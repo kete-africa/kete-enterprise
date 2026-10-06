@@ -167,6 +167,23 @@ describe('a draft prepared by the assistant', () => {
     expect((await get(t.kofi, '/assistant/conversations')).body.conversations).toEqual([]);
   });
 
+  it('takes her opinion of an answer, once, changed as she likes — never on another’s (spec 053)', async () => {
+    const judge = (token: string, helpful: boolean, reason?: string) =>
+      post(token, '/assistant/feedback', {
+        conversationId,
+        messageId: 'msg-1',
+        helpful,
+        ...(reason ? { reason } : {}),
+      });
+    expect((await judge(t.admin, false, 'Il manquait le délai.')).status).toBe(201);
+    expect((await judge(t.admin, true)).body).toEqual({ helpful: true });
+    const { rows } = await db.owner.query<{ helpful: boolean; reason: string | null }>(
+      'select helpful, reason from assistant_feedback',
+    );
+    expect(rows).toEqual([{ helpful: true, reason: null }]);
+    expect((await judge(t.kofi, true)).status).toBe(404);
+  });
+
   it('waits in the person’s drafts, and nobody else may decide it', async () => {
     const drafts = (await get(t.admin, '/assistant/drafts')).body.drafts as { draftId: string }[];
     expect(drafts.map((d) => d.draftId)).toEqual([draftId]);

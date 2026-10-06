@@ -33,10 +33,11 @@ import { draftsMigrationSql } from '@kete/drafts';
 import {
   assistantMigrationSql,
   chatMigrationSql,
-  schedulesMigrationSql,
-  memoryMigrationSql,
-  viewsMigrationSql,
   conversationsMigrationSql,
+  feedbackMigrationSql,
+  memoryMigrationSql,
+  schedulesMigrationSql,
+  viewsMigrationSql,
 } from '../src/features/assistant/index.js';
 import { mailMigrationSql } from '../src/features/mail/index.js';
 import {
@@ -188,4 +189,6 @@ export const migrations: Migration[] = [
   { name: '0042_routines', sql: (context) => routinesMigrationSql(context) },
   // An agent's level per kind of task (spec 052).
   { name: '0043_agent_autonomy', sql: (context) => agentAutonomyMigrationSql(context) },
+  // What each person says of an answer (spec 053).
+  { name: '0044_assistant_feedback', sql: (context) => feedbackMigrationSql(context) },
 ];

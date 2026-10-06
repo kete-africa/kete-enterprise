@@ -1522,5 +1522,11 @@
   "agent_proposal_level": "Maximum level: {level} · wakes every {minutes} min",
   "agent_create": "Create this agent",
   "agent_rephrase": "Change the sentence",
-  "agent_created": "Agent created. It will act with your rights, never more."
+  "agent_created": "Agent created. It will act with your rights, never more.",
+  "chat_helpful": "Helpful",
+  "chat_not_helpful": "Not helpful",
+  "tool_dashboard_propose": "Proposing a dashboard",
+  "tool_dashboard_read": "Reading a dashboard",
+  "tool_dashboard_change": "Changing a dashboard",
+  "tool_team_datasets": "Reading the team’s data"
 }

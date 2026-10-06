@@ -3,7 +3,12 @@ import { healthHandler, manifestHandler } from '@kete/sdk';
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
 import { aiRoutes } from './features/ai/index.js';
-import { assistantRoutes, memoryRoutes, scheduleRoutes } from './features/assistant/index.js';
+import {
+  assistantRoutes,
+  feedbackRoutes,
+  memoryRoutes,
+  scheduleRoutes,
+} from './features/assistant/index.js';
 import { dashboardRoutes } from './features/dashboards/index.js';
 import { datasetRoutes } from './features/datasets/index.js';
 import { documentRoutes } from './features/documents/index.js';
@@ -233,6 +238,7 @@ export function createApi(): Hono {
   v1.route('/actions', actionsRoutes);
   // Her scheduled tasks: her morning briefing, her questions at a set time (spec 029).
   v1.route('/assistant/schedules', scheduleRoutes);
+  v1.route('/assistant/feedback', feedbackRoutes);
   // What her assistant remembers about her, shown and forgotten on demand (spec 029).
   v1.route('/assistant/memories', memoryRoutes);
   // The team's apps' views in the chat: their pages, the calls they make (spec 030).
