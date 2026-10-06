@@ -480,3 +480,12 @@ export async function listRuns(db: SqlExecutor, userId: string, limit = 30): Pro
   );
   return rows.map(runOf);
 }
+
+/** How many routine runs failed since a date, across the organization (spec 054). */
+export async function failedRunsSince(db: SqlExecutor, since: Date): Promise<number> {
+  const { rows } = await db.query<{ n: string }>(
+    `select count(*) as n from routine_runs where status = 'failed' and created_at >= $1`,
+    [since],
+  );
+  return Number(rows[0]?.n ?? 0);
+}

@@ -403,3 +403,12 @@ export async function runQueuedTasks(): Promise<number> {
   for (const row of rows) await runTask(row.organization_id, row.task_id);
   return rows.length;
 }
+
+/** How many tasks failed since a date, across the organization's agents (spec 054). */
+export async function failedTasksSince(db: SqlExecutor, since: Date): Promise<number> {
+  const { rows } = await db.query<{ n: string }>(
+    `select count(*) as n from agent_tasks where status = 'failed' and created_at >= $1`,
+    [since],
+  );
+  return Number(rows[0]?.n ?? 0);
+}
