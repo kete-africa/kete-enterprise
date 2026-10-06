@@ -5,9 +5,15 @@ import type { z } from 'zod';
 import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal, runGesture } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
-import { reach } from '../rights/index.js';
+import { reach, reachesAnything } from '../rights/index.js';
 import type { Agent } from './agents.record.js';
-import { AgentRuleError, closeSignalCommand, createAgent, updateAgentStatus } from './commands.js';
+import {
+  AgentRuleError,
+  closeSignalCommand,
+  createAgent,
+  setAgentAutonomy,
+  updateAgentStatus,
+} from './commands.js';
 import {
   findAgent,
   findSignal,
@@ -15,6 +21,7 @@ import {
   openSignals,
   personOfAgent,
 } from './infrastructure/agents.tables.js';
+import { agentRecord, NoAgentModelError, understandAgent } from './record.js';
 import { wakeAgent } from './wake.js';
 import { knownWatches } from './watches.js';
 import { childrenOf, getTask, giveTaskInput, queueTask, stopTask, tasksOf } from './tasks.js';
@@ -82,6 +89,35 @@ export function agentsRoutes(permissions: readonly string[]) {
         });
         return c.json(screen);
       })
+      // A personal agent's job description from her sentence (spec 052): nothing created yet.
+      .post('/understand', async (c) => {
+        if (c.get('viewedBy')) throw new GestureRefusal(403, 'view_as_forbidden', 'Hers to ask.');
+        const sentence = ((await bodyOf(c)) as { sentence?: unknown } | null)?.sentence;
+        if (typeof sentence !== 'string' || sentence.trim().length < 3 || sentence.length > 1000) {
+          throw new GestureRefusal(422, 'invalid_input', 'A sentence.');
+        }
+        const identity = c.get('identity');
+        const held = await transaction(identity.organizationId, async (db) => {
+          const mine: string[] = [];
+          for (const permission of permissions) {
+            if (reachesAnything(await reach(db, identity, permission))) mine.push(permission);
+          }
+          return mine;
+        });
+        try {
+          const proposal = await understandAgent(identity, sentence.trim(), {
+            watches: knownWatches(),
+            permissions: held,
+          });
+          if (!proposal) throw new GestureRefusal(422, 'not_understood', 'It would watch nothing.');
+          return c.json({ proposal });
+        } catch (error) {
+          if (error instanceof NoAgentModelError) {
+            throw new GestureRefusal(409, 'assistant_unavailable', 'No model configured.');
+          }
+          throw error;
+        }
+      })
       // A person creates her own agent; a position's or the system's needs a manager of agents.
       .post('/', async (c) => {
         const identity = c.get('identity');
@@ -104,6 +140,23 @@ export function agentsRoutes(permissions: readonly string[]) {
         const agentId = c.req.param('agentId');
         await transaction(c.get('identity').organizationId, (db) => ownAgent(c, db, agentId));
         return run(c, updateAgentStatus, { ...((await bodyOf(c)) as object), agentId });
+      })
+      // Its level for one kind of task (spec 052): its person or a manager of agents sets it.
+      .post('/:agentId/autonomy', async (c) => {
+        const agentId = c.req.param('agentId');
+        await transaction(c.get('identity').organizationId, (db) => ownAgent(c, db, agentId));
+        return run(c, setAgentAutonomy, { ...((await bodyOf(c)) as object), agentId });
+      })
+      // What it did these last days (spec 052).
+      .get('/:agentId/record', async (c) => {
+        const days = Math.min(90, Math.max(1, Number(c.req.query('days') ?? 7) || 7));
+        const { organizationId } = c.get('identity');
+        return c.json(
+          await transaction(organizationId, async (db) => {
+            const agent = await ownAgent(c, db, c.req.param('agentId'));
+            return { record: await agentRecord(db, agent, days) };
+          }),
+        );
       })
       // Wakes the agent now, rather than at its next round.
       .post('/:agentId/wake', async (c) => {

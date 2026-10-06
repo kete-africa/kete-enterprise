@@ -2,7 +2,7 @@ import type { TestSchema } from '@kete/testing';
 import { MockLanguageModelV4 } from 'ai/test';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApi } from '../src/app.js';
-import { runTask, useTaskModel } from '../src/features/agents/index.js';
+import { runTask, useAgentModel, useTaskModel } from '../src/features/agents/index.js';
 import { toolsForAgent } from '../src/features/gateway/index.js';
 import { asPerson } from '../src/platform/acting.js';
 import { startApi, tokenFor } from './support.js';
@@ -133,6 +133,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   useTaskModel(undefined);
+  useAgentModel(undefined);
   await db?.drop();
 });
 
@@ -308,5 +309,117 @@ describe('a task given to an agent', () => {
     useTaskModel(answers('Rien.'));
     expect(await runTask('org_kya', later)).toBe('stopped');
     await call(t.admin, 'POST', '/organization/modules', { module: 'agents', enabled: true });
+  });
+});
+
+describe('an agent’s autonomy per kind of task, its record, an agent from a sentence (spec 052)', () => {
+  const asAwa = <T>(work: () => Promise<T>) =>
+    asPerson(
+      {
+        organizationId: 'org_kya',
+        userId: 'usr_awa',
+        email: '',
+        name: '',
+        role: null,
+        apps: {},
+        twoFactor: false,
+        expiresAt: new Date(),
+      },
+      work,
+    );
+  const tools = (levels: Record<string, number>) =>
+    asAwa(async () =>
+      (
+        await toolsForAgent(
+          { organizationId: 'org_kya', userId: 'usr_awa' },
+          {
+            kind: 'agent',
+            id: ids.planner,
+            channel: 'worker',
+            onBehalfOf: { kind: 'person', id: 'usr_awa' },
+          },
+          {
+            permissions: ['meetings:manage'],
+            autonomyMax: 3,
+            autonomyByPermission: levels,
+            draftBudget: 5,
+          },
+        )
+      ).map((tool) => tool.name),
+    );
+
+  it('narrows its tools to its kind of task’s level, never above its maximum', async () => {
+    expect(await tools({ 'meetings:manage': 3 })).toContain('actions_propose');
+    expect(await tools({ 'meetings:manage': 1 })).not.toContain('actions_propose');
+    expect(await tools({})).toContain('actions_propose');
+  });
+
+  it('is set by its person within what it holds — never by a colleague', async () => {
+    const set = (token: string, agentId: string, body: object) =>
+      call(token, 'POST', `/agents/${agentId}/autonomy`, body);
+    expect(
+      (await set(t.awa, ids.planner, { permission: 'meetings:manage', level: 1 })).status,
+    ).toBe(201);
+    const listed = (await call(t.awa, 'GET', '/agents')).body.agents as {
+      agentId: string;
+      autonomyByPermission: Record<string, number>;
+    }[];
+    expect(listed.find((a) => a.agentId === ids.planner)?.autonomyByPermission).toEqual({
+      'meetings:manage': 1,
+    });
+    expect(
+      (await set(t.awa, ids.planner, { permission: 'meetings:manage', level: 4 })).status,
+    ).toBe(422);
+    expect((await set(t.awa, ids.writer, { permission: 'meetings:manage', level: 1 })).status).toBe(
+      409,
+    );
+    expect(
+      (await set(t.kofi, ids.planner, { permission: 'meetings:manage', level: 2 })).status,
+    ).toBe(403);
+    await set(t.awa, ids.planner, { permission: 'meetings:manage', level: null });
+  });
+
+  it('keeps a record of its week: tasks, drafts, signals — read by its person only', async () => {
+    const record = await call(t.awa, 'GET', `/agents/${ids.planner}/record`);
+    expect(record.status).toBe(200);
+    expect(record.body.record).toMatchObject({
+      tasks: { done: expect.any(Number), failed: expect.any(Number) },
+      drafts: {
+        validated: expect.any(Number),
+        refused: expect.any(Number),
+        open: expect.any(Number),
+      },
+      signals: { raised: expect.any(Number), closed: expect.any(Number) },
+    });
+    const total = (record.body.record as { tasks: Record<string, number> }).tasks;
+    expect(Object.values(total).reduce((a, b) => a + b, 0)).toBeGreaterThan(0);
+    expect((await call(t.kofi, 'GET', `/agents/${ids.planner}/record`)).status).toBe(403);
+  });
+
+  it('comes from a sentence, within her permissions and the watches that exist', async () => {
+    const before = ((await call(t.awa, 'GET', '/agents')).body.agents as unknown[]).length;
+    useAgentModel(
+      answers(
+        JSON.stringify({
+          name: 'Agent des relances',
+          mission: 'Relancer les actions en retard de mes réunions.',
+          watches: ['decisions', 'nothing_real'],
+          permissions: ['meetings:manage', 'rights:manage'],
+          autonomyMax: 2,
+          wakeEveryMinutes: 120,
+          plan: ['Chaque deux heures, il lit les décisions en retard', 'Il prépare, vous décidez'],
+        }),
+      ),
+    );
+    const understood = await call(t.awa, 'POST', '/agents/understand', {
+      sentence: 'Un agent qui relance les actions en retard de mes réunions',
+    });
+    expect(understood.body.proposal).toMatchObject({
+      name: 'Agent des relances',
+      watches: ['decisions'],
+      permissions: ['meetings:manage'],
+      autonomyMax: 2,
+    });
+    expect(((await call(t.awa, 'GET', '/agents')).body.agents as unknown[]).length).toBe(before);
   });
 });

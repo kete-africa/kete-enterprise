@@ -44,6 +44,16 @@ export const createAgentInput = z
 
 export const agentStatusInput = z.object({ agentId, status: z.enum(['active', 'paused']) });
 
+/**
+ * Its level for one kind of task — one permission it holds (spec 052): 1 read, 2 act where it can
+ * be undone, 3 prepare a draft; none to follow its maximum. Committing is never set per task.
+ */
+export const agentAutonomyInput = z.object({
+  agentId,
+  permission: z.string().regex(/^[a-z]+:[a-z_]+$/),
+  level: z.number().int().min(1).max(3).nullable(),
+});
+
 export interface Agent {
   agentId: string;
   name: string;
@@ -54,6 +64,8 @@ export interface Agent {
   scopeUnitId: string | null;
   permissions: string[];
   autonomyMax: number;
+  /** Its level per permission, never above its maximum (spec 052). */
+  autonomyByPermission: Record<string, number>;
   draftBudget: number;
   wakeEveryMinutes: number;
   watches: string[];

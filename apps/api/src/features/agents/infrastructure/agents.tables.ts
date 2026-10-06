@@ -78,6 +78,7 @@ type AgentRow = {
   scope_unit_id: string | null;
   permissions: string[];
   autonomy_max: number;
+  autonomy_by_permission: Record<string, number> | null;
   draft_budget: number;
   wake_every_minutes: number;
   watches: string[];
@@ -96,6 +97,7 @@ const toAgent = (r: AgentRow): Agent => ({
   scopeUnitId: r.scope_unit_id,
   permissions: r.permissions,
   autonomyMax: r.autonomy_max,
+  autonomyByPermission: r.autonomy_by_permission ?? {},
   draftBudget: r.draft_budget,
   wakeEveryMinutes: r.wake_every_minutes,
   watches: r.watches,
@@ -105,8 +107,8 @@ const toAgent = (r: AgentRow): Agent => ({
 });
 
 const agentColumns = `agent_id, name, kind, mission, responsible_user_id, position_id, scope_unit_id,
-  permissions, autonomy_max, draft_budget, wake_every_minutes, watches, status, next_wake_at,
-  last_run_at`;
+  permissions, autonomy_max, autonomy_by_permission, draft_budget, wake_every_minutes, watches,
+  status, next_wake_at, last_run_at`;
 
 export async function insertAgent(
   db: SqlExecutor,
@@ -148,6 +150,23 @@ export async function insertAgent(
     ],
   );
   return toAgent(rows[0] as AgentRow);
+}
+
+/** An agent's level per permission (spec 052): what it may do alone, kind of task by kind. */
+export function agentAutonomyMigrationSql(options: { schema: string }): string {
+  return `alter table ${options.schema}.agents
+  add column autonomy_by_permission jsonb not null default '{}';`;
+}
+
+export async function setAutonomy(
+  db: SqlExecutor,
+  agentId: string,
+  levels: Record<string, number>,
+): Promise<void> {
+  await db.query('update agents set autonomy_by_permission = $2 where agent_id = $1', [
+    agentId,
+    JSON.stringify(levels),
+  ]);
 }
 
 export async function findAgent(db: SqlExecutor, agentId: string): Promise<Agent | null> {
