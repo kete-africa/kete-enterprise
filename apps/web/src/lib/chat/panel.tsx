@@ -37,6 +37,21 @@ export function useAssistantPage(page: AssistantPage | null) {
   }, [key]);
 }
 
+// A page asks the assistant beside it (spec 050): the shell opens it with the question.
+const askers = new Set<(question: string) => void>();
+export function askBeside(question: string) {
+  for (const ask of askers) ask(question);
+}
+/** The shell listens for a page's question. */
+export function useAskBeside(ask: (question: string) => void) {
+  useEffect(() => {
+    askers.add(ask);
+    return () => {
+      askers.delete(ask);
+    };
+  }, [ask]);
+}
+
 /** What the page shows, for the shell. */
 export function useShownPage(): AssistantPage | null {
   return useSyncExternalStore(

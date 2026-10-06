@@ -1,7 +1,7 @@
 import type { TestSchema } from '@kete/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApi } from '../src/app.js';
-import { dashboardTools } from '../src/features/dashboards/index.js';
+import { dashboardTools, periodDates } from '../src/features/dashboards/index.js';
 import { startApi, tokenFor } from './support.js';
 
 // Spec 033: dashboards over a team's tables and a form's answers — composed by a person or
@@ -93,7 +93,7 @@ describe('a dashboard', () => {
     expect(created).toMatchObject({ status: 201, body: { dashboard: { status: 'kept' } } });
     dashboardId = (created.body.dashboard as { dashboardId: string }).dashboardId;
     const read = await call(t.ama, 'GET', `/dashboards/${dashboardId}`);
-    expect(read.body.cards).toEqual([
+    expect(read.body.cards).toMatchObject([
       {
         title: 'Tickets par agence',
         view: 'bar',
@@ -222,5 +222,141 @@ describe('a pinned dashboard (spec 046)', () => {
     expect(today.pinned.map((p) => p.dashboard)).toEqual([
       expect.objectContaining({ name: 'Vue épinglée', status: 'proposed' }),
     ]);
+  });
+});
+
+type Tools = ReturnType<typeof dashboardTools>;
+const toolsOf = (userId: string): Tools =>
+  dashboardTools({
+    organizationId: 'org_kya',
+    userId,
+    name: userId,
+    role: 'member',
+  } as Parameters<typeof dashboardTools>[0]);
+const tool = (tools: Tools, name: string) => tools.find((x) => x.name === name);
+
+describe('a dashboard as its reader wants it (spec 050)', () => {
+  let id = '';
+
+  it('keeps each card its place, its goal, its threshold — and keeps notes', async () => {
+    const [byAgency, delay, satisfaction] = withSources();
+    const created = await call(t.ama, 'POST', '/dashboards', {
+      name: 'Comité',
+      widgets: [
+        { ...byAgency, place: { x: 0, y: 0, w: 8, h: 4 } },
+        { ...delay, goal: { value: 3, better: 'down' }, threshold: 3.5 },
+        { kind: 'note', title: 'Pour le comité', text: 'Lomé manque de techniciens.' },
+        satisfaction,
+      ],
+    });
+    expect(created.status).toBe(201);
+    id = (created.body.dashboard as { dashboardId: string }).dashboardId;
+    const cards = (await call(t.ama, 'GET', `/dashboards/${id}`)).body.cards as Answer[];
+    expect(cards[0]).toMatchObject({
+      kind: 'data',
+      id: expect.stringMatching(/^w[0-9a-z]+$/),
+      place: { x: 0, y: 0, w: 8, h: 4 },
+    });
+    expect(cards[1]).toMatchObject({ goal: { value: 3, better: 'down' }, threshold: 3.5 });
+    expect(cards[2]).toMatchObject({ kind: 'note', text: 'Lomé manque de techniciens.' });
+  });
+
+  it('dates its cards by the period, and compares them with the period before', async () => {
+    expect(periodDates('7d', new Date('2026-10-06T10:00:00Z'))).toEqual({
+      now: { from: '2026-09-30', to: '2026-10-06' },
+      before: { from: '2026-09-23', to: '2026-09-29' },
+    });
+    expect(periodDates('all')).toBeNull();
+    const read = await call(t.ama, 'GET', `/dashboards/${id}?period=30d&compare=1`);
+    expect(read.body.board).toEqual({ period: '30d', compare: true, filter: null });
+    const first = (read.body.cards as { visible: boolean; previous: unknown }[])[0];
+    expect(first?.visible).toBe(true);
+    expect(Array.isArray(first?.previous)).toBe(true);
+  });
+
+  it('narrows the cards whose source has the filter’s column, and says which', async () => {
+    const read = await call(
+      t.ama,
+      'GET',
+      `/dashboards/${id}?filter=${encodeURIComponent('Agence:Lomé')}`,
+    );
+    const [byAgency, delay, , satisfaction] = read.body.cards as Answer[];
+    expect(byAgency).toMatchObject({ filtered: true, rows: [{ Agence: 'Lomé', count: 2 }] });
+    expect(delay).toMatchObject({ filtered: true, rows: [{ 'avg(Délai)': 3 }] });
+    expect(satisfaction).toMatchObject({ visible: true, filtered: false });
+  });
+
+  it('keeps the state before each change, and restores one', async () => {
+    await call(t.ama, 'POST', `/dashboards/${id}`, { name: 'Comité du lundi' });
+    const versions = (await call(t.ama, 'GET', `/dashboards/${id}/versions`)).body.versions as {
+      version: number;
+      name: string;
+      cardCount: number;
+    }[];
+    expect(versions).toEqual([
+      expect.objectContaining({ version: 1, name: 'Comité', cardCount: 4 }),
+    ]);
+    expect((await call(t.kofi, 'GET', `/dashboards/${id}/versions`)).status).toBe(404);
+    const restored = await call(t.ama, 'POST', `/dashboards/${id}/versions/1/restore`);
+    expect(restored.body.dashboard).toMatchObject({ name: 'Comité' });
+    expect(
+      ((await call(t.ama, 'GET', `/dashboards/${id}/versions`)).body.versions as unknown[]).length,
+    ).toBe(2);
+  });
+
+  it('is made her own by a reader, the original unchanged', async () => {
+    await call(t.admin, 'POST', `/dashboards/${id}`, { audience: ['everyone'] });
+    const fork = await call(t.kofi, 'POST', `/dashboards/${id}/fork`, { name: 'Ma version' });
+    expect(fork).toMatchObject({
+      status: 201,
+      body: { dashboard: { name: 'Ma version', ownerId: 'usr_kofi', forkedFrom: id } },
+    });
+    const forkId = (fork.body.dashboard as { dashboardId: string }).dashboardId;
+    expect((await call(t.kofi, 'POST', `/dashboards/${forkId}`, { name: 'À moi' })).status).toBe(
+      200,
+    );
+    expect((await call(t.ama, 'GET', `/dashboards/${id}`)).body.dashboard).toMatchObject({
+      name: 'Comité',
+    });
+    expect((await call(t.ama, 'GET', `/dashboards/${forkId}`)).status).toBe(404);
+  });
+
+  it('is changed by her assistant, added cards proposed — never someone else’s', async () => {
+    const tools = toolsOf('usr_ama');
+    const seen = (await tool(tools, 'dashboard_read')?.execute({ dashboardId: id })) as {
+      output: { cards: { id: string; title: string }[] };
+    };
+    const [, delay, note] = seen.output.cards;
+    const done = await tool(tools, 'dashboard_change')?.execute({
+      dashboardId: id,
+      add: [{ kind: 'note', title: 'Pièces', text: '3 références en rupture.' }],
+      change: [{ id: delay?.id, view: 'table', threshold: null }],
+      remove: [note?.id],
+    });
+    expect(done).toMatchObject({ status: 'done', output: { added: 1, removed: 1, changed: 1 } });
+    const after = (await call(t.ama, 'GET', `/dashboards/${id}`)).body.cards as Answer[];
+    expect(after.map((c) => c.title)).toEqual([
+      'Tickets par agence',
+      'Délai moyen (jours)',
+      'Satisfaction moyenne',
+      'Pièces',
+    ]);
+    expect(after[1]).toMatchObject({ view: 'table', threshold: null });
+    expect(after[3]).toMatchObject({ kind: 'note', proposed: true });
+    expect(
+      await tool(toolsOf('usr_kofi'), 'dashboard_change')?.execute({
+        dashboardId: id,
+        name: 'Pris',
+      }),
+    ).toMatchObject({ status: 'refused' });
+    // Her change is a version: « Annuler » brings the note back.
+    const latest = (
+      (await call(t.ama, 'GET', `/dashboards/${id}/versions`)).body.versions as {
+        version: number;
+      }[]
+    )[0];
+    await call(t.ama, 'POST', `/dashboards/${id}/versions/${latest?.version}/restore`);
+    const back = (await call(t.ama, 'GET', `/dashboards/${id}`)).body.cards as Answer[];
+    expect(back.map((c) => c.title)).toContain('Pour le comité');
   });
 });

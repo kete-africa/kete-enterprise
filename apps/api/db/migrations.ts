@@ -6,6 +6,7 @@ import { aiCostMigrationSql } from '@kete/ai';
 import { skillsMigrationSql } from '@kete/skills';
 import {
   dashboardPinsMigrationSql,
+  dashboardVersionsMigrationSql,
   dashboardsMigrationSql,
 } from '../src/features/dashboards/index.js';
 import { datasetsMigrationSql } from '../src/features/datasets/index.js';
@@ -176,4 +177,6 @@ export const migrations: Migration[] = [
   { name: '0039_decision_todo', sql: (context) => todoMigrationSql(context) },
   // The sidebar each person arranges (spec 049).
   { name: '0040_sidebar_layouts', sql: (context) => sidebarMigrationSql(context) },
+  // Dashboards' versions and readers' own versions (spec 050).
+  { name: '0041_dashboard_versions', sql: (context) => dashboardVersionsMigrationSql(context) },
 ];
