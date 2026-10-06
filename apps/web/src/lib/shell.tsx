@@ -4,6 +4,7 @@ import {
   CommandPalette,
   CommandTrigger,
   CountBadge,
+  Dialog,
   Icon,
   Menu,
   NavItem,
@@ -22,6 +23,7 @@ import * as m from '@/paraglide/messages.js';
 import { administers, opens, viewAs, type Me } from './me';
 import { AssistantPanel, useAskBeside, useShownPage } from './chat/panel';
 import { searchEverywhere, type SearchResult } from './notifications';
+import { NoteComposer } from './note-composer';
 import { proposedPlaces, SidebarNav } from './sidebar-nav';
 
 /** Where a screen sits: the person's space, or the Administration (spec 010). */
@@ -40,6 +42,7 @@ export type Page =
   | 'forms'
   | 'dashboards'
   | 'routines'
+  | 'notebook'
   | 'admin_templates'
   | 'admin_library'
   | 'my_agents'
@@ -119,6 +122,13 @@ export function placesOf(me: Me): Place[] {
       href: '/mes-agents',
       icon: 'agent',
       label: m.nav_my_agents(),
+      group: 'me',
+    },
+    {
+      page: 'notebook',
+      href: '/carnet',
+      icon: 'new',
+      label: m.nav_notebook(),
       group: 'me',
     },
     {
@@ -474,6 +484,8 @@ export function AppShell({
   // The person's mode: dark, light or the device's own, kept in a cookie (spec 019).
   const [theme, setTheme] = useState<ThemeChoiceValue>('dark');
   const [palette, setPalette] = useState(false);
+  // « Noter » from anywhere (spec 055).
+  const [noting, setNoting] = useState(false);
   const openPalette = useCallback(() => setPalette(true), []);
   // The assistant beside the page (spec 048): what the page shows, a question from Ctrl K.
   const [panel, setPanel] = useState(false);
@@ -538,6 +550,18 @@ export function AppShell({
       }
       toolbar={
         <div className="flex items-center gap-2">
+          {!me.viewedBy && (
+            <button
+              type="button"
+              aria-label={m.nav_note()}
+              title={m.nav_note()}
+              onClick={() => setNoting(true)}
+              className="inline-flex h-(--icon-button-size) items-center gap-1.5 rounded-control px-2 text-fg hover:bg-surface-hover"
+            >
+              <Icon name="new" />
+              <span className="hidden text-body-sm font-semibold sm:inline">{m.nav_note()}</span>
+            </button>
+          )}
           {current === 'assistant' ? (
             <ToolbarLink href="/assistant" label={m.nav_assistant()} icon="sparkle" />
           ) : (
@@ -586,6 +610,14 @@ export function AppShell({
       {me.viewedBy && <ViewingBanner me={me} />}
       {children}
       <Palette me={me} open={palette} onOpenChange={setPalette} onAsk={ask} />
+      <Dialog
+        open={noting}
+        onClose={() => setNoting(false)}
+        title={m.nav_note()}
+        closeLabel={m.common_close()}
+      >
+        <NoteComposer onDone={() => setNoting(false)} />
+      </Dialog>
       {current !== 'assistant' && (
         <AssistantPanel open={panel} onClose={closePanel} page={page} question={question} />
       )}

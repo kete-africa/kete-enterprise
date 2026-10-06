@@ -10,6 +10,7 @@ import {
   dashboardsMigrationSql,
 } from '../src/features/dashboards/index.js';
 import { datasetsMigrationSql } from '../src/features/datasets/index.js';
+import { notesMigrationSql } from '../src/features/notes/index.js';
 import { routinesMigrationSql } from '../src/features/routines/index.js';
 import { documentsMigrationSql } from '../src/features/documents/index.js';
 import { formsMigrationSql } from '../src/features/forms/index.js';
@@ -191,4 +192,6 @@ export const migrations: Migration[] = [
   { name: '0043_agent_autonomy', sql: (context) => agentAutonomyMigrationSql(context) },
   // What each person says of an answer (spec 053).
   { name: '0044_assistant_feedback', sql: (context) => feedbackMigrationSql(context) },
+  // Her notebook: notes understood, a reminder filed when they name a moment (spec 055).
+  { name: '0045_person_notes', sql: (context) => notesMigrationSql(context) },
 ];

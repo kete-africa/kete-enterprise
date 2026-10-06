@@ -1553,5 +1553,20 @@
   "governance_summary": "Résumé",
   "governance_reversible": "Annulable",
   "governance_yes": "oui",
-  "governance_no": "non"
+  "governance_no": "non",
+  "nav_notebook": "Mon carnet",
+  "nav_note": "Noter",
+  "notebook_title": "Mon carnet",
+  "notebook_explain": "Ce que vous notez, comme sur papier. Kete le garde, pose un rappel dans À faire quand une note nomme un moment, et votre assistant s’en sert pour comprendre ce qui vous occupe. Personne d’autre ne le lit.",
+  "notebook_write": "Notez ce que vous voulez",
+  "notebook_placeholder": "Ex. : « Réunion demain à 10 h avec Kofi sur l’enquête T3 »",
+  "notebook_keep": "Noter",
+  "notebook_kept": "Gardé dans Mon carnet.",
+  "notebook_reminder_filed": "Rappel posé dans À faire : « {title} », {at}.",
+  "notebook_nothing_filed": "Aucun moment nommé : rien d’autre n’a été rangé.",
+  "notebook_unfile": "Annuler le rappel",
+  "notebook_reminder": "Rappel : {title}, {at}",
+  "notebook_remove": "Supprimer",
+  "notebook_none": "Votre carnet est vide.",
+  "notebook_private": "Un carnet n’appartient qu’à sa personne : il ne s’affiche pas quand vous regardez son espace."
 }
