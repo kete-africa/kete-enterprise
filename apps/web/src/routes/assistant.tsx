@@ -170,6 +170,12 @@ function AssistantPage() {
               {m.memory_link()}
             </a>
             <a
+              href="/assistant/echanges"
+              className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
+            >
+              {m.exchanges_link()}
+            </a>
+            <a
               href="/assistant/taches"
               className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
             >

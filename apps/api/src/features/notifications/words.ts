@@ -11,6 +11,10 @@ const catalog = {
     decisionComment: (author: string, title: string) => `${author} a écrit sur « ${title} »`,
     routineCrossed: (title: string, value: string, line: string, above: boolean) =>
       `« ${title} » est ${above ? 'au-dessus' : 'au-dessous'} de ${line} : ${value}`,
+    exchangeAsked: (asker: string, question: string) =>
+      `L’assistant de ${asker} vous demande : ${question}`,
+    exchangeReplied: (colleague: string) => `${colleague} a répondu à votre assistant`,
+    exchangeDeclined: (colleague: string) => `${colleague} ne répond pas à cette question`,
   },
   en: {
     decisionWaiting: (title: string) => `Your decision is awaited: ${title}`,
@@ -21,6 +25,10 @@ const catalog = {
     decisionComment: (author: string, title: string) => `${author} wrote on “${title}”`,
     routineCrossed: (title: string, value: string, line: string, above: boolean) =>
       `“${title}” is ${above ? 'above' : 'below'} ${line}: ${value}`,
+    exchangeAsked: (asker: string, question: string) =>
+      `${asker}’s assistant asks you: ${question}`,
+    exchangeReplied: (colleague: string) => `${colleague} answered your assistant`,
+    exchangeDeclined: (colleague: string) => `${colleague} does not answer this question`,
   },
 } as const;
 

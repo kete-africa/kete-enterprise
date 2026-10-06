@@ -47,7 +47,9 @@ export interface Tell {
     | 'agent.task'
     | 'decision.comment'
     | 'app.ready'
-    | 'routine.watch';
+    | 'routine.watch'
+    | 'exchange.asked'
+    | 'exchange.replied';
   title: string;
   body?: string;
   href?: string;

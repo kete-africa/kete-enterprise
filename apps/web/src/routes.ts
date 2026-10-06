@@ -12,6 +12,7 @@ export const routes = rootRoute('__root.tsx', [
   route('/assistant/connexion', 'ai-connection.tsx'),
   route('/assistant/taches', 'schedules.tsx'),
   route('/assistant/memoire', 'memory.tsx'),
+  route('/assistant/echanges', 'exchanges.tsx'),
   route('/mes-agents', 'my-agents.tsx'),
   route('/routines', 'routines.tsx'),
   route('/carnet', 'notebook.tsx'),
