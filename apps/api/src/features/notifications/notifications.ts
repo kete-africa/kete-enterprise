@@ -46,7 +46,8 @@ export interface Tell {
     | 'agent.signal'
     | 'agent.task'
     | 'decision.comment'
-    | 'app.ready';
+    | 'app.ready'
+    | 'routine.watch';
   title: string;
   body?: string;
   href?: string;

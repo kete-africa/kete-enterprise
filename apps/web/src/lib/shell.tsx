@@ -39,6 +39,7 @@ export type Page =
   | 'datasets'
   | 'forms'
   | 'dashboards'
+  | 'routines'
   | 'admin_templates'
   | 'admin_library'
   | 'my_agents'
@@ -118,6 +119,13 @@ export function placesOf(me: Me): Place[] {
       href: '/mes-agents',
       icon: 'agent',
       label: m.nav_my_agents(),
+      group: 'me',
+    },
+    {
+      page: 'routines',
+      href: '/routines',
+      icon: 'refresh',
+      label: m.nav_routines(),
       group: 'me',
     },
     me.modules.dashboards && {

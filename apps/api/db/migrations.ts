@@ -10,6 +10,7 @@ import {
   dashboardsMigrationSql,
 } from '../src/features/dashboards/index.js';
 import { datasetsMigrationSql } from '../src/features/datasets/index.js';
+import { routinesMigrationSql } from '../src/features/routines/index.js';
 import { documentsMigrationSql } from '../src/features/documents/index.js';
 import { formsMigrationSql } from '../src/features/forms/index.js';
 import { dossiersMigrationSql } from '../src/features/dossiers/index.js';
@@ -179,4 +180,6 @@ export const migrations: Migration[] = [
   { name: '0040_sidebar_layouts', sql: (context) => sidebarMigrationSql(context) },
   // Dashboards' versions and readers' own versions (spec 050).
   { name: '0041_dashboard_versions', sql: (context) => dashboardVersionsMigrationSql(context) },
+  // Routines: triggers on the apps' events, watches on figures, every run kept (spec 051).
+  { name: '0042_routines', sql: (context) => routinesMigrationSql(context) },
 ];

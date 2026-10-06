@@ -39,8 +39,19 @@ import { assistantWords } from './words.js';
 
 type Identity = IdentityVariables['identity'];
 
+/** An instruction her assistant answers for her while she is away (specs 029, 051). */
+export interface Instruction {
+  organizationId: string;
+  userId: string;
+  name: string;
+  email: string;
+  locale: 'fr' | 'en';
+  title: string;
+  prompt: string | null;
+}
+
 /** Who the schedule runs for: her, as her token would say — without any administrator's role. */
-const identityOf = (s: ScheduleRun): Identity => ({
+const identityOf = (s: Instruction): Identity => ({
   userId: s.userId,
   email: s.email,
   name: s.name,
@@ -54,7 +65,7 @@ const identityOf = (s: ScheduleRun): Identity => ({
 const link = (path: string) => (env.publicWebUrl ? `${env.publicWebUrl}${path}` : null);
 
 /** Her question answered with her rights; the answer kept as a conversation of hers. */
-async function answerQuestion(s: ScheduleRun): Promise<{
+async function answerQuestion(s: Instruction): Promise<{
   status: 'done' | 'failed' | 'no_model';
   conversationId: string | null;
   text: string;
@@ -113,8 +124,60 @@ async function answerQuestion(s: ScheduleRun): Promise<{
   return { status, conversationId, text };
 }
 
+/**
+ * Her instruction answered with her rights, and landed: a notification, and the answer waiting in
+ * her « To do » under `key` (one per key) — for a schedule, or a routine an app's event triggered.
+ */
+export async function answerAndLand(
+  s: Instruction,
+  key: string,
+): Promise<{
+  status: 'done' | 'failed' | 'no_model';
+  conversationId: string | null;
+  text: string;
+}> {
+  const answer = await answerQuestion(s);
+  const url = answer.conversationId ? link(`/assistant?c=${answer.conversationId}`) : null;
+  if (url) {
+    await transaction(s.organizationId, async (db) => {
+      await tell(db, s.organizationId, s.userId, {
+        kind: 'schedule.answered',
+        title: notificationWords(s.locale).scheduleAnswered(s.title),
+        href: `/assistant?c=${answer.conversationId}`,
+      });
+      return putTask(db, s.organizationId, s.userId, {
+        source: 'assistant',
+        key,
+        title: s.title,
+        href: url,
+      });
+    });
+  }
+  return answer;
+}
+
+/** What a schedule's run was, for whoever keeps a history of runs (spec 051). */
+export interface ScheduleRunOutcome {
+  schedule: ScheduleRun;
+  status: 'done' | 'failed' | 'no_model';
+  conversationId: string | null;
+  text: string;
+  tried: boolean;
+}
+type RunListener = (outcome: ScheduleRunOutcome) => Promise<void>;
+const runListeners: RunListener[] = [];
+/** A feature listens to every schedule's run. */
+export function onScheduleRun(listener: RunListener): void {
+  runListeners.push(listener);
+}
+
 /** Runs one schedule taken by the worker or by her « Run now ». */
-export async function runSchedule(s: ScheduleRun): Promise<'done' | 'failed' | 'no_model'> {
+export async function runSchedule(
+  s: ScheduleRun,
+  tried = false,
+): Promise<'done' | 'failed' | 'no_model'> {
+  let conversationId: string | null = null;
+  let answered = '';
   const w = assistantWords(s.locale);
   const day = new Date().toISOString().slice(0, 10);
   let status: 'done' | 'failed' | 'no_model' = 'done';
@@ -133,25 +196,12 @@ export async function runSchedule(s: ScheduleRun): Promise<'done' | 'failed' | '
       action: url ? { label: w.briefingAction, url } : null,
     };
   } else {
-    const answer = await answerQuestion(s);
-    status = answer.status;
-    const url = answer.conversationId ? link(`/assistant?c=${answer.conversationId}`) : null;
     // The answer waits in her « To do », one per schedule and day.
-    if (url) {
-      await transaction(s.organizationId, async (db) => {
-        await tell(db, s.organizationId, s.userId, {
-          kind: 'schedule.answered',
-          title: notificationWords(s.locale).scheduleAnswered(s.title),
-          href: `/assistant?c=${answer.conversationId}`,
-        });
-        return putTask(db, s.organizationId, s.userId, {
-          source: 'assistant',
-          key: `${s.scheduleId}-${day}`,
-          title: s.title,
-          href: url,
-        });
-      });
-    }
+    const answer = await answerAndLand(s, `${s.scheduleId}-${day}`);
+    status = answer.status;
+    conversationId = answer.conversationId;
+    answered = answer.text;
+    const url = answer.conversationId ? link(`/assistant?c=${answer.conversationId}`) : null;
     mail = {
       subject: w.taskSubject(s.title),
       paragraphs:
@@ -180,6 +230,11 @@ export async function runSchedule(s: ScheduleRun): Promise<'done' | 'failed' | '
     }
     await markScheduleRun(db, s.scheduleId, status);
   });
+  for (const listener of runListeners) {
+    await listener({ schedule: s, status, conversationId, text: answered, tried }).catch(
+      (error: unknown) => console.error('[schedule] listener', (error as Error).message),
+    );
+  }
   return status;
 }
 
@@ -262,7 +317,7 @@ export const scheduleRoutes = new Hono<{ Variables: IdentityVariables }>()
       claimSchedule(db, id.data, { userId, due: false }),
     );
     if (!taken) throw new GestureRefusal(404, 'not_found', 'No such task.');
-    return c.json({ status: await runSchedule(taken) }, 201);
+    return c.json({ status: await runSchedule(taken, true) }, 201);
   })
   .post('/:scheduleId/remove', async (c) => {
     herself(c);
