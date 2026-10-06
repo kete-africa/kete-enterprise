@@ -79,3 +79,25 @@ export const fetchMentionables = createServerFn({ method: 'GET' }).handler(
     return { people: [...people.values()].slice(0, 60) };
   },
 );
+
+/** Her opinion of an answer (spec 053): useful or not, kept once per answer. */
+export const sendFeedback = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const conversationId = typeof v.conversationId === 'string' ? v.conversationId : '';
+    if (!/^cnv_[0-9a-f-]{8,64}$/.test(conversationId)) throw new Error('Which conversation?');
+    return {
+      conversationId,
+      messageId: typeof v.messageId === 'string' ? v.messageId.slice(0, 120) : '',
+      helpful: v.helpful === true,
+    };
+  })
+  .handler(async ({ data }) => {
+    const answer = await sendGesture(
+      getRequest(),
+      '/v1/assistant/feedback',
+      data,
+      crypto.randomUUID(),
+    );
+    return { ok: answer.ok };
+  });

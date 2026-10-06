@@ -37,6 +37,10 @@ function toolLabel(name: string): string {
     performance_propose_measure: m.tool_propose_measure,
     actions_propose: m.tool_actions_propose,
     canvas_write: m.tool_canvas_write,
+    dashboard_propose: m.tool_dashboard_propose,
+    dashboard_read: m.tool_dashboard_read,
+    dashboard_change: m.tool_dashboard_change,
+    team_datasets: m.tool_team_datasets,
   };
   return labels[name]?.() ?? name;
 }
@@ -159,6 +163,10 @@ const UserMessage: FC = () => (
   </MessagePrimitive.Root>
 );
 
+// Her opinion of an answer (spec 053): pressed once, shown as given.
+const feedbackClass =
+  'rounded-control px-2 py-1 text-body-sm font-semibold text-fg-muted hover:bg-surface-hover hover:text-fg data-[submitted]:bg-surface-selected data-[submitted]:text-fg';
+
 function makeAssistantMessage(views: ToolViews): FC {
   const ToolCardView = makeToolCard(views);
   const AssistantMessage: FC = () => (
@@ -187,6 +195,16 @@ function makeAssistantMessage(views: ToolViews): FC {
             <Icon name="refresh" size={16} />
           </IconButton>
         </ActionBarPrimitive.Reload>
+        <ActionBarPrimitive.FeedbackPositive asChild>
+          <button type="button" className={feedbackClass}>
+            {m.chat_helpful()}
+          </button>
+        </ActionBarPrimitive.FeedbackPositive>
+        <ActionBarPrimitive.FeedbackNegative asChild>
+          <button type="button" className={feedbackClass}>
+            {m.chat_not_helpful()}
+          </button>
+        </ActionBarPrimitive.FeedbackNegative>
       </ActionBarPrimitive.Root>
     </MessagePrimitive.Root>
   );

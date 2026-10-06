@@ -1522,5 +1522,11 @@
   "agent_proposal_level": "Niveau maximum : {level} · réveil toutes les {minutes} min",
   "agent_create": "Créer cet agent",
   "agent_rephrase": "Changer la phrase",
-  "agent_created": "Agent créé. Il agira avec vos droits, jamais plus."
+  "agent_created": "Agent créé. Il agira avec vos droits, jamais plus.",
+  "chat_helpful": "Utile",
+  "chat_not_helpful": "Pas utile",
+  "tool_dashboard_propose": "Proposition d’un tableau de bord",
+  "tool_dashboard_read": "Lecture d’un tableau de bord",
+  "tool_dashboard_change": "Changement d’un tableau de bord",
+  "tool_team_datasets": "Lecture des données de l’équipe"
 }

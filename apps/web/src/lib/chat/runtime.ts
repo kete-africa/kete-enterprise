@@ -8,7 +8,7 @@ import {
 import { useRouter } from '@tanstack/react-router';
 import { useMemo, useRef, useState } from 'react';
 import type { AppView, DraftReview, Payer, StoredMessage } from '@/lib/workspace';
-import { uploadAttachment } from './api';
+import { sendFeedback, uploadAttachment } from './api';
 
 // The chat's runtime (spec 027), on assistant-ui's external store: the conversations stay Kete
 // Enterprise's own — kept by its API, streamed as NDJSON — and assistant-ui draws them, attaches
@@ -160,6 +160,8 @@ export function useKeteChat(options: {
 }) {
   const router = useRouter();
   const [conversationId, setConversationId] = useState(options.conversationId);
+  const conversationRef = useRef(conversationId);
+  conversationRef.current = conversationId;
   const [messages, setMessages] = useState<ChatMessage[]>(options.initial.map(fromStored));
   const [running, setRunning] = useState(false);
   const stopper = useRef<AbortController | null>(null);
@@ -292,7 +294,23 @@ export function useKeteChat(options: {
     onCancel: async () => {
       stopper.current?.abort();
     },
-    adapters: { attachments, ...(dictation ? { dictation } : {}) },
+    adapters: {
+      attachments,
+      ...(dictation ? { dictation } : {}),
+      // Her opinion of an answer (spec 053), once the conversation exists.
+      feedback: {
+        submit: ({ message, type }) => {
+          if (!conversationRef.current) return;
+          void sendFeedback({
+            data: {
+              conversationId: conversationRef.current,
+              messageId: message.id,
+              helpful: type === 'positive',
+            },
+          });
+        },
+      },
+    },
   });
 
   /** The latest document the assistant wrote in the canvas, if any. */
