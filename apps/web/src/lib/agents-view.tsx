@@ -2,7 +2,16 @@ import { Button, Panel, Tag, TextField } from '@kete/design';
 import { useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import * as m from '@/paraglide/messages.js';
-import { changeAgents, type AgentsScreen, type AgentTask, type AgentView } from './agents';
+import {
+  changeAgents,
+  fetchAgentRecord,
+  understandAgent,
+  type AgentProposal,
+  type AgentRecord,
+  type AgentsScreen,
+  type AgentTask,
+  type AgentView,
+} from './agents';
 import { DialogForm, GestureForm, refusal, Select } from './forms';
 import { permissionLabel } from './rights-view';
 
@@ -126,6 +135,222 @@ function AgentTasks({
   );
 }
 
+const levelWords: Record<number, () => string> = {
+  1: m.agent_level_1,
+  2: m.agent_level_2,
+  3: m.agent_level_3,
+};
+
+/** Its level per kind of task — per permission it holds — never above its maximum (spec 052). */
+function AgentAutonomy({
+  agent,
+  send,
+}: {
+  agent: AgentView;
+  send: (path: string, body?: object) => void;
+}) {
+  if (agent.permissions.length === 0) return null;
+  const levels = [1, 2, 3].filter((l) => l <= agent.autonomyMax);
+  return (
+    <div className="grid gap-2">
+      <h3 className="text-body-sm font-semibold">{m.agent_autonomy()}</h3>
+      <p className="text-body-sm text-fg-muted">{m.agent_autonomy_explain()}</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {agent.permissions.map((p) => (
+          <Select
+            key={p}
+            label={permissionLabel(p)}
+            value={String(agent.autonomyByPermission[p] ?? '')}
+            onChange={(e) =>
+              send(`/${agent.agentId}/autonomy`, {
+                permission: p,
+                level: e.target.value ? Number(e.target.value) : null,
+              })
+            }
+          >
+            <option value="">
+              {m.agent_level_default({ level: String(Math.min(agent.autonomyMax, 3)) })}
+            </option>
+            {levels.map((l) => (
+              <option key={l} value={String(l)}>
+                {levelWords[l]?.() ?? String(l)}
+              </option>
+            ))}
+          </Select>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** What it did this week: its tasks, its drafts and what she decided, its signals (spec 052). */
+function AgentWeek({ agent }: { agent: AgentView }) {
+  const [record, setRecord] = useState<AgentRecord | null>(null);
+  return (
+    <div className="grid gap-1">
+      {record ? (
+        <>
+          <h3 className="text-body-sm font-semibold">{m.agent_record()}</h3>
+          <p className="text-body-sm">
+            {m.agent_record_tasks({
+              done: String(record.tasks.done),
+              failed: String(record.tasks.failed),
+              open: String(record.tasks.open),
+            })}
+          </p>
+          <p className="text-body-sm">
+            {m.agent_record_drafts({
+              validated: String(record.drafts.validated),
+              refused: String(record.drafts.refused),
+              open: String(record.drafts.open),
+            })}
+          </p>
+          <p className="text-body-sm">
+            {m.agent_record_signals({
+              raised: String(record.signals.raised),
+              closed: String(record.signals.closed),
+            })}
+          </p>
+        </>
+      ) : (
+        <div>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              void fetchAgentRecord({ data: { agentId: agent.agentId } }).then((r) =>
+                setRecord(r.record),
+              )
+            }
+          >
+            {m.agent_record_show()}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A personal agent from her sentence: its job description and plan, then « Créer » (spec 052). */
+function AgentFromSentence({ watchLabelOf }: { watchLabelOf: (w: string) => string }) {
+  const router = useRouter();
+  const [sentence, setSentence] = useState('');
+  const [proposal, setProposal] = useState<AgentProposal | null>(null);
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <Panel title={m.agent_from_sentence()}>
+      <div className="grid gap-3">
+        <label className="flex flex-col gap-1.5 text-body-sm font-semibold text-fg">
+          {m.agent_sentence()}
+          <textarea
+            value={sentence}
+            rows={2}
+            maxLength={1000}
+            onChange={(e) => {
+              setSentence(e.target.value);
+              setProposal(null);
+            }}
+            className="rounded-control border border-line-control bg-surface-control px-3 py-2 font-normal"
+          />
+          <span className="font-normal text-fg-muted">{m.agent_sentence_hint()}</span>
+        </label>
+        {!proposal && (
+          <div>
+            <Button
+              disabled={busy || sentence.trim().length < 3}
+              onClick={() => {
+                setBusy(true);
+                setNotice(null);
+                void understandAgent({ data: { sentence } })
+                  .then((answer) =>
+                    answer.ok && answer.proposal
+                      ? setProposal(answer.proposal)
+                      : setNotice({ ok: false, text: refusal(answer.error) }),
+                  )
+                  .finally(() => setBusy(false));
+              }}
+            >
+              {m.agent_understand()}
+            </Button>
+          </div>
+        )}
+        {proposal && (
+          <div className="grid gap-2 rounded-box border border-line bg-surface-muted p-4">
+            <p className="text-body-sm font-semibold">{m.agent_proposal()}</p>
+            <p className="font-semibold">{proposal.name}</p>
+            <p>{proposal.mission}</p>
+            <div className="flex flex-wrap gap-2">
+              {proposal.watches.map((w) => (
+                <Tag key={w}>{watchLabelOf(w)}</Tag>
+              ))}
+              {proposal.permissions.map((p) => (
+                <Tag key={p} tone="info">
+                  {permissionLabel(p)}
+                </Tag>
+              ))}
+            </div>
+            <p className="text-body-sm text-fg-muted">
+              {m.agent_proposal_level({
+                level: String(proposal.autonomyMax),
+                minutes: String(proposal.wakeEveryMinutes),
+              })}
+            </p>
+            <ol className="grid list-decimal gap-1 pl-5">
+              {proposal.plan.map((step, i) => (
+                <li key={i}>{step}</li>
+              ))}
+            </ol>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={busy}
+                onClick={() => {
+                  setBusy(true);
+                  void changeAgents({
+                    data: {
+                      path: '/',
+                      body: {
+                        name: proposal.name,
+                        kind: 'personal',
+                        mission: proposal.mission,
+                        permissions: proposal.permissions,
+                        watches: proposal.watches,
+                        autonomyMax: proposal.autonomyMax,
+                        wakeEveryMinutes: proposal.wakeEveryMinutes,
+                      },
+                      key: crypto.randomUUID(),
+                    },
+                  })
+                    .then(async (answer) => {
+                      if (!answer.ok) return setNotice({ ok: false, text: refusal(answer.error) });
+                      setNotice({ ok: true, text: m.agent_created() });
+                      setProposal(null);
+                      setSentence('');
+                      await router.invalidate();
+                    })
+                    .finally(() => setBusy(false));
+                }}
+              >
+                {m.agent_create()}
+              </Button>
+              <Button variant="secondary" onClick={() => setProposal(null)}>
+                {m.agent_rephrase()}
+              </Button>
+            </div>
+          </div>
+        )}
+        {notice && (
+          <p
+            role={notice.ok ? 'status' : 'alert'}
+            className={notice.ok ? 'text-body-sm' : 'text-body-sm text-state-error-fg'}
+          >
+            {notice.text}
+          </p>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
 function AgentCard({ agent, unitName }: { agent: AgentView; unitName: Map<string, string> }) {
   const { error, send } = useGesture();
   const format = new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'short' });
@@ -171,6 +396,8 @@ function AgentCard({ agent, unitName }: { agent: AgentView; unitName: Map<string
             {agent.status === 'active' ? m.agent_pause() : m.agent_resume()}
           </Button>
         </div>
+        <AgentAutonomy agent={agent} send={send} />
+        <AgentWeek agent={agent} />
         <AgentTasks agent={agent} send={send} />
         <div>
           <h3 className="mb-2 text-body-sm font-semibold">{m.agent_signals()}</h3>
@@ -216,6 +443,7 @@ export function AgentsView({ screen }: { screen: AgentsScreen }) {
     on ? [...list, value] : list.filter((v) => v !== value);
   return (
     <div className="grid gap-6">
+      <AgentFromSentence watchLabelOf={watchLabel} />
       {screen.agents.length === 0 ? (
         <p className="text-fg-muted">{m.agents_none()}</p>
       ) : (

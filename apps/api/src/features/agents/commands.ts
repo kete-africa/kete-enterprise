@@ -2,6 +2,7 @@ import { defineCommand } from '@kete/commands';
 import { z } from 'zod';
 import { registerAgent } from '../registry/index.js';
 import {
+  agentAutonomyInput,
   agentStatusInput,
   closeSignalInput,
   createAgentInput,
@@ -13,13 +14,14 @@ import {
   findSignal,
   insertAgent,
   insertSignal,
+  setAutonomy,
   setStatus,
 } from './infrastructure/agents.tables.js';
 
 /** A rule of the agents was not met: the change is refused, nothing is written. */
 export class AgentRuleError extends Error {
   constructor(
-    readonly code: 'not_found' | 'unknown_watch' | 'closed',
+    readonly code: 'not_found' | 'unknown_watch' | 'closed' | 'not_its_permission' | 'above_max',
     message: string,
   ) {
     super(message);
@@ -73,6 +75,39 @@ export const updateAgentStatus = defineCommand({
     return { agentId: input.agentId, before: agent.status, status: input.status };
   },
   summarize: (input) => `Agent ${input.agentId} is now ${input.status}`,
+});
+
+/** Its level for one kind of task: within what it holds, never above its maximum (spec 052). */
+export const setAgentAutonomy = defineCommand({
+  name: 'set-agent-autonomy',
+  input: agentAutonomyInput,
+  reversibility: { reversible: true, inverse: 'set-agent-autonomy' },
+  async handler(input, { db }) {
+    const agent = await findAgent(db, input.agentId);
+    if (!agent) throw new AgentRuleError('not_found', 'The agent does not exist here.');
+    if (!agent.permissions.includes(input.permission)) {
+      throw new AgentRuleError(
+        'not_its_permission',
+        'Its job description lists no such permission.',
+      );
+    }
+    if (input.level !== null && input.level > agent.autonomyMax) {
+      throw new AgentRuleError('above_max', 'Never above its maximum.');
+    }
+    const levels = Object.fromEntries(
+      Object.entries(agent.autonomyByPermission).filter(([p]) => p !== input.permission),
+    );
+    if (input.level !== null) levels[input.permission] = input.level;
+    await setAutonomy(db, input.agentId, levels);
+    return {
+      agentId: input.agentId,
+      permission: input.permission,
+      before: agent.autonomyByPermission[input.permission] ?? null,
+      level: input.level,
+    };
+  },
+  summarize: (input) =>
+    `Agent ${input.agentId}: ${input.permission} at level ${input.level ?? 'its maximum'}`,
 });
 
 /** Level 1: an agent says what it found; it changes nothing else. */

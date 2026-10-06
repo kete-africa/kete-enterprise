@@ -76,19 +76,29 @@ export async function toolsForPerson(identity: { organizationId: string; userId:
 export async function toolsForAgent(
   person: { organizationId: string; userId: string },
   actor: Actor,
-  limits: { permissions: string[]; autonomyMax: number; draftBudget: number },
+  limits: {
+    permissions: string[];
+    autonomyMax: number;
+    /** Its level per permission, never above its maximum (spec 052). */
+    autonomyByPermission?: Record<string, number>;
+    draftBudget: number;
+  },
 ) {
   const caller = { organizationId: person.organizationId, actor };
   const allowed = new Set(limits.permissions);
   const permissionOf = new Map(
     (await registry.list(caller)).map((capability) => [capability.name, capability.permission]),
   );
-  const tools = (await registry.tools(caller)).filter(
-    (tool) =>
-      tool.autonomy <= limits.autonomyMax &&
-      (allowed.has(permissionOf.get(tool.name) ?? '') ||
-        permissionOf.get(tool.name) === GATEWAY_PERMISSION),
-  );
+  // A tool within the level its kind of task allows: its permission's, else the agent's maximum.
+  const levelOf = (permission: string) =>
+    Math.min(limits.autonomyMax, limits.autonomyByPermission?.[permission] ?? limits.autonomyMax);
+  const tools = (await registry.tools(caller)).filter((tool) => {
+    const permission = permissionOf.get(tool.name) ?? '';
+    return (
+      tool.autonomy <= levelOf(permission) &&
+      (allowed.has(permission) || permission === GATEWAY_PERMISSION)
+    );
+  });
   return tools.map((tool) =>
     tool.autonomy < 3
       ? tool

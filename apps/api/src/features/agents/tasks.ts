@@ -347,6 +347,7 @@ export async function runTask(
           ...(await toolsForAgent(person, actor, {
             permissions: agent.permissions,
             autonomyMax: agent.autonomyMax,
+            autonomyByPermission: agent.autonomyByPermission,
             draftBudget: agent.draftBudget,
           })),
           ...delegationTools(organizationId, userId, task, agent),

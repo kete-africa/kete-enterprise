@@ -20,7 +20,11 @@ import { notificationsTablesSql } from '../src/features/notifications/index.js';
 import { appDecisionsMigrationSql, appEventsMigrationSql } from '../src/features/apps/index.js';
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
-import { agentsMigrationSql, agentTasksMigrationSql } from '../src/features/agents/index.js';
+import {
+  agentAutonomyMigrationSql,
+  agentTasksMigrationSql,
+  agentsMigrationSql,
+} from '../src/features/agents/index.js';
 import { complianceMigrationSql } from '../src/features/compliance/index.js';
 import { decisionsMigrationSql } from '../src/features/decisions/index.js';
 import { gatewayAppendOnlySql, gatewayMigrationSql } from '../src/features/gateway/index.js';
@@ -182,4 +186,6 @@ export const migrations: Migration[] = [
   { name: '0041_dashboard_versions', sql: (context) => dashboardVersionsMigrationSql(context) },
   // Routines: triggers on the apps' events, watches on figures, every run kept (spec 051).
   { name: '0042_routines', sql: (context) => routinesMigrationSql(context) },
+  // An agent's level per kind of task (spec 052).
+  { name: '0043_agent_autonomy', sql: (context) => agentAutonomyMigrationSql(context) },
 ];

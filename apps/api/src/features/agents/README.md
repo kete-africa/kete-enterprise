@@ -43,3 +43,21 @@ minute with her capabilities narrowed to its job description (permissions, auton
 drafts), every commitment a draft she decides; it may hand part of it to another of her agents
 (`delegate_task`, the chain carried, four agents at most); she sees each task's answer, steps and
 drafts, is told when it ends, and stops it. See [spec 036](../../../../../specs/036-agents/spec.md).
+
+## Autonomy per kind of task, its record, an agent from a sentence (spec 052)
+
+```mermaid
+flowchart LR
+  J[Job description · permissions · autonomy max] --> L[Level per permission · 1 read · 2 act, undoable · 3 prepare]
+  L --> G[Gateway: tool.autonomy ≤ min(max, its permission's level)]
+  T[agent_tasks] & D[kete_drafts it prepared] & S[agent_signals] --> R[GET /v1/agents/:id/record]
+  P[Her sentence] -->|POST /v1/agents/understand| F[A proposed job description · nothing created]
+```
+
+- **Per permission** (`autonomy_by_permission`, migration 0043): its person or a manager of agents
+  sets a level for a permission it holds, never above its maximum; level 4, committing, is never
+  set per kind of task. Without one, its maximum applies.
+- **Its record**: the last 7 days by default (up to 90): tasks by outcome, drafts it prepared by
+  decision, signals raised and closed.
+- **From a sentence**: only the watches that exist and the permissions she holds, a maximum level
+  of 3 at most; created only when she presses « Créer cet agent ».
