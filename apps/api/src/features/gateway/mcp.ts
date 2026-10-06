@@ -68,6 +68,16 @@ export async function toolsForPerson(identity: { organizationId: string; userId:
   );
 }
 
+/** Each capability's permission by its tool's name, as the caller sees them (spec 056). */
+export async function toolPermissions(
+  organizationId: string,
+  actor: Actor,
+): Promise<Map<string, string>> {
+  return new Map(
+    (await registry.list({ organizationId, actor })).map((c) => [c.name, c.permission]),
+  );
+}
+
 /**
  * An agent's tools for a task given to it (spec 036): its person's capabilities — the same
  * registry, her rights — narrowed to its job description: the permissions it lists, its highest

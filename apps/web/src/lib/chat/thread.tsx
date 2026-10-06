@@ -15,35 +15,13 @@ import { Icon, IconButton, Markdown, Tag, ToolCard } from '@kete/design';
 import type { ComponentProps, FC, ReactNode } from 'react';
 import { DraftCard } from '@/lib/draft-card';
 import type { AppView as AppViewData, DraftReview } from '@/lib/workspace';
+import { toolLabel } from '@/lib/tool-words';
 import * as m from '@/paraglide/messages.js';
 import { AppView } from './app-view';
 
 // The chat's thread on assistant-ui's primitives (spec 027), dressed with @kete/design's tokens
 // and components: the conversation, the tools as cards with their drafts, the sources, the files,
 // and a composer that attaches, dictates, mentions (@) and runs commands (/).
-
-/** The words of a tool the assistant called. */
-function toolLabel(name: string): string {
-  const labels: Record<string, () => string> = {
-    my_day: m.tool_my_day,
-    schedule_task: m.tool_schedule_task,
-    memory_remember: m.tool_memory_remember,
-    knowledge_search: m.tool_knowledge_search,
-    structure_chart: m.tool_structure_chart,
-    registry_list: m.tool_registry_list,
-    registry_register: m.tool_registry_register,
-    decisions_inbox: m.tool_decisions_inbox,
-    performance_readings_to_take: m.tool_readings_to_take,
-    performance_propose_measure: m.tool_propose_measure,
-    actions_propose: m.tool_actions_propose,
-    canvas_write: m.tool_canvas_write,
-    dashboard_propose: m.tool_dashboard_propose,
-    dashboard_read: m.tool_dashboard_read,
-    dashboard_change: m.tool_dashboard_change,
-    team_datasets: m.tool_team_datasets,
-  };
-  return labels[name]?.() ?? name;
-}
 
 const toolState = (state: 'running' | 'done' | 'refused') =>
   ({ running: m.tool_running, done: m.tool_done, refused: m.tool_refused })[state]();

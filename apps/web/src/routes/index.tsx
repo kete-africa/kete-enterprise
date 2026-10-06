@@ -5,6 +5,7 @@ import { CardView } from '@/lib/dashboard-card';
 import { kindIcon, why } from '@/lib/day';
 import { pinDashboard } from '@/lib/dashboards';
 import { refusal } from '@/lib/forms';
+import { HowButton } from '@/lib/how-view';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import { fetchToday, type DayItem } from '@/lib/today';
@@ -203,6 +204,7 @@ function Today() {
                   <Tag tone="agent">{t.agentName}</Tag>
                   {t.status === 'failed' && <Tag tone="error">{m.today_failed()}</Tag>}
                   <span className="font-semibold">{t.instruction}</span>
+                  <HowButton taskId={t.taskId} />
                 </div>
                 {t.answer && <p className="text-body-sm whitespace-pre-line">{t.answer}</p>}
                 {t.draftCount > 0 && (

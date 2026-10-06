@@ -195,6 +195,26 @@ describe('a task given to an agent', () => {
     expect(told[0]?.title).toContain('Agent de suivi');
   });
 
+  it('says how it did it: each step with its right and level, its rights — to her only (spec 056)', async () => {
+    const how = (await call(t.awa, 'GET', `/agents/tasks/${ids.first}/how`)).body;
+    expect(how).toMatchObject({
+      instruction: 'Prépare l’action de relancer le client Mensah.',
+      status: 'done',
+      agent: { agentId: ids.planner, name: 'Agent de suivi' },
+      askedBy: { kind: 'person', reader: true },
+      startedAt: expect.any(String),
+      finishedAt: expect.any(String),
+      steps: [
+        { tool: 'actions_propose', status: 'draft', permission: 'meetings:manage', level: 3 },
+      ],
+      gestures: [],
+      draftCount: 1,
+      rights: { permissions: ['meetings:manage'], autonomyMax: 3 },
+    });
+    expect((await call(t.kofi, 'GET', `/agents/tasks/${ids.first}/how`)).status).toBe(403);
+    expect((await call(t.awa, 'GET', '/agents/tasks/tsk_00000000/how')).status).toBe(404);
+  });
+
   it('lands on her « Aujourd’hui », its draft counted beside « À faire » (spec 046)', async () => {
     const { task } = await read(ids.first);
     const today = (await call(t.awa, 'GET', '/today')).body as {
@@ -225,8 +245,33 @@ describe('a task given to an agent', () => {
     );
     await runTask('org_kya', second);
     expect((await read(second)).task.steps).toEqual([
-      { tool: 'actions_propose', status: 'refused' },
+      expect.objectContaining({ tool: 'actions_propose', status: 'refused' }),
     ]);
+  });
+
+  it('shows what it did alone as the journal keeps it, undone or not (spec 056)', async () => {
+    const alone = await give(ids.planner, 'Enregistre la compétence « Relances clients ».');
+    useTaskModel(
+      callsThenAnswers(
+        'registry_register',
+        { kind: 'skill', name: 'Relances clients' },
+        'La compétence est enregistrée dans votre espace.',
+      ),
+    );
+    expect(await runTask('org_kya', alone)).toBe('done');
+    const how = (await call(t.awa, 'GET', `/agents/tasks/${alone}/how`)).body as {
+      steps: { tool: string; level: number }[];
+      gestures: { command: string; reversible: boolean; at: string }[];
+    };
+    expect(how.steps).toEqual([expect.objectContaining({ tool: 'registry_register', level: 2 })]);
+    expect(how.gestures).toEqual([
+      expect.objectContaining({ reversible: true, at: expect.any(String) }),
+    ]);
+    // Another task's « Comment ? » never shows this gesture.
+    expect(
+      ((await call(t.awa, 'GET', `/agents/tasks/${ids.first}/how`)).body.gestures as unknown[])
+        .length,
+    ).toBe(0);
   });
 
   it('holds only what its job description lists', async () => {
@@ -280,6 +325,10 @@ describe('a task given to an agent', () => {
     ]);
     useTaskModel(answers('Voici la relance : Madame, …'));
     expect(await runTask('org_kya', handedOn[0]?.taskId ?? '')).toBe('done');
+    // « Comment ? » names who handed it on (spec 056).
+    expect(
+      (await call(t.awa, 'GET', `/agents/tasks/${handedOn[0]?.taskId ?? ''}/how`)).body.askedBy,
+    ).toEqual({ kind: 'agents', names: ['Agent de suivi'] });
     // An agent of the chain is never asked again: the writer, asked by the planner, cannot hand
     // the work back to it.
     const again = await give(String(ids.planner), 'Fais rédiger une autre relance.');

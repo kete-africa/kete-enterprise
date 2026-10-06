@@ -10,6 +10,7 @@ export {
   preparedDraftCount,
   gatewayResourceMetadata,
   handleGateway,
+  toolPermissions,
   toolsForAgent,
   toolsForPerson,
 } from './mcp.js';

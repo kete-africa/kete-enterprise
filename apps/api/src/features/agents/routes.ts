@@ -24,6 +24,7 @@ import {
 import { agentRecord, NoAgentModelError, understandAgent } from './record.js';
 import { wakeAgent } from './wake.js';
 import { knownWatches } from './watches.js';
+import { howOf } from './how.js';
 import { childrenOf, getTask, giveTaskInput, queueTask, stopTask, tasksOf } from './tasks.js';
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
@@ -203,6 +204,18 @@ export function agentsRoutes(permissions: readonly string[]) {
             if (!task) throw new GestureRefusal(404, 'not_found', 'No such task here.');
             await ownAgent(c, db, task.agentId);
             return { task, handedOn: await childrenOf(db, task.taskId) };
+          }),
+        );
+      })
+      // « Comment ? » (spec 056): how it did it, from what was recorded — for whoever may see it.
+      .get('/tasks/:taskId/how', async (c) => {
+        const { organizationId } = c.get('identity');
+        return c.json(
+          await transaction(organizationId, async (db) => {
+            const task = await getTask(db, c.req.param('taskId'));
+            if (!task) throw new GestureRefusal(404, 'not_found', 'No such task here.');
+            const agent = await ownAgent(c, db, task.agentId);
+            return howOf(db, task, agent, c.get('identity').userId);
           }),
         );
       })

@@ -8,8 +8,9 @@ import { z } from 'zod';
 import { asPerson } from '../../platform/acting.js';
 import { getPool, transaction } from '../../platform/db.js';
 import { organizationLanguageModel } from '../../platform/models.js';
+import { sourcesOf, type Source } from '../../platform/sources.js';
 import { usageStore } from '../../platform/usage.js';
-import { toolsForAgent } from '../gateway/index.js';
+import { toolPermissions, toolsForAgent } from '../gateway/index.js';
 import { notificationWords, tell } from '../notifications/index.js';
 import { readModules } from '../organization/index.js';
 import type { Agent } from './agents.record.js';
@@ -57,6 +58,16 @@ grant execute on function ${s}.agent_tasks_queued() to ${options.appRole};
 
 export const giveTaskInput = z.object({ instruction: z.string().trim().min(1).max(4000) });
 
+/** One step of a task, as it was recorded: the tool, the right it used, what it read (spec 056). */
+export interface TaskStep {
+  tool: string;
+  status: string;
+  permission?: string;
+  /** The tool's autonomy level: 1 reads, 2 acts reversibly, 3 prepares a draft. */
+  level?: number;
+  sources?: Source[];
+}
+
 export interface AgentTask {
   taskId: string;
   agentId: string;
@@ -66,10 +77,11 @@ export interface AgentTask {
   instruction: string;
   status: 'queued' | 'running' | 'done' | 'failed' | 'stopped';
   answer: string | null;
-  steps: { tool: string; status: string }[];
+  steps: TaskStep[];
   draftIds: string[];
   error: string | null;
   createdAt: string;
+  startedAt: string | null;
   finishedAt: string | null;
 }
 
@@ -87,6 +99,7 @@ type TaskRow = {
   draft_ids: string[];
   error: string | null;
   created_at: Date;
+  started_at: Date | null;
   finished_at: Date | null;
 };
 const taskOf = (r: TaskRow): AgentTask => ({
@@ -102,10 +115,11 @@ const taskOf = (r: TaskRow): AgentTask => ({
   draftIds: r.draft_ids,
   error: r.error,
   createdAt: r.created_at.toISOString(),
+  startedAt: r.started_at?.toISOString() ?? null,
   finishedAt: r.finished_at?.toISOString() ?? null,
 });
 const COLUMNS = `task_id, agent_id, given_by, parent_task_id, delegated_by, trace_id, instruction,
-  status, answer, steps, draft_ids, error, created_at, finished_at`;
+  status, answer, steps, draft_ids, error, created_at, started_at, finished_at`;
 
 export async function queueTask(
   db: SqlExecutor,
@@ -326,11 +340,15 @@ export async function runTask(
     id: agent.agentId,
     channel: 'worker',
     onBehalfOf: { kind: 'person', id: userId },
+    // Every gesture of a task carries its trace: « Comment ? » finds them in the journal.
+    traceId,
     ...(task.delegatedBy.length
-      ? { delegatedBy: task.delegatedBy.map((id) => ({ kind: 'agent' as const, id })), traceId }
+      ? { delegatedBy: task.delegatedBy.map((id) => ({ kind: 'agent' as const, id })) }
       : {}),
   };
   const person = { organizationId, userId };
+  // What each tool it holds asks for: its permission, its level (spec 056).
+  const facts = new Map<string, { permission: string | undefined; level: number }>();
   try {
     const answer = await asPerson(
       {
@@ -343,15 +361,17 @@ export async function runTask(
         expiresAt: new Date(),
       },
       async () => {
-        const tools = [
-          ...(await toolsForAgent(person, actor, {
-            permissions: agent.permissions,
-            autonomyMax: agent.autonomyMax,
-            autonomyByPermission: agent.autonomyByPermission,
-            draftBudget: agent.draftBudget,
-          })),
-          ...delegationTools(organizationId, userId, task, agent),
-        ];
+        const own = await toolsForAgent(person, actor, {
+          permissions: agent.permissions,
+          autonomyMax: agent.autonomyMax,
+          autonomyByPermission: agent.autonomyByPermission,
+          draftBudget: agent.draftBudget,
+        });
+        const permissionOf = await toolPermissions(organizationId, actor);
+        for (const tool of own) {
+          facts.set(tool.name, { permission: permissionOf.get(tool.name), level: tool.autonomy });
+        }
+        const tools = [...own, ...delegationTools(organizationId, userId, task, agent)];
         return ask({
           model,
           system:
@@ -373,7 +393,17 @@ export async function runTask(
       tool: r.name,
       output: r.output as { status?: string; draftId?: string },
     }));
-    const steps = outputs.map((o) => ({ tool: o.tool, status: o.output?.status ?? 'done' }));
+    const steps: TaskStep[] = outputs.map((o) => {
+      const fact = facts.get(o.tool);
+      const sources = sourcesOf(o.output);
+      return {
+        tool: o.tool,
+        status: o.output?.status ?? 'done',
+        ...(fact?.permission ? { permission: fact.permission } : {}),
+        ...(fact ? { level: fact.level } : {}),
+        ...(sources.length > 0 ? { sources } : {}),
+      };
+    });
     const draftIds = outputs.flatMap((o) => (o.output?.draftId ? [o.output.draftId] : []));
     await transaction(organizationId, async (db) => {
       await finish(db, taskId, {
