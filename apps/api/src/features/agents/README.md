@@ -61,3 +61,22 @@ flowchart LR
   decision, signals raised and closed.
 - **From a sentence**: only the watches that exist and the permissions she holds, a maximum level
   of 3 at most; created only when she presses « Créer cet agent ».
+
+## « Comment ? » (spec 056)
+
+How an agent did a task, from what was recorded when it ran.
+
+```mermaid
+flowchart LR
+  R[runTask] -->|per tool called| S[TaskStep: tool · status · permission · level · sources]
+  S --> T[(agent_tasks.steps)]
+  R -->|actor.traceId on every command| J[(kete_commands)]
+  T --> H[howOf] --> G[/GET /v1/agents/tasks/:taskId/how/]
+  J -->|trace = the task's, actor = this agent| H
+```
+
+- A step's permission comes from the registry (`toolPermissions`), its level from the tool, its
+  sources from `platform/sources.ts` (the same reading as the chat's citations).
+- Every task's actor carries its trace, delegated or not; a delegated work shares one trace, so
+  `howOf` keeps the lines whose actor is the task's own agent.
+- Read by whoever may see the agent (`ownAgent`): its person, or who manages agents.

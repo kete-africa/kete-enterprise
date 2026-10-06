@@ -13,6 +13,7 @@ import {
   type AgentView,
 } from './agents';
 import { DialogForm, GestureForm, refusal, Select } from './forms';
+import { HowButton } from './how-view';
 import { permissionLabel } from './rights-view';
 
 export function signalLabel(kind: string): string {
@@ -122,6 +123,11 @@ function AgentTasks({
                 )}
               </div>
               {t.answer && <p className="whitespace-pre-line">{t.answer}</p>}
+              {t.status !== 'queued' && (
+                <div>
+                  <HowButton taskId={t.taskId} />
+                </div>
+              )}
               {t.draftIds.length > 0 && (
                 <a href="/a-faire" className="font-semibold text-link underline">
                   {m.agent_task_drafts({ count: t.draftIds.length })}
