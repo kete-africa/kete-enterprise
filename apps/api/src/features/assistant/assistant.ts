@@ -63,6 +63,7 @@ import {
   sourcesOf,
   type Source,
 } from './chat-tools.js';
+import { notesPromptFor } from '../notes/index.js';
 import { listMemories, memoryPrompt, rememberTool, type Memory } from './memory.js';
 import { assistantWords } from './words.js';
 
@@ -657,9 +658,8 @@ async function streamChat(c: Ctx): Promise<Response> {
   const answerer = await answererFor(identity, parsed.data.payer);
   const { organizationId, userId } = identity;
   const mentioned = readDirectives(parsed.data.message);
-  const { conversationId, history, organization, files, people, memories } = await transaction(
-    organizationId,
-    async (db) => {
+  const { conversationId, history, organization, files, people, memories, notes } =
+    await transaction(organizationId, async (db) => {
       const id =
         parsed.data.conversationId ??
         (await startConversation(db, organizationId, userId, parsed.data.message));
@@ -695,9 +695,10 @@ async function streamChat(c: Ctx): Promise<Response> {
         files,
         people,
         memories: await listMemories(db, userId),
+        // What she is busy with, in her own words (spec 055) — never while another views her space.
+        notes: c.get('viewedBy') ? '' : await notesPromptFor(db, userId),
       };
-    },
-  );
+    });
   const encoder = new TextEncoder();
   const signal = c.req.raw.signal;
   // The team's apps lend their tools with the person's own token (spec 018) — never while an
@@ -799,6 +800,7 @@ async function streamChat(c: Ctx): Promise<Response> {
                 system(organization, identity.name) +
                 pagePrompt(parsed.data.page) +
                 memoryPrompt(memories) +
+                notes +
                 (skills.prompt
                   ? `
 

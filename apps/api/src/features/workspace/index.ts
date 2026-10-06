@@ -11,6 +11,7 @@ export { todayFor, waitingCount, type DayItem, type DoneItem, type Today } from 
 export {
   appTasksMigrationSql,
   appTasksRoutes,
+  closeTask,
   openTasksOf,
   putTask,
   type AppTask,

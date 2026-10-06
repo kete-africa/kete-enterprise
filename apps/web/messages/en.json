@@ -1553,5 +1553,20 @@
   "governance_summary": "Summary",
   "governance_reversible": "Undoable",
   "governance_yes": "yes",
-  "governance_no": "no"
+  "governance_no": "no",
+  "nav_notebook": "My notebook",
+  "nav_note": "Note",
+  "notebook_title": "My notebook",
+  "notebook_explain": "What you write down, as on paper. Kete keeps it, sets a reminder in To do when a note names a moment, and your assistant uses it to understand what you are busy with. Nobody else reads it.",
+  "notebook_write": "Write down what you want",
+  "notebook_placeholder": "E.g.: “Meeting tomorrow at 10 with Kofi on the Q3 survey”",
+  "notebook_keep": "Note",
+  "notebook_kept": "Kept in My notebook.",
+  "notebook_reminder_filed": "Reminder set in To do: “{title}”, {at}.",
+  "notebook_nothing_filed": "No moment named: nothing else was filed.",
+  "notebook_unfile": "Cancel the reminder",
+  "notebook_reminder": "Reminder: {title}, {at}",
+  "notebook_remove": "Remove",
+  "notebook_none": "Your notebook is empty.",
+  "notebook_private": "A notebook belongs to its person alone: it does not show while you view their space."
 }

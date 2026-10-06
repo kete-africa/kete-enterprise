@@ -99,6 +99,20 @@ export async function putTask(
   return rows[0]?.task_id;
 }
 
+/** Closes a task a feature put, when its person undoes what made it (spec 055). */
+export async function closeTask(
+  db: SqlExecutor,
+  userId: string,
+  task: { source: string; key: string },
+): Promise<boolean> {
+  const { rows } = await db.query(
+    `update app_tasks set status = 'done', updated_at = now()
+      where user_id = $1 and source = $2 and key = $3 and status = 'open' returning task_id`,
+    [userId, task.source, task.key],
+  );
+  return rows.length > 0;
+}
+
 const taskInput = z.object({
   source: z.string().trim().min(1).max(80),
   key: z.string().trim().min(1).max(120),
