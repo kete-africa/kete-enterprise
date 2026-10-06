@@ -22,6 +22,7 @@ export const proposedPlaces: Page[] = [
   'todo',
   'assistant',
   'my_agents',
+  'routines',
   'dossiers',
   'dashboards',
   'team',

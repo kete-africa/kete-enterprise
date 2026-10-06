@@ -9,7 +9,9 @@ export {
   dashboardRoutes,
   dashboardsOpen,
   dashboardTools,
+  figuresFor,
   periodDates,
   pinnedDashboardsFor,
+  readFigure,
   type Card,
 } from './routes.js';

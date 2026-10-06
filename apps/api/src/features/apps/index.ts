@@ -15,5 +15,14 @@ export {
   type AppDecision,
 } from './decisions.js';
 export { appEventRoutes } from './event-routes.js';
-export { appEventsMigrationSql, appNewsFor, receiveAppEvent, type AppNews } from './events.js';
+export {
+  appEventsMigrationSql,
+  appNewsFor,
+  appsHeardBy,
+  eventOf,
+  onAppEvent,
+  receiveAppEvent,
+  type AcceptedEvent,
+  type AppNews,
+} from './events.js';
 export { appRoutes } from './routes.js';

@@ -403,6 +403,50 @@ export async function pinnedDashboardsFor(
   return pinned;
 }
 
+/**
+ * The figures a person may watch (spec 051): her readable dashboards and their figure cards — a
+ * card shown as a number.
+ */
+export async function figuresFor(
+  db: SqlExecutor,
+  identity: Identity,
+): Promise<{ dashboardId: string; name: string; cards: { id: string; title: string }[] }[]> {
+  const admin = isAdministrator(identity);
+  const dashboards = await listDashboards(db, admin ? null : await readerKeys(db, identity));
+  return dashboards
+    .map((d) => ({
+      dashboardId: d.dashboardId,
+      name: d.name,
+      cards: d.widgets.flatMap((w) =>
+        !isNote(w) && w.view === 'number' ? [{ id: w.id ?? '', title: w.title }] : [],
+      ),
+    }))
+    .filter((d) => d.cards.length > 0);
+}
+
+/**
+ * One figure, read with the person's rights: its card's first number; null when the dashboard,
+ * the card or its source is no longer hers to read.
+ */
+export async function readFigure(
+  db: SqlExecutor,
+  identity: Identity,
+  dashboardId: string,
+  cardId: string,
+): Promise<{ title: string; value: number } | null> {
+  const dashboard = await getDashboard(db, dashboardId);
+  if (!dashboard) return null;
+  const keys = new Set(await readerKeys(db, identity));
+  if (!isAdministrator(identity) && !dashboard.audience.some((k) => keys.has(k))) return null;
+  const w = dashboard.widgets.find((x) => x.id === cardId);
+  if (!w || isNote(w)) return null;
+  const card = await dataCard(db, identity, w, allTime);
+  if (card.kind !== 'data' || !card.visible) return null;
+  const first = (card.rows[0] ?? {}) as Record<string, unknown>;
+  const value = Object.values(first).find((v): v is number => typeof v === 'number');
+  return value === undefined ? null : { title: w.title, value };
+}
+
 /** Whether her organization uses dashboards. */
 export async function dashboardsOpen(identity: Identity): Promise<boolean> {
   return transaction(identity.organizationId, async (db) => (await readModules(db)).dashboards);

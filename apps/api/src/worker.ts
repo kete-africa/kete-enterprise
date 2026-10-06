@@ -2,6 +2,11 @@ import { createJobs, defineJob, type Jobs } from '@kete/jobs';
 import { dueAgents, runQueuedTasks, wakeDueAgents } from './features/agents/index.js';
 import { runDueSchedules } from './features/assistant/index.js';
 import { sendQueuedMail } from './features/mail/index.js';
+import {
+  checkDueWatches,
+  listenForRoutines,
+  runQueuedRoutines,
+} from './features/routines/index.js';
 import { getPool } from './platform/db.js';
 import { env } from './platform/env.js';
 
@@ -10,6 +15,8 @@ import { env } from './platform/env.js';
  * between rounds (D-039): permanent does not mean in a loop.
  */
 export async function startWorker(): Promise<Jobs> {
+  // The scheduled tasks' runs are kept in the routines' history (spec 051).
+  listenForRoutines();
   const jobs = createJobs({
     // The jobs' own schema belongs to the owner role; an agent's work goes through the app's pool,
     // under row-level security.
@@ -42,6 +49,26 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const ran = await runDueSchedules();
           if (ran > 0) console.log(`[worker] ${ran} scheduled task(s) run`);
+        },
+      }),
+      // Routines an app's event triggered (spec 051): run every minute, one after the other.
+      defineJob({
+        name: 'run-routines',
+        schedule: '* * * * *',
+        retryLimit: 0,
+        async handle() {
+          const ran = await runQueuedRoutines();
+          if (ran > 0) console.log(`[worker] ${ran} routine run(s)`);
+        },
+      }),
+      // Watches on figures (spec 051): each at most once an hour.
+      defineJob({
+        name: 'check-watches',
+        schedule: '*/5 * * * *',
+        retryLimit: 0,
+        async handle() {
+          const checked = await checkDueWatches();
+          if (checked > 0) console.log(`[worker] ${checked} watch(es) checked`);
         },
       }),
       // E-mails queued by gestures leave every minute; in capture mode none is ever queued.

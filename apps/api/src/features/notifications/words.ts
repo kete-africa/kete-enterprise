@@ -9,6 +9,8 @@ const catalog = {
     agentSignal: (subject: string) => `Votre agent signale : ${subject}`,
     agentTaskDone: (agent: string) => `${agent} a terminé la tâche que vous lui avez confiée`,
     decisionComment: (author: string, title: string) => `${author} a écrit sur « ${title} »`,
+    routineCrossed: (title: string, value: string, line: string, above: boolean) =>
+      `« ${title} » est ${above ? 'au-dessus' : 'au-dessous'} de ${line} : ${value}`,
   },
   en: {
     decisionWaiting: (title: string) => `Your decision is awaited: ${title}`,
@@ -17,6 +19,8 @@ const catalog = {
     agentSignal: (subject: string) => `Your agent reports: ${subject}`,
     agentTaskDone: (agent: string) => `${agent} finished the task you gave it`,
     decisionComment: (author: string, title: string) => `${author} wrote on “${title}”`,
+    routineCrossed: (title: string, value: string, line: string, above: boolean) =>
+      `“${title}” is ${above ? 'above' : 'below'} ${line}: ${value}`,
   },
 } as const;
 
