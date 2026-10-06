@@ -2,11 +2,13 @@ import { PageSection, PageHeader, Panel, TextField } from '@kete/design';
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchConnection, setPersonalPolicy, type PersonalPolicy } from '@/lib/ai';
+import { fetchGovernance, journalCsv, type JournalLine } from '@/lib/governance';
 import { DialogForm, refusal, Select } from '@/lib/forms';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import { fetchUsage, setBudget } from '@/lib/workspace';
 import * as m from '@/paraglide/messages.js';
+import { getLocale } from '@/paraglide/runtime.js';
 
 export const Route = createFileRoute('/administration/ia')({
   beforeLoad: async ({ location }) => {
@@ -15,8 +17,18 @@ export const Route = createFileRoute('/administration/ia')({
     return context;
   },
   loader: async () => {
-    const [usage, connection] = await Promise.all([fetchUsage(), fetchConnection()]);
-    return { ...usage, policy: connection.policy, secrets: connection.available };
+    const [usage, connection, governance] = await Promise.all([
+      fetchUsage(),
+      fetchConnection(),
+      fetchGovernance(),
+    ]);
+    return {
+      ...usage,
+      policy: connection.policy,
+      secrets: connection.available,
+      governance: governance.governance,
+      journal: governance.journal,
+    };
   },
   component: AiPage,
 });
@@ -142,6 +154,145 @@ function AiPage() {
           )}
         </Panel>
       </PageSection>
+      <Governance governance={usage.governance} journal={usage.journal} />
     </AppShell>
+  );
+}
+
+const cell = 'px-2 py-1.5';
+
+/** What the organization spent, found useful, saw fail, and what its AI did (spec 054). */
+function Governance({
+  governance,
+  journal,
+}: {
+  governance: Awaited<ReturnType<typeof fetchGovernance>>['governance'];
+  journal: JournalLine[];
+}) {
+  const number = new Intl.NumberFormat(getLocale());
+  const when = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
+  const exportJournal = () => {
+    const csv = journalCsv(journal, [
+      m.governance_at(),
+      m.governance_actor(),
+      m.governance_for(),
+      m.governance_channel(),
+      m.governance_action(),
+      m.governance_summary(),
+      m.governance_reversible(),
+    ]);
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `journal-ia-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <>
+      <PageSection title={m.governance_teams()}>
+        <Panel>
+          {governance.teams.length === 0 ? (
+            <p className="text-body-sm text-fg-muted">{m.governance_none()}</p>
+          ) : (
+            <table className="w-full text-body-sm">
+              <thead>
+                <tr className="text-left text-fg-muted">
+                  <th className={cell}>{m.governance_team()}</th>
+                  <th className={`${cell} text-right`}>{m.governance_calls()}</th>
+                  <th className={`${cell} text-right`}>{m.governance_tokens()}</th>
+                  <th className={`${cell} text-right`}>{m.governance_people()}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {governance.teams.map((team) => (
+                  <tr key={team.unitId ?? 'none'} className="border-t border-line">
+                    <td className={cell}>{team.unit ?? m.governance_no_team()}</td>
+                    <td className={`${cell} text-right font-number`}>
+                      {number.format(team.calls)}
+                    </td>
+                    <td className={`${cell} text-right font-number`}>
+                      {number.format(team.tokens)}
+                    </td>
+                    <td className={`${cell} text-right font-number`}>
+                      {number.format(team.people)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+      </PageSection>
+      <PageSection title={m.governance_feedback()}>
+        <Panel>
+          <p>
+            {governance.feedback.judged === 0
+              ? m.governance_feedback_none()
+              : m.governance_feedback_share({
+                  helpful: number.format(governance.feedback.helpful),
+                  judged: number.format(governance.feedback.judged),
+                })}
+          </p>
+          <p className="mt-2 text-body-sm text-fg-muted">
+            {m.governance_failures()} :{' '}
+            {m.governance_failures_line({
+              tasks: number.format(governance.failures.tasks),
+              routines: number.format(governance.failures.routines),
+            })}
+          </p>
+        </Panel>
+      </PageSection>
+      <PageSection title={m.governance_journal()}>
+        <Panel>
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <p className="flex-1 text-body-sm text-fg-muted">{m.governance_journal_explain()}</p>
+            {journal.length > 0 && (
+              <button
+                type="button"
+                onClick={exportJournal}
+                className="inline-flex h-(--control-height) items-center rounded-control border border-line-control px-(--control-padding) font-semibold text-fg hover:bg-surface-hover"
+              >
+                {m.governance_export()}
+              </button>
+            )}
+          </div>
+          {journal.length === 0 ? (
+            <p className="text-body-sm text-fg-muted">{m.governance_journal_none()}</p>
+          ) : (
+            <div className="max-h-[480px] overflow-auto">
+              <table className="w-full text-body-sm">
+                <thead>
+                  <tr className="text-left text-fg-muted">
+                    <th className={cell}>{m.governance_at()}</th>
+                    <th className={cell}>{m.governance_actor()}</th>
+                    <th className={cell}>{m.governance_for()}</th>
+                    <th className={cell}>{m.governance_channel()}</th>
+                    <th className={cell}>{m.governance_summary()}</th>
+                    <th className={cell}>{m.governance_reversible()}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {journal.slice(0, 100).map((line, i) => (
+                    <tr key={i} className="border-t border-line align-top">
+                      <td className={`${cell} whitespace-nowrap`}>
+                        {when.format(new Date(line.at))}
+                      </td>
+                      <td className={cell}>{line.actor}</td>
+                      <td className={cell}>{line.onBehalfOf ?? '—'}</td>
+                      <td className={cell}>{line.channel}</td>
+                      <td className={cell}>{line.summary ?? line.command}</td>
+                      <td className={cell}>
+                        {line.reversible ? m.governance_yes() : m.governance_no()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
+      </PageSection>
+    </>
   );
 }

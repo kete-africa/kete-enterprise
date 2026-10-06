@@ -10,6 +10,7 @@ export { useAgentModel } from './record.js';
 export { agentsPermissions, agentsRoutes } from './routes.js';
 export {
   agentTasksMigrationSql,
+  failedTasksSince,
   finishedFor,
   runQueuedTasks,
   runTask,
