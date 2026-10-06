@@ -1,6 +1,21 @@
 @import 'tailwindcss';
 @import '@kete/design/styles.css';
+/* The dashboards' grid (spec 050), coloured by the design's tokens below. */
+@import 'react-grid-layout/css/styles.css';
 /* The build's own output is never a source: without .git (an image), Tailwind would scan it and
    the server and client builds would name a different stylesheet. */
 @source not '../../dist';
 @source '../../node_modules/@kete/design/src';
+
+/* The dashboards' grid (spec 050): its placeholder and resize corner in the design's colours. */
+.react-grid-item.react-grid-placeholder {
+  background: var(--color-accent);
+  opacity: 0.15;
+  border-radius: var(--radius-box);
+}
+.react-grid-item > .react-resizable-handle {
+  opacity: 1;
+}
+.react-grid-item > .react-resizable-handle::after {
+  border-color: var(--color-fg-muted);
+}

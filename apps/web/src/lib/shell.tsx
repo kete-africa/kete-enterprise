@@ -20,7 +20,7 @@ import {
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import * as m from '@/paraglide/messages.js';
 import { administers, opens, viewAs, type Me } from './me';
-import { AssistantPanel, useShownPage } from './chat/panel';
+import { AssistantPanel, useAskBeside, useShownPage } from './chat/panel';
 import { searchEverywhere, type SearchResult } from './notifications';
 import { proposedPlaces, SidebarNav } from './sidebar-nav';
 
@@ -485,6 +485,7 @@ export function AppShell({
     [current],
   );
   useCommandShortcut(openPalette);
+  useAskBeside(ask);
   useEffect(() => {
     const current = document.documentElement.getAttribute('data-theme');
     if (current === 'dark' || current === 'light' || current === 'auto') setTheme(current);
