@@ -13,6 +13,7 @@ import { keepConversationAsSkill } from '@/lib/skills';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import { fetchAssistant, fetchConversation, fetchConversations, type Payer } from '@/lib/workspace';
+import { PinToSidebar } from '@/lib/sidebar-nav';
 import * as m from '@/paraglide/messages.js';
 
 const isConversation = (value: unknown): value is string =>
@@ -151,6 +152,16 @@ function AssistantPage() {
               >
                 {m.skills_keep_conversation()}
               </button>
+            )}
+            {current && (
+              <PinToSidebar
+                me={me}
+                shortcut={{
+                  kind: 'conversation',
+                  ref: current.conversationId,
+                  label: current.title.slice(0, 120) || m.nav_assistant(),
+                }}
+              />
             )}
             <a
               href="/assistant/memoire"

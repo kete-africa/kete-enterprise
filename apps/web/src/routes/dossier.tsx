@@ -6,6 +6,7 @@ import { dossierGesture, fetchDossier, searchDossier } from '@/lib/dossiers';
 import { DialogForm, refusal, Select } from '@/lib/forms';
 import { useAssistantPage } from '@/lib/chat/panel';
 import { AppShell } from '@/lib/shell';
+import { PinToSidebar } from '@/lib/sidebar-nav';
 import { requirePerson } from '@/lib/signed-in';
 import * as m from '@/paraglide/messages.js';
 
@@ -72,6 +73,10 @@ function DossierPage() {
             >
               {m.dossier_ask()}
             </a>
+            <PinToSidebar
+              me={me}
+              shortcut={{ kind: 'dossier', ref: dossier.dossierId, label: dossier.name }}
+            />
             {owner && (
               <Button
                 variant="secondary"

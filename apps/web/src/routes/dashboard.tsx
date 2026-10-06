@@ -15,6 +15,7 @@ import { fetchDatasets } from '@/lib/datasets';
 import { DialogForm, refusal, Select } from '@/lib/forms';
 import { useAssistantPage } from '@/lib/chat/panel';
 import { AppShell } from '@/lib/shell';
+import { PinToSidebar } from '@/lib/sidebar-nav';
 import { requirePerson } from '@/lib/signed-in';
 import * as m from '@/paraglide/messages.js';
 
@@ -145,6 +146,10 @@ function DashboardPage() {
                 {pinned ? m.dashboards_unpin() : m.dashboards_pin()}
               </Button>
             )}
+            <PinToSidebar
+              me={me}
+              shortcut={{ kind: 'dashboard', ref: dashboard.dashboardId, label: dashboard.name }}
+            />
             {manage && (
               <>
                 {dashboard.status === 'proposed' && (

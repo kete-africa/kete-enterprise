@@ -50,7 +50,7 @@ import {
 import { rightsMigrationSql } from '../src/features/rights/index.js';
 import { structureMigrationSql } from '../src/features/structure/index.js';
 import { surveysMigrationSql } from '../src/features/surveys/index.js';
-import { appTasksMigrationSql } from '../src/features/workspace/index.js';
+import { appTasksMigrationSql, sidebarMigrationSql } from '../src/features/workspace/index.js';
 import { appRequestsMigrationSql } from '../src/features/app-requests/index.js';
 
 export interface MigrationContext {
@@ -174,4 +174,6 @@ export const migrations: Migration[] = [
   { name: '0038_dashboard_pins', sql: (context) => dashboardPinsMigrationSql(context) },
   // A decision's analysis for its reader, and its discussion (spec 047).
   { name: '0039_decision_todo', sql: (context) => todoMigrationSql(context) },
+  // The sidebar each person arranges (spec 049).
+  { name: '0040_sidebar_layouts', sql: (context) => sidebarMigrationSql(context) },
 ];

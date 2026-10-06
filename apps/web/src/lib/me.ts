@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { deleteCookie, getRequest, setCookie } from '@tanstack/react-start/server';
 import { callApi, SignInRequired, VIEW_AS_COOKIE } from '@/platform/api';
+import type { SidebarLayout } from './sidebar';
 
 export type ModuleKey =
   | 'surveys'
@@ -37,6 +38,8 @@ export interface Me {
   waiting: number;
   /** Her unread notifications. */
   unread: number;
+  /** The sidebar she arranged (spec 049). */
+  sidebar: SidebarLayout;
 }
 
 /** The signed-in person and her organization, as the API sees them; null without a session. */
