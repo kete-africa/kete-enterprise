@@ -62,7 +62,14 @@ import { GestureRefusal, runCommand } from './platform/gestures.js';
 import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
 import { todoRoutes } from './features/todo/index.js';
-import { appTasksRoutes, factsFor, todayFor, waitingCount } from './features/workspace/index.js';
+import {
+  appTasksRoutes,
+  factsFor,
+  sidebarOf,
+  sidebarRoutes,
+  todayFor,
+  waitingCount,
+} from './features/workspace/index.js';
 import { appRequestRoutes, factoryReportRoutes } from './features/app-requests/index.js';
 import { appEventRoutes, appPermissions, appRoutes, tellAppsWith } from './features/apps/index.js';
 import { directoryRoutes } from './features/directory/index.js';
@@ -166,6 +173,8 @@ async function me(c: Ctx) {
       waiting: await waitingCount(db, identity),
       // Her unread notifications: the count on the bell.
       unread: await unreadCount(db, userId),
+      // The sidebar she arranged (spec 049).
+      sidebar: await sidebarOf(db, userId),
     };
   });
 }
@@ -198,6 +207,7 @@ export function createApi(): Hono {
   v1.use('*', requirePerson);
   v1.use('*', viewAs);
   v1.get('/me', async (c) => c.json(await me(c)));
+  v1.route('/sidebar', sidebarRoutes);
   v1.route('/organization', organizationRoutes);
   v1.route('/structure', structureRoutes);
   v1.route('/rights', rightsRoutes(permissionCatalog, appPermissions));

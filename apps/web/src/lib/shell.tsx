@@ -22,6 +22,7 @@ import * as m from '@/paraglide/messages.js';
 import { administers, opens, viewAs, type Me } from './me';
 import { AssistantPanel, useShownPage } from './chat/panel';
 import { searchEverywhere, type SearchResult } from './notifications';
+import { proposedPlaces, SidebarNav } from './sidebar-nav';
 
 /** Where a screen sits: the person's space, or the Administration (spec 010). */
 export type Page =
@@ -206,45 +207,12 @@ export function placesOf(me: Me): Place[] {
   return all.filter((p): p is Place => Boolean(p));
 }
 
-/** What the sidebar always shows; the rest is under « Tout ». */
-const primary: Page[] = ['home', 'todo', 'assistant', 'team', 'dossiers'];
-
-/** The space: today, what waits, the assistant, her team, her dossiers — her apps, then « Tout ». */
+/** The space: the places she keeps, her shortcuts, her team's apps, then « Tout » (spec 049). */
 function SpaceNav({ me, current }: { me: Me; current: Page }) {
-  const places = placesOf(me).filter((p) => primary.includes(p.page));
-  const elsewhere = !primary.includes(current) && !adminPages.includes(current);
-  return (
-    <>
-      <NavSection>
-        {places.map((p) => (
-          <NavItem
-            key={p.page}
-            href={p.href}
-            icon={p.icon}
-            current={current === p.page}
-            {...(p.page === 'todo' ? { count: me.waiting } : {})}
-          >
-            {p.label}
-          </NavItem>
-        ))}
-      </NavSection>
-      {me.apps.length > 0 && (
-        <NavSection label={m.nav_team_apps()}>
-          {me.apps.map((app) => (
-            <NavItem key={app.resourceId} href={app.address} icon="apps" external>
-              {app.name}
-            </NavItem>
-          ))}
-        </NavSection>
-      )}
-      <div className="my-4 border-t border-line" />
-      <NavSection>
-        <NavItem href="/tout" icon="layers" current={current === 'all' || elsewhere}>
-          {m.nav_all()}
-        </NavItem>
-      </NavSection>
-    </>
-  );
+  const places = placesOf(me);
+  const inSidebar = proposedPlaces.filter((p) => !me.sidebar.hidden.includes(p));
+  const elsewhere = !inSidebar.includes(current) && !adminPages.includes(current);
+  return <SidebarNav me={me} places={places} current={current} elsewhere={elsewhere} />;
 }
 
 /** The Administration: the frame only — never a survey or a grid (spec 010). */

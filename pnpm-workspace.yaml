@@ -16,3 +16,8 @@ allowBuilds:
 # pnpm's minimum release age.
 minimumReleaseAgeExclude:
   - '@kete-africa/*'
+
+overrides:
+  # vitest 3 locks a tinypool with known flaws (GHSA-85c8-ppgw-ccpr and its sibling); 2.1.2 fixes
+  # them and keeps the same pool interface.
+  vitest>tinypool: ^2.1.2
