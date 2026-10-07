@@ -9,6 +9,7 @@ import { env } from '../../platform/env.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { organizationLanguageModel } from '../../platform/models.js';
+import { transcribeAudio, TranscriptionUnavailable } from '../../platform/transcription.js';
 import { usageStore } from '../../platform/usage.js';
 import { closeTask, putTask } from '../workspace/index.js';
 
@@ -38,11 +39,24 @@ grant select, insert, update, delete on ${s}.person_notes to ${options.appRole};
 `;
 }
 
+/** What a note is about (spec 059): the subject of her day it was written for — its report. */
+export function notesAboutMigrationSql(options: { schema: string }): string {
+  const s = options.schema;
+  return `
+alter table ${s}.person_notes
+  add column about_key text check (length(about_key) <= 200),
+  add column about_title text check (length(about_title) <= 300),
+  add constraint person_notes_about check ((about_key is null) = (about_title is null));
+`;
+}
+
 export interface Note {
   noteId: string;
   text: string;
   summary: string | null;
   reminder: { title: string; at: string } | null;
+  /** The subject of her day it reports on, when it was written for one (spec 059). */
+  about: { key: string; title: string } | null;
   createdAt: string;
 }
 type Row = {
@@ -51,6 +65,8 @@ type Row = {
   summary: string | null;
   reminder_title: string | null;
   reminder_at: Date | null;
+  about_key: string | null;
+  about_title: string | null;
   created_at: Date;
 };
 const noteOf = (r: Row): Note => ({
@@ -61,6 +77,7 @@ const noteOf = (r: Row): Note => ({
     r.reminder_title && r.reminder_at
       ? { title: r.reminder_title, at: r.reminder_at.toISOString() }
       : null,
+  about: r.about_key && r.about_title ? { key: r.about_key, title: r.about_title } : null,
   createdAt: r.created_at.toISOString(),
 });
 
@@ -80,7 +97,8 @@ export async function notesPromptFor(db: SqlExecutor, userId: string): Promise<s
     '',
     'Ses dernières notes, écrites par elle (sers-t’en pour comprendre ce qui l’occupe ; ne les répète pas) :',
     ...notes.map(
-      (n) => `- ${n.createdAt.slice(0, 10)} : ${n.text.replace(/\s+/g, ' ').slice(0, 300)}`,
+      (n) =>
+        `- ${n.createdAt.slice(0, 10)}${n.about ? ` (compte rendu de « ${n.about.title} »)` : ''} : ${n.text.replace(/\s+/g, ' ').slice(0, 300)}`,
     ),
   ].join('\n');
 }
@@ -146,6 +164,9 @@ async function understand(
 
 const reminderKey = (noteId: string) => noteId;
 
+/** A dictated report: a few minutes of speech, not a meeting's recording. */
+const MAX_DICTATION_BYTES = 10 * 1024 * 1024;
+
 /** Her notebook, under /v1/notes: hers alone, never while her space is viewed by another. */
 export const noteRoutes = new Hono<{ Variables: IdentityVariables }>()
   .get('/', async (c) => {
@@ -161,7 +182,18 @@ export const noteRoutes = new Hono<{ Variables: IdentityVariables }>()
   .post('/', async (c) => {
     if (c.get('viewedBy')) throw new GestureRefusal(403, 'view_as_forbidden', 'Hers to write.');
     const parsed = z
-      .object({ text: z.string().trim().min(1).max(4000) })
+      .object({
+        text: z.string().trim().min(1).max(4000),
+        // The subject of her day this note reports on (spec 059).
+        about: z
+          .object({
+            key: z
+              .string()
+              .regex(/^(decision|draft|app_task|form|action|note):[A-Za-z0-9_.:-]{1,160}$/),
+            title: z.string().trim().min(1).max(300),
+          })
+          .optional(),
+      })
       .safeParse(await bodyOf(c));
     if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'A note.');
     const identity = c.get('identity');
@@ -176,8 +208,8 @@ export const noteRoutes = new Hono<{ Variables: IdentityVariables }>()
       const noteId = newId('nte');
       const { rows } = await db.query<Row>(
         `insert into person_notes (note_id, organization_id, user_id, text, summary,
-           reminder_title, reminder_at)
-         values ($1, $2, $3, $4, $5, $6, $7) returning *`,
+           reminder_title, reminder_at, about_key, about_title)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning *`,
         [
           noteId,
           identity.organizationId,
@@ -186,6 +218,8 @@ export const noteRoutes = new Hono<{ Variables: IdentityVariables }>()
           reading?.summary ?? null,
           reminder?.title ?? null,
           reminder?.at ?? null,
+          parsed.data.about?.key ?? null,
+          parsed.data.about?.title ?? null,
         ],
       );
       // The reminder waits in « À faire » — an address of the space, so it needs its public URL.
@@ -201,6 +235,44 @@ export const noteRoutes = new Hono<{ Variables: IdentityVariables }>()
       return noteOf(rows[0] as Row);
     });
     return c.json({ note }, 201);
+  })
+  // « Dicter » (spec 059): what she said, as text she reads back before keeping it. The audio
+  // is read once and never kept; nothing is stored until she keeps the note.
+  .post('/dictate', async (c) => {
+    if (c.get('viewedBy')) throw new GestureRefusal(403, 'view_as_forbidden', 'Hers to say.');
+    const parsed = z
+      .object({
+        audio: z
+          .string()
+          .min(1)
+          .max(Math.ceil((MAX_DICTATION_BYTES * 4) / 3) + 8),
+        contentType: z.string().regex(/^audio\/[\w.+-]+(;.*)?$/),
+      })
+      .safeParse(await bodyOf(c));
+    if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'A recording.');
+    const audio = new Uint8Array(Buffer.from(parsed.data.audio, 'base64'));
+    if (audio.byteLength === 0 || audio.byteLength > MAX_DICTATION_BYTES) {
+      throw new GestureRefusal(422, 'invalid_input', 'A recording of a few minutes at most.');
+    }
+    const identity = c.get('identity');
+    try {
+      const { text } = await transcribeAudio(audio, {
+        store: usageStore(),
+        context: {
+          organizationId: identity.organizationId,
+          actor: { kind: 'person', id: identity.userId, channel: 'web' },
+          purpose: 'dictation',
+          model: '',
+        },
+      });
+      if (!text) throw new GestureRefusal(422, 'unreadable_file', 'Nothing was heard.');
+      return c.json({ text: text.slice(0, 4000) });
+    } catch (error) {
+      if (error instanceof TranscriptionUnavailable) {
+        throw new GestureRefusal(409, 'transcription_unavailable', error.message);
+      }
+      throw error;
+    }
   })
   // « Annuler le rappel »: the note stays, its reminder leaves « À faire ».
   .post('/:noteId/unfile', async (c) => {

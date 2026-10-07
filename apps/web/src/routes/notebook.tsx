@@ -48,6 +48,9 @@ function NotebookPage() {
               <span className="text-body-sm text-fg-muted">{when(note.createdAt)}</span>
               <p className="whitespace-pre-wrap">{note.text}</p>
               <div className="flex flex-wrap items-center gap-2">
+                {note.about && (
+                  <Tag tone="neutral">{m.notebook_about({ title: note.about.title })}</Tag>
+                )}
                 {note.reminder && (
                   <Tag tone="info">
                     {m.notebook_reminder({

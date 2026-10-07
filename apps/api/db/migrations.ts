@@ -11,7 +11,7 @@ import {
 } from '../src/features/dashboards/index.js';
 import { datasetsMigrationSql } from '../src/features/datasets/index.js';
 import { exchangesMigrationSql } from '../src/features/exchanges/index.js';
-import { notesMigrationSql } from '../src/features/notes/index.js';
+import { notesAboutMigrationSql, notesMigrationSql } from '../src/features/notes/index.js';
 import { routinesMigrationSql } from '../src/features/routines/index.js';
 import { documentsMigrationSql } from '../src/features/documents/index.js';
 import { formsMigrationSql } from '../src/features/forms/index.js';
@@ -203,4 +203,6 @@ export const migrations: Migration[] = [
   { name: '0046_assistant_exchanges', sql: (context) => exchangesMigrationSql(context) },
   // « Aujourd'hui » as a session: what a person sets aside for the day (spec 058).
   { name: '0047_today_set_aside', sql: (context) => todaySessionMigrationSql(context) },
+  // A note says what it reports on: a report dictated in the field (spec 059).
+  { name: '0048_person_notes_about', sql: (context) => notesAboutMigrationSql(context) },
 ];

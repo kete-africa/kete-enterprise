@@ -43,6 +43,7 @@ export type Page =
   | 'dashboards'
   | 'routines'
   | 'notebook'
+  | 'field'
   | 'admin_templates'
   | 'admin_library'
   | 'my_agents'
@@ -129,6 +130,13 @@ export function placesOf(me: Me): Place[] {
       href: '/carnet',
       icon: 'new',
       label: m.nav_notebook(),
+      group: 'me',
+    },
+    {
+      page: 'field',
+      href: '/terrain',
+      icon: 'tool',
+      label: m.nav_field(),
       group: 'me',
     },
     {
