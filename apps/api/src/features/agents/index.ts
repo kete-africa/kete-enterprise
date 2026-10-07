@@ -13,6 +13,7 @@ export {
   agentTasksMigrationSql,
   failedTasksSince,
   finishedFor,
+  ongoingFor,
   runQueuedTasks,
   runTask,
   useTaskModel,

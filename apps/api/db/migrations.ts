@@ -59,7 +59,11 @@ import {
 import { rightsMigrationSql } from '../src/features/rights/index.js';
 import { structureMigrationSql } from '../src/features/structure/index.js';
 import { surveysMigrationSql } from '../src/features/surveys/index.js';
-import { appTasksMigrationSql, sidebarMigrationSql } from '../src/features/workspace/index.js';
+import {
+  appTasksMigrationSql,
+  sidebarMigrationSql,
+  todaySessionMigrationSql,
+} from '../src/features/workspace/index.js';
 import { appRequestsMigrationSql } from '../src/features/app-requests/index.js';
 
 export interface MigrationContext {
@@ -197,4 +201,6 @@ export const migrations: Migration[] = [
   { name: '0045_person_notes', sql: (context) => notesMigrationSql(context) },
   // Exchanges between assistants: what each person allows, every exchange kept (spec 057).
   { name: '0046_assistant_exchanges', sql: (context) => exchangesMigrationSql(context) },
+  // « Aujourd'hui » as a session: what a person sets aside for the day (spec 058).
+  { name: '0047_today_set_aside', sql: (context) => todaySessionMigrationSql(context) },
 ];

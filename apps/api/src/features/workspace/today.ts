@@ -3,14 +3,16 @@ import type { SqlExecutor } from '@kete/tenancy';
 import { asPerson, type Acting } from '../../platform/acting.js';
 import { transaction } from '../../platform/db.js';
 import { readRegister } from '../actions/index.js';
-import { finishedFor } from '../agents/index.js';
+import { finishedFor, ongoingFor } from '../agents/index.js';
 import { pinnedDashboardsFor, type Card, type Dashboard } from '../dashboards/index.js';
 import { inboxFor } from '../decisions/index.js';
 import { draftsFor, preparedDraftCount } from '../gateway/index.js';
 import { listNotes } from '../meetings/index.js';
 import { readModules } from '../organization/index.js';
 import { personOfAccount } from '../structure/index.js';
+import { listRuns } from '../routines/index.js';
 import { respondentsOfPerson } from '../surveys/index.js';
+import { setAsideOf } from './session.js';
 import { openTasksOf } from './tasks.js';
 
 // « Aujourd'hui » (spec 046): what waits for the person, as things to do rather than counts — each
@@ -41,11 +43,25 @@ export interface DoneItem {
   finishedAt: string;
 }
 
+/** « Pendant ce temps » (spec 058): what her agents and her routines are doing right now. */
+export interface Meanwhile {
+  agents: {
+    taskId: string;
+    agentName: string;
+    instruction: string;
+    status: 'queued' | 'running';
+  }[];
+  routines: { runId: string; title: string; cause: string; status: 'queued' | 'running' }[];
+}
+
 export interface Today {
   name: string;
   today: string;
   /** Everything that waits, most pressing first; the screen shows the first ones. */
   day: DayItem[];
+  /** The subjects she set aside for today, as « kind:id » (spec 058). */
+  later: string[];
+  meanwhile: Meanwhile;
   pinned: { dashboard: Dashboard; cards: Card[] }[];
   done: DoneItem[];
 }
@@ -175,6 +191,25 @@ export async function todayFor(
       name: person?.name ?? identity.name,
       today: new Date().toISOString().slice(0, 10),
       day: ordered(items),
+      later: await setAsideOf(db, identity.userId),
+      meanwhile: options.viewedBy
+        ? { agents: [], routines: [] }
+        : {
+            agents: (await ongoingFor(db, identity.userId)).map((t) => ({
+              taskId: t.taskId,
+              agentName: t.agentName,
+              instruction: t.instruction,
+              status: t.status as 'queued' | 'running',
+            })),
+            routines: (await listRuns(db, identity.userId, 30))
+              .filter((r) => r.status === 'queued' || r.status === 'running')
+              .map((r) => ({
+                runId: r.runId,
+                title: r.title,
+                cause: r.cause,
+                status: r.status as 'queued' | 'running',
+              })),
+          },
       pinned: modules.dashboards
         ? await pinnedDashboardsFor(db, identity, { admin: options.admin, limit: 3 })
         : [],
