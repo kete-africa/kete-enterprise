@@ -77,6 +77,7 @@ import {
   sidebarOf,
   sidebarRoutes,
   todayFor,
+  todaySessionRoutes,
   waitingCount,
 } from './features/workspace/index.js';
 import { appRequestRoutes, factoryReportRoutes } from './features/app-requests/index.js';
@@ -293,6 +294,8 @@ export function createApi(): Hono {
       }),
     );
   });
+  // Her session's gestures: a subject set aside for today, taken back (spec 058).
+  v1.route('/today', todaySessionRoutes);
   api.route('/v1', v1);
 
   const open = new Hono();

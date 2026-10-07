@@ -8,7 +8,8 @@ import { refusal } from '@/lib/forms';
 import { HowButton } from '@/lib/how-view';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
-import { fetchToday, type DayItem } from '@/lib/today';
+import { fetchToday, keyOf, laterToday, resumeToday, type DayItem } from '@/lib/today';
+import { MeanwhileList, SessionCard, useSession } from '@/lib/today-session';
 import { decideDraft, fetchBriefing } from '@/lib/workspace';
 import * as m from '@/paraglide/messages.js';
 import { getLocale } from '@/paraglide/runtime.js';
@@ -78,8 +79,40 @@ function Today() {
       .finally(() => setBusy(false));
   };
   const date = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'full' }).format(new Date());
-  const shown = today.day.slice(0, SHOWN);
-  const more = today.day.length - shown.length;
+  // The session (spec 058): one subject at a time; what she set aside for today leaves it.
+  const session = useSession();
+  const [skipped, setSkipped] = useState(0);
+  const later = new Set(today.later);
+  const waiting = today.day.filter((item) => !later.has(keyOf(item)));
+  const setAside = today.day.length - waiting.length;
+  const stillThere = new Set(today.day.map(keyOf));
+  const counts = {
+    settled: (session.started ?? []).filter((k) => !stillThere.has(k)).length,
+    later: (session.started ?? []).filter((k) => stillThere.has(k) && later.has(k)).length,
+    remaining: waiting.length,
+  };
+  const current = waiting.length > 0 ? (waiting[skipped % waiting.length] ?? null) : null;
+  const working = today.meanwhile.agents.length + today.meanwhile.routines.length > 0;
+  const shown = waiting.slice(0, SHOWN);
+  const more = waiting.length - shown.length;
+  const gestures = (item: DayItem) =>
+    item.kind === 'draft' && !me.viewedBy ? (
+      <>
+        <a className={secondaryLink} href={item.href}>
+          {m.today_see()}
+        </a>
+        <Button
+          disabled={busy}
+          onClick={() => run(() => decideDraft({ data: { draftId: item.id, action: 'validate' } }))}
+        >
+          {m.today_validate()}
+        </Button>
+      </>
+    ) : (
+      <a className={item.overdue ? primaryLink : secondaryLink} href={item.href}>
+        {item.kind === 'decision' ? m.today_decide() : m.today_open()}
+      </a>
+    );
 
   return (
     <AppShell me={me} current="home">
@@ -92,47 +125,74 @@ function Today() {
       )}
 
       <PageSection first title={m.today_day()}>
-        {shown.length === 0 ? (
-          <p className="text-fg-muted">{m.today_nothing()}</p>
+        {session.started ? (
+          <SessionCard
+            item={current}
+            counts={counts}
+            gestures={current ? gestures(current) : null}
+            busy={busy}
+            onLater={() => {
+              if (current) run(() => laterToday({ data: { key: keyOf(current) } }));
+            }}
+            onSkip={() => setSkipped(skipped + 1)}
+            onEnd={() => {
+              session.end();
+              setSkipped(0);
+            }}
+          />
+        ) : shown.length === 0 ? (
+          <p className="text-fg-muted">{setAside > 0 ? m.today_all_later() : m.today_nothing()}</p>
         ) : (
           <ul className="divide-y divide-line overflow-hidden rounded-box border border-line bg-surface">
             {shown.map((item) => (
-              <DayLine
-                key={`${item.kind}-${item.id}`}
-                item={item}
-                actions={
-                  item.kind === 'draft' && !me.viewedBy ? (
-                    <>
-                      <a className={secondaryLink} href={item.href}>
-                        {m.today_see()}
-                      </a>
-                      <Button
-                        disabled={busy}
-                        onClick={() =>
-                          run(() => decideDraft({ data: { draftId: item.id, action: 'validate' } }))
-                        }
-                      >
-                        {m.today_validate()}
-                      </Button>
-                    </>
-                  ) : (
-                    <a className={item.overdue ? primaryLink : secondaryLink} href={item.href}>
-                      {item.kind === 'decision' ? m.today_decide() : m.today_open()}
-                    </a>
-                  )
-                }
-              />
+              <DayLine key={`${item.kind}-${item.id}`} item={item} actions={gestures(item)} />
             ))}
           </ul>
         )}
-        {more > 0 && (
+        {!session.started && more > 0 && (
           <p className="mt-3 text-body-sm">
             <a className="text-link underline" href="/a-faire">
               {m.today_more({ count: String(more) })}
             </a>
           </p>
         )}
+        {(setAside > 0 || (!session.started && waiting.length > 1 && !me.viewedBy)) && (
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {!session.started && waiting.length > 1 && !me.viewedBy && (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setSkipped(0);
+                  session.start(waiting.map(keyOf));
+                }}
+              >
+                {m.session_start()}
+              </Button>
+            )}
+            {setAside > 0 && (
+              <span className="flex flex-wrap items-center gap-2 text-body-sm text-fg-muted">
+                {m.today_later_count({ count: String(setAside) })}
+                {!me.viewedBy && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="font-semibold text-link underline underline-offset-4"
+                    onClick={() => run(() => resumeToday({ data: {} }))}
+                  >
+                    {m.today_resume_all()}
+                  </button>
+                )}
+              </span>
+            )}
+          </div>
+        )}
       </PageSection>
+
+      {(working || session.started) && !me.viewedBy && (
+        <PageSection title={m.meanwhile_title()}>
+          <MeanwhileList meanwhile={today.meanwhile} />
+        </PageSection>
+      )}
 
       {me.modules.dashboards && (
         <PageSection title={m.today_pinned()}>

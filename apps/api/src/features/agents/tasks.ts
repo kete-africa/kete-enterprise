@@ -168,7 +168,21 @@ export async function tasksOf(db: SqlExecutor, agentId: string): Promise<AgentTa
   return rows.map(taskOf);
 }
 
-/** The tasks a task handed on, to watch the whole of a delegated work. */
+/** What her agents are doing for her now: queued or running, the oldest first (spec 058). */
+export async function ongoingFor(
+  db: SqlExecutor,
+  userId: string,
+): Promise<(AgentTask & { agentName: string })[]> {
+  const { rows } = await db.query<TaskRow & { agent_name: string }>(
+    `select ${COLUMNS.replace(/(\w+)/g, 't.$1')}, a.name as agent_name
+       from agent_tasks t join agents a on a.agent_id = t.agent_id
+      where t.given_by = $1 and t.status in ('queued', 'running')
+      order by t.created_at limit 20`,
+    [userId],
+  );
+  return rows.map((r) => ({ ...taskOf(r), agentName: r.agent_name }));
+}
+
 /** What her agents finished for her since a moment: done or failed, newest first (spec 046). */
 export async function finishedFor(
   db: SqlExecutor,
