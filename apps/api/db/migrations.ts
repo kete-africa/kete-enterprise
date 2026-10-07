@@ -10,6 +10,7 @@ import {
   dashboardsMigrationSql,
 } from '../src/features/dashboards/index.js';
 import { datasetsMigrationSql } from '../src/features/datasets/index.js';
+import { exchangesMigrationSql } from '../src/features/exchanges/index.js';
 import { notesMigrationSql } from '../src/features/notes/index.js';
 import { routinesMigrationSql } from '../src/features/routines/index.js';
 import { documentsMigrationSql } from '../src/features/documents/index.js';
@@ -194,4 +195,6 @@ export const migrations: Migration[] = [
   { name: '0044_assistant_feedback', sql: (context) => feedbackMigrationSql(context) },
   // Her notebook: notes understood, a reminder filed when they name a moment (spec 055).
   { name: '0045_person_notes', sql: (context) => notesMigrationSql(context) },
+  // Exchanges between assistants: what each person allows, every exchange kept (spec 057).
+  { name: '0046_assistant_exchanges', sql: (context) => exchangesMigrationSql(context) },
 ];

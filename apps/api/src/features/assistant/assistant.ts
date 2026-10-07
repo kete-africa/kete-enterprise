@@ -63,6 +63,7 @@ import {
   sourcesOf,
   type Source,
 } from './chat-tools.js';
+import { colleagueTool } from '../exchanges/index.js';
 import { notesPromptFor } from '../notes/index.js';
 import { listMemories, memoryPrompt, rememberTool, type Memory } from './memory.js';
 import { assistantWords } from './words.js';
@@ -682,7 +683,7 @@ async function streamChat(c: Ctx): Promise<Response> {
         const card = await colleagueCard(db, identity, d.id as string);
         if (card) {
           people.push(
-            `${card.name} : ${card.positions.map((p) => `${p.title} (${p.unitName})`).join(', ') || 'sans poste'} ; responsable : ${card.managers.map((x) => x.name).join(', ') || '—'}.`,
+            `${card.name} (compte ${d.id as string}) : ${card.positions.map((p) => `${p.title} (${p.unitName})`).join(', ') || 'sans poste'} ; responsable : ${card.managers.map((x) => x.name).join(', ') || '—'}.`,
           );
         }
       }
@@ -810,7 +811,9 @@ ${skills.prompt}`
               tools: [
                 ...(await toolsForPerson(identity)),
                 canvasTool,
-                ...(c.get('viewedBy') ? [] : [scheduleTool(identity), rememberTool(identity)]),
+                ...(c.get('viewedBy')
+                  ? []
+                  : [scheduleTool(identity), rememberTool(identity), colleagueTool(identity)]),
                 ...(library ? [knowledgeTool(identity)] : []),
                 ...(documents && !c.get('viewedBy') ? documentTools(identity) : []),
                 ...skills.tools,

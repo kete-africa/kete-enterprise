@@ -20,6 +20,7 @@ export function toolLabel(name: string): string {
     dashboard_change: m.tool_dashboard_change,
     team_datasets: m.tool_team_datasets,
     delegate_task: m.tool_delegate_task,
+    ask_colleague_assistant: m.tool_ask_colleague,
   };
   return labels[name]?.() ?? name;
 }
