@@ -1,11 +1,11 @@
 import { extract, type Metering } from '@kete/ai';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
-import { transcribe } from 'ai';
 import { z } from 'zod';
+import { organizationLanguageModel } from '../../platform/models.js';
 import {
-  organizationLanguageModel,
-  organizationTranscriptionModel,
-} from '../../platform/models.js';
+  transcribeAudio as readAudio,
+  TranscriptionUnavailable,
+} from '../../platform/transcription.js';
 import type { Meeting } from './meetings.js';
 
 // A meeting's record prepared from what was said (spec 035): its audio transcribed — the audio
@@ -48,18 +48,14 @@ export async function transcribeAudio(
   audio: Uint8Array,
   metering: Metering,
 ): Promise<{ text: string; language: string | null }> {
-  const model = organizationTranscriptionModel();
-  if (!model) throw new RecordError('transcription_unavailable', 'No transcription model.');
-  await metering.store.check(metering.context);
-  const result = await transcribe({ model, audio });
-  await metering.store.record(
-    {
-      ...metering.context,
-      model: typeof model === 'string' ? model : `${model.provider}:${model.modelId}`,
-    },
-    { inputTokens: 0, outputTokens: 0, modelCalls: 1 },
-  );
-  return { text: result.text.trim(), language: result.language ?? null };
+  try {
+    return await readAudio(audio, metering);
+  } catch (error) {
+    if (error instanceof TranscriptionUnavailable) {
+      throw new RecordError('transcription_unavailable', error.message);
+    }
+    throw error;
+  }
 }
 
 export interface Transcript {

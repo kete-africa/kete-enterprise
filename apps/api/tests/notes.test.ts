@@ -1,8 +1,10 @@
 import type { TestSchema } from '@kete/testing';
-import { MockLanguageModelV4 } from 'ai/test';
+import type { TranscriptionModel } from 'ai';
+import { MockLanguageModelV4, MockTranscriptionModelV4 } from 'ai/test';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApi } from '../src/app.js';
 import { useNoteModel } from '../src/features/notes/index.js';
+import { useOrganizationModels } from '../src/platform/models.js';
 import { startApi, tokenFor } from './support.js';
 
 // Spec 055: « Noter » — a note kept in her notebook, understood, a reminder filed in « À faire »
@@ -58,6 +60,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   useNoteModel(undefined);
+  useOrganizationModels({});
   await db?.drop();
 });
 
@@ -137,5 +140,81 @@ describe('a note', () => {
     ).toBe(403);
     expect((await call(t.kofi, 'POST', `/notes/${noteId}/remove`)).status).toBe(404);
     expect((await call(t.awa, 'POST', `/notes/${noteId}/remove`)).status).toBe(200);
+  });
+});
+
+// Spec 059: a report dictated in the field — what she said becomes text she reads back, the
+// audio is never kept, and the note she keeps says which subject of her day it reports on.
+describe('a report dictated', () => {
+  const audio = Buffer.from('not really audio').toString('base64');
+  const heard = (text: string) =>
+    new MockTranscriptionModelV4({
+      doGenerate: async () => ({
+        text,
+        segments: [],
+        language: 'fr',
+        durationInSeconds: 12,
+        warnings: [],
+        response: { timestamp: new Date(), modelId: 'mock' },
+      }),
+    }) as unknown as TranscriptionModel;
+
+  it('says so when the organization has no transcription model', async () => {
+    useOrganizationModels({ transcription: null });
+    const answer = await call(t.awa, 'POST', '/notes/dictate', {
+      audio,
+      contentType: 'audio/webm',
+    });
+    expect(answer.status).toBe(409);
+    expect(answer.body).toMatchObject({ error: 'transcription_unavailable' });
+  });
+
+  it('becomes text she reads back; nothing is kept until she keeps it', async () => {
+    useOrganizationModels({
+      transcription: heard('Batteries remplacées chez Mme Owusu, tension mesurée à 12,8 volts.'),
+    });
+    const before = ((await call(t.awa, 'GET', '/notes')).body.notes as unknown[]).length;
+    const said = await call(t.awa, 'POST', '/notes/dictate', {
+      audio,
+      contentType: 'audio/webm;codecs=opus',
+    });
+    expect(said.status).toBe(200);
+    expect(said.body).toEqual({
+      text: 'Batteries remplacées chez Mme Owusu, tension mesurée à 12,8 volts.',
+    });
+    expect(((await call(t.awa, 'GET', '/notes')).body.notes as unknown[]).length).toBe(before);
+    expect(
+      (await call(t.awa, 'POST', '/notes/dictate', { audio, contentType: 'video/mp4' })).status,
+    ).toBe(422);
+    expect(
+      (await call(t.awa, 'POST', '/notes/dictate', { audio: '', contentType: 'audio/webm' }))
+        .status,
+    ).toBe(422);
+  });
+
+  it('is kept as a note that says what it reports on', async () => {
+    useNoteModel(reading({ summary: 'Batteries remplacées chez Mme Owusu.', reminder: null }));
+    const kept = await call(t.awa, 'POST', '/notes', {
+      text: 'Batteries remplacées chez Mme Owusu, tension mesurée à 12,8 volts.',
+      about: { key: 'app_task:tsk_1047', title: 'T-1047 · Batteries hors seuil' },
+    });
+    expect(kept.status).toBe(201);
+    expect(kept.body.note).toMatchObject({
+      about: { key: 'app_task:tsk_1047', title: 'T-1047 · Batteries hors seuil' },
+    });
+    const notes = (await call(t.awa, 'GET', '/notes')).body.notes as {
+      about: { title: string } | null;
+    }[];
+    expect(notes[0]?.about?.title).toBe('T-1047 · Batteries hors seuil');
+    // A note written for nothing in particular says so.
+    expect(notes.filter((n) => n.about === null).length).toBeGreaterThan(0);
+    expect(
+      (
+        await call(t.awa, 'POST', '/notes', {
+          text: 'x',
+          about: { key: 'anything', title: 'y' },
+        })
+      ).status,
+    ).toBe(422);
   });
 });

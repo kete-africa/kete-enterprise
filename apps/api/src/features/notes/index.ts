@@ -2,6 +2,7 @@
 export {
   listNotes,
   noteRoutes,
+  notesAboutMigrationSql,
   notesMigrationSql,
   notesPromptFor,
   useNoteModel,
