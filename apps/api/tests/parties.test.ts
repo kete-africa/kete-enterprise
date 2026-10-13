@@ -208,7 +208,7 @@ describe('a third party is one record, cited by every app', () => {
     const pair = { keep: ids.garage, merge: ids.garageTwice };
     expect((await post(t.awa, '/parties/distinct', pair)).status).toBe(200);
     expect((await get(t.awa, '/parties/duplicates')).body.duplicates).toEqual([]);
-    expect(await names(t.kofi, '?q=garage')).toEqual(['GARAGE BE SARL', 'Garage Bè']);
+    expect(await names(t.kofi, '?q=garage')).toEqual(['Garage Bè', 'GARAGE BE SARL']);
   });
 
   it('is corrected by who manages third parties', async () => {

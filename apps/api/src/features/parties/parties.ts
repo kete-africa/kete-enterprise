@@ -192,7 +192,8 @@ export async function listParties(
       where status = 'active'
         and ($1 = '' or name_key like '%' || $1 || '%' or ($2::text is not null and phone_key = $2))
         and ($3::text is null or $3 = any(roles))
-      order by name limit 200`,
+      -- By the name as it is compared, then by age: the same order whatever the collation.
+      order by name_key, party_id limit 200`,
     [nameKey(q), phoneKey(q), filter.role ?? null],
   );
   return Promise.all(rows.map((row) => partyOf(db, row)));
@@ -360,7 +361,7 @@ export async function duplicates(db: SqlExecutor): Promise<Duplicate[]> {
           or (a.email is not null and lower(a.email) = lower(b.email)))
         and not exists (select 1 from party_distinct d
                          where d.party_a = a.party_id and d.party_b = b.party_id)
-      order by a.name limit 50`,
+      order by a.name_key, a.party_id limit 50`,
   );
   return rows.map((row) => ({
     a: { partyId: row.a_id, name: row.a_name },
