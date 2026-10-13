@@ -53,4 +53,7 @@ Déléguer; amounts typed in a currency with decimals (the screens read whole un
   projects, and nobody outside does, nor another organization; born from an app's document once,
   its lines as posts; changed by its lead; it names a third party of the center; closed, it is
   read and refuses changes until reopened.
-- Seen with `pnpm demo` on 2026-10-13: see the pull request.
+- Seen with `pnpm demo` on 2026-10-13, as Abla Nyuiadzi: « Projets » lists « Chantier Garage Bè —
+  Garage Bè · mené par Abla Nyuiadzi · Exécution — budget 1 900 000 F CFA »; its page shows « Vendu
+  2 480 000 F CFA », « Budget 1 900 000 F CFA », « Marge prévue 580 000 F CFA · 23 % », its three
+  posts, its team, and « Ouvrir le fil et les fichiers du projet ».
