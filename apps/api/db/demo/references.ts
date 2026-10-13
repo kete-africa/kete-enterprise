@@ -65,3 +65,70 @@ export async function seedProject(options: {
   });
   return made.status < 300;
 }
+
+/**
+ * The demo's facts of money (step F4): what an app would say of the Garage Bè site — a deposit
+ * received, three expenses, an order placed, a milestone invoiced. Written in advance: Gestion
+ * does not exist yet. Its orders exceed what is left of its funds, so the alert can be seen.
+ */
+export async function seedMoney(options: { api: Hono; admin: string }): Promise<number> {
+  const headers = (key: string) => ({
+    authorization: `Bearer ${options.admin}`,
+    'content-type': 'application/json',
+    'idempotency-key': key,
+  });
+  const listed = await options.api.request('/v1/projects', { headers: headers('demo-m') });
+  const found = (await listed.json()) as { projects?: { projectId: string; name: string }[] };
+  const project = found.projects?.find((candidate) => candidate.name === 'Chantier Garage Bè');
+  if (!project) return 0;
+  const facts = [
+    { key: 'ENC-0007', kind: 'received', amount: 992_000, label: 'Acompte de 40 %' },
+    {
+      key: 'DEP-0101',
+      kind: 'spent',
+      amount: 620_000,
+      label: 'Batteries 200 Ah',
+      post: 'Matériel',
+    },
+    {
+      key: 'DEP-0102',
+      kind: 'spent',
+      amount: 180_000,
+      label: 'Pose, semaine 1',
+      post: 'Main-d’œuvre',
+    },
+    {
+      key: 'DEP-0103',
+      kind: 'spent',
+      amount: 96_000,
+      label: 'Carburant et péages',
+      post: 'Déplacements',
+    },
+    {
+      key: 'BC-0031',
+      kind: 'committed',
+      amount: 700_000,
+      label: 'Bon de commande BC-0031',
+      post: 'Matériel',
+    },
+    { key: 'F-0412', kind: 'invoiced', amount: 744_000, label: 'Jalon « Livraison »' },
+  ];
+  let said = 0;
+  for (const fact of facts) {
+    const response = await options.api.request('/v1/money/facts', {
+      method: 'POST',
+      headers: headers(`demo-money-${fact.key}`),
+      body: JSON.stringify({
+        source: 'Gestion (démonstration)',
+        fact: {
+          ...fact,
+          currency: 'XOF',
+          occurred_on: '2026-10-09',
+          project_id: project.projectId,
+        },
+      }),
+    });
+    if (response.status < 300) said += 1;
+  }
+  return said;
+}

@@ -11,6 +11,7 @@ import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { refusal } from '@/lib/forms';
 import { shownMoney } from '@/lib/money';
+import { fetchFunds } from '@/lib/project-money';
 import { createProject, fetchProjects, type Project } from '@/lib/projects';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
@@ -18,7 +19,10 @@ import * as m from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/projets')({
   beforeLoad: ({ location }) => requirePerson(location.href),
-  loader: () => fetchProjects(),
+  loader: async () => {
+    const [listed, funds] = await Promise.all([fetchProjects(), fetchFunds()]);
+    return { ...listed, funds };
+  },
   component: ProjectsPage,
 });
 
@@ -39,7 +43,7 @@ export const statusTone: Record<Project['status'], TagTone> = {
  */
 function ProjectsPage() {
   const { me } = Route.useRouteContext();
-  const { projects, manages } = Route.useLoaderData();
+  const { projects, manages, funds } = Route.useLoaderData();
   const router = useRouter();
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +123,60 @@ function ProjectsPage() {
           </ul>
         )}
       </PageSection>
+      {funds && funds.projects.length > 0 && (
+        <PageSection title={m.funds_title()}>
+          <p className="mb-3 text-body-sm text-fg-muted">
+            {m.funds_explain({
+              reserved: shownMoney(funds.organization.reserved, funds.organization.currency),
+              committed: shownMoney(funds.organization.committed, funds.organization.currency),
+            })}
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-body-sm">
+              <thead>
+                <tr className="border-b border-line text-fg-muted">
+                  <th className="py-2 pe-3 text-start font-normal">{m.nav_projects()}</th>
+                  <th className="py-2 pe-3 text-end font-normal">{m.money_received()}</th>
+                  <th className="py-2 pe-3 text-end font-normal">{m.money_committed()}</th>
+                  <th className="py-2 pe-3 text-end font-normal">{m.money_spent()}</th>
+                  <th className="py-2 text-end font-normal">{m.money_available()}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {funds.projects.map((line) => (
+                  <tr key={line.projectId}>
+                    <td className="py-2 pe-3">
+                      <a href={`/projets/${line.projectId}`} className="text-link underline">
+                        {line.name}
+                      </a>
+                    </td>
+                    {[line.money.received, line.money.committed, line.money.spent].map(
+                      (amount, index) => (
+                        <td
+                          key={index}
+                          className="whitespace-nowrap py-2 pe-3 text-end tabular-nums"
+                        >
+                          {shownMoney(amount, line.money.currency)}
+                        </td>
+                      ),
+                    )}
+                    <td
+                      className={`whitespace-nowrap py-2 text-end font-semibold tabular-nums ${line.money.short > 0 ? 'text-state-error-fg' : ''}`}
+                    >
+                      {shownMoney(line.money.available, line.money.currency)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {funds.organization.shortProjects > 0 && (
+            <p className="mt-3 text-body-sm text-state-error-fg">
+              {m.funds_short({ count: String(funds.organization.shortProjects) })}
+            </p>
+          )}
+        </PageSection>
+      )}
     </AppShell>
   );
 }

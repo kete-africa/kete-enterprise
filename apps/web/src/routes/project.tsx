@@ -3,6 +3,7 @@ import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { refusal } from '@/lib/forms';
 import { shownMoney } from '@/lib/money';
+import { fetchProjectMoney, ProjectMoneyView } from '@/lib/project-money';
 import { changeProject, fetchProject, type ProjectChange } from '@/lib/projects';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
@@ -11,7 +12,13 @@ import { statusTone, statusWords } from './projects';
 
 export const Route = createFileRoute('/projets/$projectId')({
   beforeLoad: ({ location }) => requirePerson(location.href),
-  loader: ({ params }) => fetchProject({ data: { projectId: params.projectId } }),
+  loader: async ({ params }) => {
+    const [project, money] = await Promise.all([
+      fetchProject({ data: { projectId: params.projectId } }),
+      fetchProjectMoney({ data: { projectId: params.projectId } }),
+    ]);
+    return { project, money };
+  },
   component: ProjectPage,
 });
 
@@ -31,7 +38,7 @@ function Fact({ label, value }: { label: string; value: string }) {
  */
 function ProjectPage() {
   const { me } = Route.useRouteContext();
-  const project = Route.useLoaderData();
+  const { project, money: funds } = Route.useLoaderData();
   const router = useRouter();
   const [post, setPost] = useState({ name: '', budget: '' });
   const [colleague, setColleague] = useState('');
@@ -100,7 +107,13 @@ function ProjectPage() {
             }
           />
         </div>
-        <p className="mt-3 text-body-sm text-fg-muted">{m.project_money_note()}</p>
+        {funds ? (
+          <div className="mt-4 border-t border-line pt-4">
+            <ProjectMoneyView money={funds.money} facts={funds.facts} />
+          </div>
+        ) : (
+          <p className="mt-3 text-body-sm text-fg-muted">{m.project_money_note()}</p>
+        )}
         {mine && open && (
           <form
             className="mt-3 flex flex-wrap items-end gap-2 md:max-w-md"
