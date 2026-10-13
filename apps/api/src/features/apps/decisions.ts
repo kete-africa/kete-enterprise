@@ -1,7 +1,15 @@
 import type { KeteIdentity } from '@kete/auth';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
 import { z } from 'zod';
-import { findRequest, onDecided, openRequest, registerSubjectFamily } from '../decisions/index.js';
+import {
+  advance,
+  findRequest,
+  onDecided,
+  openRequest,
+  registerSubjectFamily,
+  resubmitReturned,
+  type DecisionRequest,
+} from '../decisions/index.js';
 import { listResources } from '../registry/index.js';
 
 // Decisions asked by apps (spec 023, kete-core spec 049): an app declares the subjects it asks
@@ -69,6 +77,11 @@ export const appDecisionInput = z.object({
     .string()
     .regex(/^unt_[0-9a-f-]{8,64}$/)
     .optional(),
+  /** The project of the center it belongs to: a step of the circuit may be its lead's. */
+  projectId: z
+    .string()
+    .regex(/^prj_[0-9a-f-]{8,64}$/)
+    .optional(),
   /** Where the app is told the request was decided: only its id is sent. */
   callbackUrl: z.string().url().startsWith('https://').max(500).optional(),
 });
@@ -93,10 +106,23 @@ export async function openAppDecision(
   identity: Pick<KeteIdentity, 'userId'>,
   product: string,
   input: z.infer<typeof appDecisionInput>,
-): Promise<{ requestId: string; status: 'pending' | 'approved' | 'refused' }> {
+): Promise<{ requestId: string; status: DecisionRequest['status'] }> {
   const subject = `${product}.${input.subject}`;
   if (!(await appSubjects(db)).some((s) => s.subject === subject)) {
     throw new AppDecisionError('unknown_subject', `No active app declares ${subject}.`);
+  }
+  // Sent back to who asked, and asked again by her through the app: it is the same request,
+  // corrected (spec 075).
+  const before = await db.query<{ request_id: string }>(
+    `select request_id from decision_requests
+      where subject = $1 and reference = $2 and status = 'returned' and requester_user_id = $3`,
+    [subject, input.reference, identity.userId],
+  );
+  const returned = before.rows[0] ? await findRequest(db, before.rows[0].request_id) : null;
+  if (returned) {
+    await resubmitReturned(db, returned, { title: input.title, measure: input.measure ?? null });
+    const moved = await advance(db, organizationId, returned.requestId, identity.userId);
+    return { requestId: returned.requestId, status: moved.status };
   }
   const requestId = await openRequest(db, organizationId, {
     subject,
@@ -105,6 +131,7 @@ export async function openAppDecision(
     requesterUserId: identity.userId,
     unitId: input.unitId ?? null,
     measure: input.measure ?? null,
+    projectId: input.projectId ?? null,
   }).catch((error: { code?: string }) => {
     if (error.code === '23505') {
       throw new AppDecisionError('duplicate', 'This reference was already asked for.');
@@ -125,8 +152,8 @@ export interface AppDecision {
   requestId: string;
   subject: string;
   reference: string;
-  status: 'pending' | 'approved' | 'refused';
-  /** The last word given: who decided, and why when refused. */
+  status: DecisionRequest['status'];
+  /** The last word given: who decided, and why when refused or sent back. */
   decidedBy: string | null;
   reason: string | null;
 }
@@ -151,8 +178,13 @@ export async function appDecision(
     subject: row.subject.slice(row.product.length + 1),
     reference: row.reference,
     status: request.status,
-    decidedBy: last?.decidedBy ?? null,
-    reason: request.status === 'refused' ? (last?.reason ?? null) : null,
+    decidedBy: request.returned?.by ?? last?.decidedBy ?? null,
+    reason:
+      request.status === 'returned'
+        ? (request.returned?.reason ?? null)
+        : request.status === 'refused'
+          ? (last?.reason ?? null)
+          : null,
   };
 }
 

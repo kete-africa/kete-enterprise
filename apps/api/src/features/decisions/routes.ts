@@ -7,7 +7,7 @@ import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal, runGesture } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { isAdministrator, reach } from '../rights/index.js';
-import { decideRequest, DecisionRuleError, defineCircuit } from './commands.js';
+import { decideRequest, resubmitRequest, DecisionRuleError, defineCircuit } from './commands.js';
 import { currentStep, type DecisionRequest } from './decisions.record.js';
 import { announceDecided, mayDecide, subjectsOf } from './engine.js';
 import {
@@ -33,7 +33,13 @@ async function run<Input extends z.ZodType, Output>(
   } catch (error) {
     if (error instanceof DecisionRuleError) {
       const status =
-        error.code === 'not_found' ? 404 : error.code === 'not_an_approver' ? 403 : 409;
+        error.code === 'not_found'
+          ? 404
+          : error.code === 'not_an_approver' || error.code === 'not_the_requester'
+            ? 403
+            : error.code === 'reason_required'
+              ? 422
+              : 409;
       throw new GestureRefusal(status, error.code, error.message);
     }
     throw error;
@@ -74,7 +80,19 @@ export const decisionsRoutes = new Hono<{ Variables: IdentityVariables }>()
     });
     // Once decided, whoever listens is told — an app that asked (spec 023) — after the commit.
     const answer = (await response.clone().json()) as { status?: string };
-    if (answer.status === 'approved' || answer.status === 'refused') {
+    // An app is told too when its request comes back: it reads why, and lets her correct it.
+    if (answer.status && answer.status !== 'pending') {
+      await announceDecided(c.get('identity').organizationId, requestId);
+    }
+    return response;
+  })
+  // Who asked corrects a request sent back to her, and sends it again (spec 075).
+  .post('/requests/:requestId/resubmit', async (c) => {
+    const body = (await bodyOf(c)) as Record<string, unknown>;
+    const requestId = c.req.param('requestId');
+    const response = await run(c, resubmitRequest, { ...body, requestId });
+    const answer = (await response.clone().json()) as { status?: string };
+    if (answer.status === 'approved') {
       await announceDecided(c.get('identity').organizationId, requestId);
     }
     return response;

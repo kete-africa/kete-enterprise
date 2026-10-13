@@ -94,6 +94,36 @@ grant select, insert, update on ${s}.circuits, ${s}.circuit_steps, ${s}.decision
 `;
 }
 
+/**
+ * Circuits completed (spec 075): a request sent back to who asked, a step that only informs, a
+ * step decided by a project's lead. No new table: the columns stay under their tables' policies.
+ */
+export function circuitsCompletedMigrationSql(options: { schema: string }): string {
+  const s = options.schema;
+  const rules = "('manager', 'role', 'position', 'person', 'project_lead')";
+  return `
+alter table ${s}.circuit_steps drop constraint circuit_steps_rule_check;
+alter table ${s}.circuit_steps
+  add constraint circuit_steps_rule_check check (rule in ${rules}),
+  add column inform boolean not null default false;
+alter table ${s}.decision_steps drop constraint decision_steps_rule_check;
+alter table ${s}.decision_steps drop constraint decision_steps_status_check;
+alter table ${s}.decision_steps
+  add constraint decision_steps_rule_check check (rule in ${rules}),
+  add constraint decision_steps_status_check
+    check (status in ('pending', 'approved', 'refused', 'skipped', 'informed')),
+  add column inform boolean not null default false;
+alter table ${s}.decision_requests drop constraint decision_requests_status_check;
+alter table ${s}.decision_requests
+  add constraint decision_requests_status_check
+    check (status in ('pending', 'approved', 'refused', 'returned')),
+  add column project_id text,
+  add column returned_by text,
+  add column returned_reason text,
+  add column returned_at timestamptz;
+`;
+}
+
 type RuleColumns = {
   rule: ApproverRule['rule'];
   role_id: string | null;
@@ -110,6 +140,8 @@ function ruleOf(row: RuleColumns): ApproverRule {
       return { rule: 'position', positionId: row.position_id ?? '' };
     case 'person':
       return { rule: 'person', personId: row.person_id ?? '' };
+    case 'project_lead':
+      return { rule: 'project_lead' };
     default:
       return { rule: 'manager' };
   }
@@ -141,9 +173,9 @@ export async function insertCircuit(
   for (const [index, step] of input.steps.entries()) {
     await db.query(
       `insert into circuit_steps (organization_id, circuit_id, position, rule, role_id,
-         position_id, person_id, min_measure)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [organizationId, circuitId, index + 1, ...ruleValues(step)],
+         position_id, person_id, min_measure, inform)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [organizationId, circuitId, index + 1, ...ruleValues(step), step.inform === true],
     );
   }
   return (await findCircuit(db, circuitId)) as Circuit;
@@ -157,8 +189,8 @@ type CircuitRow = {
 };
 
 async function stepsOfCircuit(db: SqlExecutor, circuitId: string): Promise<CircuitStep[]> {
-  const { rows } = await db.query<RuleColumns & { position: number }>(
-    `select position, rule, role_id, position_id, person_id, min_measure
+  const { rows } = await db.query<RuleColumns & { position: number; inform: boolean }>(
+    `select position, rule, role_id, position_id, person_id, min_measure, inform
        from circuit_steps where circuit_id = $1 order by position`,
     [circuitId],
   );
@@ -166,6 +198,7 @@ async function stepsOfCircuit(db: SqlExecutor, circuitId: string): Promise<Circu
     position: row.position,
     rule: ruleOf(row),
     minMeasure: row.min_measure === null ? null : Number(row.min_measure),
+    inform: row.inform,
   }));
 }
 
@@ -210,13 +243,14 @@ export async function insertRequest(
     requesterUserId: string;
     unitId: string | null;
     measure: number | null;
+    projectId?: string | null;
   },
 ): Promise<string> {
   const requestId = newId('drq');
   await db.query(
     `insert into decision_requests (request_id, organization_id, circuit_id, subject, reference,
-       title, requester_user_id, unit_id, measure)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+       title, requester_user_id, unit_id, measure, project_id)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [
       requestId,
       organizationId,
@@ -227,6 +261,7 @@ export async function insertRequest(
       input.requesterUserId,
       input.unitId,
       input.measure,
+      input.projectId ?? null,
     ],
   );
   let first = true;
@@ -237,8 +272,8 @@ export async function insertRequest(
     const status: StepStatus = applies ? 'pending' : 'skipped';
     await db.query(
       `insert into decision_steps (organization_id, request_id, position, rule, role_id,
-         position_id, person_id, min_measure, status, entered_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+         position_id, person_id, min_measure, status, entered_at, inform)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         organizationId,
         requestId,
@@ -249,6 +284,7 @@ export async function insertRequest(
         }),
         status,
         applies && first ? new Date() : null,
+        step.inform,
       ],
     );
     if (applies) first = false;
@@ -265,7 +301,11 @@ type RequestRow = {
   requester_user_id: string;
   unit_id: string | null;
   measure: string | null;
+  project_id: string | null;
   status: RequestStatus;
+  returned_by: string | null;
+  returned_reason: string | null;
+  returned_at: Date | null;
   created_at: Date;
 };
 
@@ -276,7 +316,7 @@ export async function findRequest(
 ): Promise<DecisionRequest | null> {
   const { rows } = await db.query<RequestRow>(
     `select request_id, circuit_id, subject, reference, title, requester_user_id, unit_id, measure,
-            status, created_at
+            project_id, status, returned_by, returned_reason, returned_at, created_at
        from decision_requests where request_id = $1 ${options.lock ? 'for update' : ''}`,
     [requestId],
   );
@@ -285,6 +325,7 @@ export async function findRequest(
   const steps = await db.query<
     RuleColumns & {
       position: number;
+      inform: boolean;
       status: StepStatus;
       decided_by: string | null;
       decided_at: Date | null;
@@ -292,8 +333,8 @@ export async function findRequest(
       entered_at: Date | null;
     }
   >(
-    `select position, rule, role_id, position_id, person_id, min_measure, status, decided_by,
-            decided_at, reason, entered_at
+    `select position, rule, role_id, position_id, person_id, min_measure, inform, status,
+            decided_by, decided_at, reason, entered_at
        from decision_steps where request_id = $1 order by position`,
     [requestId],
   );
@@ -307,12 +348,22 @@ export async function findRequest(
     requesterUserId: row.requester_user_id,
     unitId: row.unit_id,
     measure: row.measure === null ? null : Number(row.measure),
+    projectId: row.project_id,
     status: row.status,
+    returned:
+      row.status === 'returned' && row.returned_by && row.returned_at
+        ? {
+            by: row.returned_by,
+            reason: row.returned_reason ?? '',
+            at: new Date(row.returned_at).toISOString(),
+          }
+        : null,
     createdAt: new Date(row.created_at).toISOString(),
     steps: steps.rows.map((s): DecisionStep => ({
       position: s.position,
       rule: ruleOf(s),
       minMeasure: s.min_measure === null ? null : Number(s.min_measure),
+      inform: s.inform,
       status: s.status,
       decidedBy: s.decided_by,
       decidedAt: iso(s.decided_at),
@@ -360,6 +411,62 @@ export async function enterStep(db: SqlExecutor, requestId: string, position: nu
   );
 }
 
+/** A step that only informs is passed: its people were told. */
+export async function passInformed(db: SqlExecutor, requestId: string, position: number) {
+  await db.query(
+    `update decision_steps set status = 'informed', entered_at = now(), decided_at = now()
+      where request_id = $1 and position = $2`,
+    [requestId, position],
+  );
+}
+
+/** Sends a request back to who asked: it waits for her correction, and nobody decides it. */
+export async function returnRequest(
+  db: SqlExecutor,
+  requestId: string,
+  by: string,
+  reason: string,
+): Promise<void> {
+  await db.query(
+    `update decision_requests
+        set status = 'returned', returned_by = $2, returned_reason = $3, returned_at = now()
+      where request_id = $1`,
+    [requestId, by, reason],
+  );
+}
+
+/**
+ * Who asked sends her corrected request again. With the same measure or a lower one, it goes on
+ * where it was sent back: what was approved stays approved. With a higher one, it starts again:
+ * nobody approved that amount. Steps apply, or not, by the new measure.
+ */
+export async function resubmitRequest(
+  db: SqlExecutor,
+  request: DecisionRequest,
+  change: { title?: string | undefined; measure?: number | null | undefined },
+): Promise<void> {
+  const measure = change.measure === undefined ? request.measure : change.measure;
+  const higher = measure !== null && (request.measure === null || measure > request.measure);
+  await db.query(
+    `update decision_requests
+        set status = 'pending', title = $2, measure = $3, returned_by = null,
+            returned_reason = null, returned_at = null
+      where request_id = $1`,
+    [request.requestId, change.title ?? request.title, measure],
+  );
+  for (const step of request.steps) {
+    const applies = step.minMeasure === null || (measure !== null && measure >= step.minMeasure);
+    const kept = !higher && (step.status === 'approved' || step.status === 'informed');
+    if (kept) continue;
+    await db.query(
+      `update decision_steps
+          set status = $3, decided_by = null, decided_at = null, reason = null, entered_at = null
+        where request_id = $1 and position = $2`,
+      [request.requestId, step.position, applies ? 'pending' : 'skipped'],
+    );
+  }
+}
+
 export async function closeRequest(db: SqlExecutor, requestId: string, status: RequestStatus) {
   await db.query(
     `update decision_requests set status = $2, decided_at = now() where request_id = $1`,
@@ -373,7 +480,7 @@ export async function closeRequest(db: SqlExecutor, requestId: string, status: R
  */
 export async function approversOf(
   db: SqlExecutor,
-  request: Pick<DecisionRequest, 'requesterUserId' | 'unitId'>,
+  request: Pick<DecisionRequest, 'requesterUserId' | 'unitId' | 'projectId'>,
   rule: ApproverRule,
 ): Promise<Set<string>> {
   const active = (alias: string) =>
@@ -401,6 +508,12 @@ export async function approversOf(
     case 'person':
       text = `select account_user_id from people where person_id = $1 and account_user_id is not null`;
       values = [rule.personId];
+      break;
+    case 'project_lead':
+      // The lead of the request's project; a request without a project finds nobody, and goes
+      // to the organization's administrators like any step that finds nobody.
+      text = `select lead_user_id as account_user_id from projects where project_id = $1`;
+      values = [request.projectId];
       break;
     case 'role':
       // The role's grants that cover the request's unit: everywhere, one of its units or above, or

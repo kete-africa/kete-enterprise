@@ -431,7 +431,7 @@ function DecisionPane({
       })
       .finally(() => setBusy(false));
   };
-  const decide = (decision: 'approve' | 'refuse') =>
+  const decide = (decision: 'approve' | 'refuse' | 'return') =>
     run(
       () =>
         changeDecisions({
@@ -652,6 +652,23 @@ function DecisionPane({
               </label>
             </DialogForm>
           </span>
+          {/* Back to who asked, to be corrected and sent again (spec 075). */}
+          <DialogForm
+            title={m.inbox_return()}
+            ready={reason.trim().length > 0}
+            busy={busy}
+            onSubmit={() => decide('return')}
+          >
+            <label className="grid gap-1.5 text-body-sm font-semibold">
+              {m.inbox_return_what()}
+              <textarea
+                className="min-h-24 rounded-control border border-line-control bg-surface-control p-3 font-normal"
+                value={reason}
+                maxLength={1000}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </label>
+          </DialogForm>
         </div>
       )}
     </div>

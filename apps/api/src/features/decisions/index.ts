@@ -2,8 +2,10 @@
 export { DecisionRuleError } from './commands.js';
 export type { Circuit, DecisionRequest } from './decisions.record.js';
 export {
+  advance,
   knownSubjects,
   onDecided,
+  onTold,
   onWaiting,
   openRequest,
   registerSubject,
@@ -11,6 +13,12 @@ export {
   subjectsOf,
   type SubjectHandler,
 } from './engine.js';
-export { findRequest } from './infrastructure/decisions.tables.js';
-export { decisionsMigrationSql } from './infrastructure/decisions.tables.js';
+export {
+  findRequest,
+  resubmitRequest as resubmitReturned,
+} from './infrastructure/decisions.tables.js';
+export {
+  circuitsCompletedMigrationSql,
+  decisionsMigrationSql,
+} from './infrastructure/decisions.tables.js';
 export { decisionsPermissions, decisionsRoutes, inboxFor, requestFor } from './routes.js';

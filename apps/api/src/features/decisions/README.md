@@ -50,3 +50,12 @@ directly (spec 004).
 | `POST /v1/decisions/requests/:requestId/decide` | `decide-request`: approve or refuse, with a reason |
 | `GET /v1/decisions/circuits`                    | The active circuits and known subjects             |
 | `POST /v1/decisions/circuits`                   | `define-circuit` (« decisions:manage »)            |
+
+## Completed (spec 075)
+
+- `advance` moves a request on: a step with `inform` tells its people (`onTold`) and is passed;
+  the first step that needs a decision waits; with none left, the request is approved.
+- `decision: return` sets the request `returned`: `currentStep` is then null, so nobody decides.
+  `resubmit-request` — who asked only — puts it back to `pending`: decided steps are kept unless
+  the measure went up (`resubmitRequest` in the tables).
+- `rule: project_lead` reads `decision_requests.project_id`.

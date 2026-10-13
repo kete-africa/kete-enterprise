@@ -54,6 +54,9 @@ export const fetchDecision = createServerFn({ method: 'GET' })
         subjectLabel: d.request.subjectLabel ?? null,
         title: d.request.title,
         status: d.request.status,
+        returned: d.request.returned
+          ? { by: d.request.returned.by, reason: d.request.returned.reason }
+          : null,
         createdAt: d.request.createdAt,
         currentStep: d.request.currentStep,
         overdue: d.request.overdue,

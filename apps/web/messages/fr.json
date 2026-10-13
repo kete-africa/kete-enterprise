@@ -2068,5 +2068,19 @@
   "funds_explain": "Réservé aux projets : {reserved}. Engagé en tout : {committed}. Ce qui est en banque est dit par la trésorerie.",
   "funds_short": "Projets dont les engagements dépassent les fonds : {count}",
   "permission_money_record": "Enregistrer des mouvements d’argent",
-  "permission_money_read": "Voir l’argent de l’organisation"
+  "permission_money_read": "Voir l’argent de l’organisation",
+  "status_returned": "À corriger",
+  "status_informed": "Informé",
+  "rule_project_lead": "Le responsable du projet",
+  "inbox_return": "Renvoyer pour correction",
+  "inbox_returned_why": "À corriger : {reason}",
+  "inbox_returned_title": "Votre demande, corrigée",
+  "inbox_resubmit": "Renvoyer la demande",
+  "inbox_returned_note": "C’est la même demande : ce qui était déjà approuvé le reste, sauf si le montant augmente.",
+  "circuit_inform": "Ces personnes sont seulement informées : elles ne décident pas",
+  "circuit_informed": "informé, ne décide pas",
+  "error_reason_required": "Dites ce qu’il faut corriger.",
+  "error_not_returned": "Cette demande ne vous a pas été renvoyée.",
+  "error_not_the_requester": "Seule la personne qui a demandé renvoie sa demande.",
+  "inbox_return_what": "Ce qu’il faut corriger"
 }
