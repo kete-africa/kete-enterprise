@@ -33,6 +33,7 @@ export type Page =
   | 'assistant'
   | 'resources'
   | 'apps'
+  | 'parties'
   | 'notifications'
   | 'search'
   | 'library'
@@ -207,6 +208,16 @@ export function placesOf(me: Me): Place[] {
       href: '/bibliotheque',
       icon: 'library',
       label: m.nav_library(),
+      group: 'me',
+    },
+    // The center's references (doctrine D-047): who the organization works with.
+    (me.administrator ||
+      me.permissions.includes('parties:read') ||
+      me.permissions.includes('parties:manage')) && {
+      page: 'parties',
+      href: '/tiers',
+      icon: 'people',
+      label: m.nav_parties(),
       group: 'me',
     },
     // What stands behind the center (spec 070): one door to every business tool.

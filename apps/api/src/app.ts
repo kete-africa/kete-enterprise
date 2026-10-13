@@ -67,6 +67,7 @@ import { GestureRefusal, runCommand } from './platform/gestures.js';
 import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
 import { exchangeRoutes } from './features/exchanges/index.js';
+import { partiesPermissions, partiesRoutes } from './features/parties/index.js';
 import { receptionRoutes, requestRoutes } from './features/requests/index.js';
 import { connectorRoutes } from './features/connectors/index.js';
 import { rulesRoutes } from './features/rules/index.js';
@@ -100,6 +101,7 @@ export const permissionCatalog = [
   ...registryPermissions,
   ...decisionsPermissions,
   ...agentsPermissions,
+  ...partiesPermissions,
   ...compliancePermissions,
   ...surveysPermissions,
   ...performancePermissions,
@@ -237,6 +239,7 @@ export function createApi(): Hono {
   v1.route('/reception', receptionRoutes);
   v1.route('/rules', rulesRoutes(permissionCatalog));
   v1.route('/connectors', connectorRoutes);
+  v1.route('/parties', partiesRoutes);
   v1.route('/apps', appsListingRoutes(permissionCatalog));
   v1.route('/organization', organizationRoutes);
   v1.route('/structure', structureRoutes);

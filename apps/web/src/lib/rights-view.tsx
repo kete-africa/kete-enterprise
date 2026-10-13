@@ -34,6 +34,8 @@ function enterpriseLabel(permission: string): string {
     'registry:review': m.permission_registry_review,
     'decisions:manage': m.permission_decisions_manage,
     'agents:manage': m.permission_agents_manage,
+    'parties:read': m.permission_parties_read,
+    'parties:manage': m.permission_parties_manage,
     'compliance:read': m.permission_compliance_read,
     'compliance:manage': m.permission_compliance_manage,
   };

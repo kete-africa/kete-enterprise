@@ -17,6 +17,8 @@ export const routes = rootRoute('__root.tsx', [
   route('/assistant/echanges', 'exchanges.tsx'),
   route('/mes-agents', 'my-agents.tsx'),
   route('/apps', 'apps.tsx'),
+  route('/tiers', 'parties.tsx'),
+  route('/tiers/$partyId', 'party.tsx'),
   route('/mon-accueil', 'reception.tsx'),
   route('/routines', 'routines.tsx'),
   route('/carnet', 'notebook.tsx'),
