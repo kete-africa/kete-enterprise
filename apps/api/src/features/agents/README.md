@@ -103,3 +103,9 @@ flowchart LR
 - **Shared** (`visibility`, `shared_with`): `openTo` decides who may call it; a called task acts
   for `given_by`, an owned one for the agent's person (`runTask`).
 - **Followed by** who gave the task or the agent's person (`followedTask`).
+
+## The dry run (spec 067)
+
+`findingsOf` is the one reading of a job description — its watches, within its permissions and its
+scope, with its person's rights. A round (`wakeAgent`) raises what it returns; a dry run
+(`POST /v1/agents/dry-run`) only says it. So an agent's first round raises what its dry run said.

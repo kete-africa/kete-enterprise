@@ -11,7 +11,7 @@ import {
 } from '../src/features/dashboards/index.js';
 import { datasetsMigrationSql } from '../src/features/datasets/index.js';
 import { exchangesMigrationSql } from '../src/features/exchanges/index.js';
-import { requestsMigrationSql } from '../src/features/requests/index.js';
+import { receptionMigrationSql, requestsMigrationSql } from '../src/features/requests/index.js';
 import { notesAboutMigrationSql, notesMigrationSql } from '../src/features/notes/index.js';
 import { routinesMigrationSql } from '../src/features/routines/index.js';
 import { documentsMigrationSql } from '../src/features/documents/index.js';
@@ -217,4 +217,6 @@ export const migrations: Migration[] = [
   { name: '0051_colleague_requests', sql: (context) => requestsMigrationSql(context) },
   // Tasks steered while they run, agents private or shared (spec 066, doctrine D-044).
   { name: '0052_agents_at_work', sql: (context) => agentsAtWorkMigrationSql(context) },
+  // « Mon accueil »: her rules and her absence (spec 067, doctrine D-044).
+  { name: '0053_reception', sql: (context) => receptionMigrationSql(context) },
 ];

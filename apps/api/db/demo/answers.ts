@@ -63,3 +63,35 @@ export function scriptedAnswers(datasetId: string) {
     },
   });
 }
+
+/**
+ * The job description the demo proposes for any sentence (step C7): an agent that watches her
+ * late decisions. Written in advance, like the answers: it shows the dry run, not a model.
+ */
+export function scriptedProposal() {
+  return new MockLanguageModelV4({
+    doGenerate: {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            name: 'Veille de mes décisions',
+            mission: 'Me prévenir quand une décision m’attend depuis trop longtemps.',
+            watches: ['decisions'],
+            permissions: [],
+            autonomyMax: 1,
+            wakeEveryMinutes: 60,
+            plan: [
+              'Chaque heure, il lit les décisions qui vous attendent.',
+              'Il vous prévient de celles qui ont dépassé leur délai.',
+              'Il ne décide jamais à votre place.',
+            ],
+          }),
+        },
+      ],
+      finishReason: { unified: 'stop', raw: 'stop' },
+      usage,
+      warnings: [],
+    },
+  });
+}

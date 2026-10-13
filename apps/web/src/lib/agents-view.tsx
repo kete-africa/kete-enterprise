@@ -4,6 +4,8 @@ import { useState } from 'react';
 import * as m from '@/paraglide/messages.js';
 import {
   changeAgents,
+  createAgentAndRun,
+  dryRunAgent,
   fetchAgentRecord,
   understandAgent,
   type AgentProposal,
@@ -12,6 +14,7 @@ import {
   type AgentState,
   type AgentTask,
   type AgentView,
+  type DryRunFinding,
 } from './agents';
 import { DialogForm, GestureForm, refusal, Select } from './forms';
 import { HowButton } from './how-view';
@@ -474,6 +477,8 @@ function AgentFromSentence({ watchLabelOf }: { watchLabelOf: (w: string) => stri
   const router = useRouter();
   const [sentence, setSentence] = useState('');
   const [proposal, setProposal] = useState<AgentProposal | null>(null);
+  // Its dry run (spec 067): what it would signal today. « Créer » waits for it.
+  const [dryRun, setDryRun] = useState<DryRunFinding[] | null>(null);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   return (
@@ -488,6 +493,7 @@ function AgentFromSentence({ watchLabelOf }: { watchLabelOf: (w: string) => stri
             onChange={(e) => {
               setSentence(e.target.value);
               setProposal(null);
+              setDryRun(null);
             }}
             className="rounded-control border border-line-control bg-surface-control px-3 py-2 font-normal"
           />
@@ -500,12 +506,17 @@ function AgentFromSentence({ watchLabelOf }: { watchLabelOf: (w: string) => stri
               onClick={() => {
                 setBusy(true);
                 setNotice(null);
+                setDryRun(null);
                 void understandAgent({ data: { sentence } })
-                  .then((answer) =>
-                    answer.ok && answer.proposal
-                      ? setProposal(answer.proposal)
-                      : setNotice({ ok: false, text: refusal(answer.error) }),
-                  )
+                  .then(async (answer) => {
+                    if (!answer.ok || !answer.proposal) {
+                      return setNotice({ ok: false, text: refusal(answer.error) });
+                    }
+                    setProposal(answer.proposal);
+                    const tried = await dryRunAgent({ data: answer.proposal });
+                    if (tried.ok) setDryRun(tried.findings);
+                    else setNotice({ ok: false, text: refusal(tried.error) });
+                  })
                   .finally(() => setBusy(false));
               }}
             >
@@ -539,30 +550,43 @@ function AgentFromSentence({ watchLabelOf }: { watchLabelOf: (w: string) => stri
                 <li key={i}>{step}</li>
               ))}
             </ol>
+            <div className="grid gap-1 border-t border-line pt-2">
+              <p className="text-body-sm font-semibold">{m.agent_dry_run()}</p>
+              {dryRun === null ? (
+                <p className="text-body-sm text-fg-muted">{m.agent_dry_run_running()}</p>
+              ) : dryRun.length === 0 ? (
+                <p className="text-body-sm">{m.agent_dry_run_none()}</p>
+              ) : (
+                <>
+                  <p className="text-body-sm">
+                    {m.agent_dry_run_found({ count: String(dryRun.length) })}
+                  </p>
+                  <ul className="grid gap-1">
+                    {dryRun.slice(0, 8).map((finding, i) => (
+                      <li key={i} className="flex flex-wrap items-center gap-2 text-body-sm">
+                        <Tag tone="verify">{signalLabel(finding.kind)}</Tag>
+                        <span>{finding.subject}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              <p className="text-body-sm text-fg-muted">{m.agent_dry_run_explain()}</p>
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button
-                disabled={busy}
+                disabled={busy || dryRun === null}
                 onClick={() => {
                   setBusy(true);
-                  void changeAgents({
-                    data: {
-                      path: '/',
-                      body: {
-                        name: proposal.name,
-                        kind: 'personal',
-                        mission: proposal.mission,
-                        permissions: proposal.permissions,
-                        watches: proposal.watches,
-                        autonomyMax: proposal.autonomyMax,
-                        wakeEveryMinutes: proposal.wakeEveryMinutes,
-                      },
-                      key: crypto.randomUUID(),
-                    },
-                  })
+                  void createAgentAndRun({ data: proposal })
                     .then(async (answer) => {
                       if (!answer.ok) return setNotice({ ok: false, text: refusal(answer.error) });
-                      setNotice({ ok: true, text: m.agent_created() });
+                      setNotice({
+                        ok: true,
+                        text: m.agent_created_ran({ count: String(answer.raised) }),
+                      });
                       setProposal(null);
+                      setDryRun(null);
                       setSentence('');
                       await router.invalidate();
                     })

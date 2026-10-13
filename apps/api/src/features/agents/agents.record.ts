@@ -54,6 +54,16 @@ export const agentAutonomyInput = z.object({
   level: z.number().int().min(1).max(3).nullable(),
 });
 
+/** A job description to try before it exists: what it would watch, with which rights. */
+export const dryRunInput = z.object({
+  watches: z.array(watchName).min(1).max(10),
+  permissions: z
+    .array(z.string().regex(/^[a-z]+:[a-z_]+$/))
+    .max(50)
+    .default([]),
+  scopeUnitId: id('unt').optional(),
+});
+
 /** Its person opens it to colleagues, or keeps it to herself (spec 066, doctrine D-044). */
 export const agentSharingInput = z.object({
   agentId,

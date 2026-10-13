@@ -1,4 +1,5 @@
 import { executeCommand, type Actor } from '@kete/commands';
+import type { SqlExecutor } from '@kete/tenancy';
 import { randomUUID } from 'node:crypto';
 import { transaction } from '../../platform/db.js';
 import type { Agent, Finding } from './agents.record.js';
@@ -21,6 +22,32 @@ export interface WakeReport {
   acted: boolean;
   raised: number;
   closed: number;
+}
+
+/**
+ * What a job description finds today, read with its person's rights within its scope and its
+ * permissions. Nothing is written: a round raises these, a dry run only says them (spec 067).
+ */
+export async function findingsOf(
+  db: SqlExecutor,
+  userId: string,
+  description: Pick<Agent, 'watches' | 'permissions' | 'scopeUnitId'>,
+): Promise<Map<string, { watch: string; finding: Finding }>> {
+  // The person's role at the Compte Kete is not known here: an agent never acts as an
+  // administrator, only within the rights the structure gives its person.
+  const person = { userId, role: null };
+  const scope = description.scopeUnitId ? await subtreeOf(db, description.scopeUnitId) : null;
+  const found = new Map<string, { watch: string; finding: Finding }>();
+  for (const name of description.watches) {
+    const plugged = watchNamed(name);
+    if (!plugged) continue;
+    // An agent never holds more than its job description says.
+    if (plugged.permission && !description.permissions.includes(plugged.permission)) continue;
+    for (const finding of await plugged.watch(db, person, scope)) {
+      found.set(finding.key, { watch: name, finding });
+    }
+  }
+  return found;
 }
 
 /** The agent's actor: always acting for its person (D-039: the chain goes back to a human). */
@@ -47,20 +74,7 @@ export async function wakeAgent(organizationId: string, agentId: string): Promis
       await markRun(db, agentId);
       return { agentId, acted: false, raised: 0, closed: 0 };
     }
-    // The person's role at the Compte Kete is not known here: an agent never acts as an
-    // administrator, only within the rights the structure gives its person.
-    const person = { userId, role: null };
-    const scope = agent.scopeUnitId ? await subtreeOf(db, agent.scopeUnitId) : null;
-    const found = new Map<string, { watch: string; finding: Finding }>();
-    for (const name of agent.watches) {
-      const plugged = watchNamed(name);
-      if (!plugged) continue;
-      // An agent never holds more than its job description says.
-      if (plugged.permission && !agent.permissions.includes(plugged.permission)) continue;
-      for (const finding of await plugged.watch(db, person, scope)) {
-        found.set(finding.key, { watch: name, finding });
-      }
-    }
+    const found = await findingsOf(db, userId, agent);
     const actor = actorOf(agent, userId);
     const open = await openSignals(db, agentId);
     const openKeys = new Set(open.map((s) => s.key));

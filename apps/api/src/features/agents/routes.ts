@@ -7,7 +7,7 @@ import { bodyOf, GestureRefusal, runGesture } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { readModules } from '../organization/index.js';
 import { reach, reachesAnything, unitsOfPersonAndAbove } from '../rights/index.js';
-import type { Agent } from './agents.record.js';
+import { dryRunInput, type Agent } from './agents.record.js';
 import {
   AgentRuleError,
   closeSignalCommand,
@@ -24,7 +24,7 @@ import {
   personOfAgent,
 } from './infrastructure/agents.tables.js';
 import { agentRecord, NoAgentModelError, understandAgent } from './record.js';
-import { wakeAgent } from './wake.js';
+import { findingsOf, wakeAgent } from './wake.js';
 import { knownWatches } from './watches.js';
 import { howOf } from './how.js';
 import {
@@ -192,6 +192,28 @@ export function agentsRoutes(permissions: readonly string[]) {
           }
           throw error;
         }
+      })
+      // Its dry run (spec 067): what this job description would signal today — exactly what its
+      // first round would raise, read with her rights. Nothing is created, nothing is written.
+      .post('/dry-run', async (c) => {
+        const parsed = dryRunInput.safeParse(await bodyOf(c));
+        if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'What it watches.');
+        const identity = c.get('identity');
+        const watching = new Set(knownWatches());
+        const found = await transaction(identity.organizationId, (db) =>
+          findingsOf(db, identity.userId, {
+            watches: parsed.data.watches.filter((watch) => watching.has(watch)),
+            permissions: parsed.data.permissions.filter((permission) => known.has(permission)),
+            scopeUnitId: parsed.data.scopeUnitId ?? null,
+          }),
+        );
+        return c.json({
+          findings: [...found.values()].map(({ watch, finding }) => ({
+            watch,
+            kind: finding.kind,
+            subject: finding.subject,
+          })),
+        });
       })
       // A person creates her own agent; a position's or the system's needs a manager of agents.
       .post('/', async (c) => {
