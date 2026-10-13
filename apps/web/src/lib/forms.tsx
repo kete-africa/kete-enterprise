@@ -8,6 +8,12 @@ export function refusal(code: string | null): string {
   const messages: Record<string, () => string> = {
     forbidden: m.error_forbidden,
     task_settled: m.error_task_settled,
+    name_taken: m.error_connector_name_taken,
+    unreachable: m.error_connector_unreachable,
+    no_such_tool: m.error_connector_no_such_tool,
+    not_read_only: m.error_connector_not_read_only,
+    unreadable: m.error_connector_unreadable,
+    not_connected: m.error_connector_not_connected,
     not_tried: m.error_rule_not_tried,
     family_later: m.error_rule_family_later,
     too_many: m.error_too_many,

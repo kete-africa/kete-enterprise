@@ -12,6 +12,7 @@ import {
 import { datasetsMigrationSql } from '../src/features/datasets/index.js';
 import { exchangesMigrationSql } from '../src/features/exchanges/index.js';
 import { receptionMigrationSql, requestsMigrationSql } from '../src/features/requests/index.js';
+import { connectorsMigrationSql } from '../src/features/connectors/index.js';
 import { rulesMigrationSql } from '../src/features/rules/index.js';
 import { notesAboutMigrationSql, notesMigrationSql } from '../src/features/notes/index.js';
 import { routinesMigrationSql } from '../src/features/routines/index.js';
@@ -222,4 +223,6 @@ export const migrations: Migration[] = [
   { name: '0053_reception', sql: (context) => receptionMigrationSql(context) },
   // The organization's rules for its agents, and what they refused (spec 068, doctrine D-043).
   { name: '0054_ai_rules', sql: (context) => rulesMigrationSql(context) },
+  // Connectors: a business tool read through its MCP server (spec 069).
+  { name: '0055_connectors', sql: (context) => connectorsMigrationSql(context) },
 ];

@@ -60,6 +60,7 @@ export type Page =
   | 'rights'
   | 'modules'
   | 'rules'
+  | 'connectors'
   | 'circuits'
   | 'registry'
   | 'agents'
@@ -75,6 +76,7 @@ const adminPages: Page[] = [
   'rights',
   'modules',
   'rules',
+  'connectors',
   'circuits',
   'registry',
   'agents',
@@ -296,6 +298,11 @@ function AdminNav({ me, current }: { me: Me; current: Page }) {
       {me.administrator && (
         <NavItem href="/administration/regles" icon="check" current={current === 'rules'}>
           {m.nav_rules()}
+        </NavItem>
+      )}
+      {me.administrator && (
+        <NavItem href="/administration/connecteurs" icon="apps" current={current === 'connectors'}>
+          {m.nav_connectors()}
         </NavItem>
       )}
       <NavItem href="/administration/circuits" icon="arrow" current={current === 'circuits'}>

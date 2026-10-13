@@ -11,6 +11,8 @@ import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import pg from 'pg';
 import { scriptedAnswers, scriptedProposal } from '../db/demo/answers.js';
 import { seedDay } from '../db/demo/day.js';
+import { seedErp } from '../db/demo/erp.js';
+import { demoEmail } from '../db/demo/kya.js';
 import { seedLibrary } from '../db/demo/library.js';
 import { seedDemo } from '../db/demo/seed.js';
 import { migrations } from '../db/migrations.js';
@@ -157,6 +159,13 @@ if (manager && colleague) {
       `${day.requests} demande d’un collègue à signer.`,
   );
   for (const what of day.skipped) say(`  non joué : ${what}`);
+  // No ERP here either: one is served in memory, its connector left on trial (step C9).
+  if (await seedErp({ api: app, admin: token, approver: demoEmail(manager.name) })) {
+    say(
+      'Connecteur : un ERP écrit d’avance, à l’essai dans Administration › Connecteurs ' +
+        '(Essayer, Connecter, Lire maintenant).',
+    );
+  }
   // No model here: the assistant's answers are written in advance, on the demo's own data.
   // « Créer un agent en une phrase » proposes the same job description, to show its dry run.
   useAgentModel(scriptedProposal());

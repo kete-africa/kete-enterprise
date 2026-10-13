@@ -1,13 +1,14 @@
 import { createJobs, defineJob, type Jobs } from '@kete/jobs';
 import { dueAgents, runQueuedTasks, wakeDueAgents } from './features/agents/index.js';
 import { runDueSchedules } from './features/assistant/index.js';
+import { readConnected } from './features/connectors/index.js';
 import { sendQueuedMail } from './features/mail/index.js';
 import {
   checkDueWatches,
   listenForRoutines,
   runQueuedRoutines,
 } from './features/routines/index.js';
-import { getPool } from './platform/db.js';
+import { getPool, transaction } from './platform/db.js';
 import { env } from './platform/env.js';
 
 /**
@@ -69,6 +70,16 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const checked = await checkDueWatches();
           if (checked > 0) console.log(`[worker] ${checked} watch(es) checked`);
+        },
+      }),
+      // Connectors (spec 069): what waits in the organization's own tools, read every five minutes.
+      defineJob({
+        name: 'read-connectors',
+        schedule: '*/5 * * * *',
+        retryLimit: 0,
+        async handle() {
+          const read = await readConnected(getPool(), transaction);
+          if (read > 0) console.log(`[worker] ${read} connector(s) read`);
         },
       }),
       // E-mails queued by gestures leave every minute; in capture mode none is ever queued.
