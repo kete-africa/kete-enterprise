@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { administers } from '@/lib/me';
 import { AppShell, placesOf } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
+import { verbLabel, verbOf, verbs } from '@/lib/verbs';
 import * as m from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/tout')({
@@ -17,10 +18,13 @@ export const Route = createFileRoute('/tout')({
 function Everything() {
   const { me } = Route.useRouteContext();
   const places = placesOf(me);
-  const groups = [
-    { title: m.all_space(), places: places.filter((p) => p.group === 'me') },
-    { title: m.nav_tools(), places: places.filter((p) => p.group === 'tools') },
-  ].filter((g) => g.places.length > 0);
+  // The three places of the center, then the tools behind it (doctrine D-042).
+  const groups = verbs
+    .map((verb) => ({
+      title: verbLabel(verb),
+      places: places.filter((p) => verbOf(p.page) === verb),
+    }))
+    .filter((g) => g.places.length > 0);
   return (
     <AppShell me={me} current="all">
       <PageHeader title={m.nav_all()} description={m.all_explain()} />
