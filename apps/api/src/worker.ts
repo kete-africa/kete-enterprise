@@ -1,3 +1,4 @@
+import { deliverPhones } from './features/phone/index.js';
 import { createJobs, defineJob, type Jobs } from '@kete/jobs';
 import { dueAgents, runQueuedTasks, wakeDueAgents } from './features/agents/index.js';
 import { runDueSchedules } from './features/assistant/index.js';
@@ -80,6 +81,16 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const read = await readConnected(getPool(), transaction);
           if (read > 0) console.log(`[worker] ${read} connector(s) read`);
+        },
+      }),
+      // Messages to phones leave every minute (spec 077).
+      defineJob({
+        name: 'send-phones',
+        schedule: '* * * * *',
+        retryLimit: 0,
+        async handle() {
+          const sent = await deliverPhones();
+          if (sent > 0) console.log(`[worker] ${sent} message(s) to phones`);
         },
       }),
       // E-mails queued by gestures leave every minute; in capture mode none is ever queued.

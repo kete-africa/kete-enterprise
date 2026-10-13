@@ -22,6 +22,7 @@ export const routes = rootRoute('__root.tsx', [
   route('/tiers', 'parties.tsx'),
   route('/tiers/$partyId', 'party.tsx'),
   route('/mon-accueil', 'reception.tsx'),
+  route('/mon-telephone', 'phone.tsx'),
   route('/routines', 'routines.tsx'),
   route('/carnet', 'notebook.tsx'),
   route('/terrain', 'field.tsx'),

@@ -27,6 +27,7 @@ const placed: Partial<Record<Page, Verb>> = {
   library: 'ask',
   my_agents: 'delegate',
   reception: 'delegate',
+  phone: 'delegate',
   routines: 'delegate',
   skills: 'delegate',
   // What every place and every app cites (doctrine D-047).
