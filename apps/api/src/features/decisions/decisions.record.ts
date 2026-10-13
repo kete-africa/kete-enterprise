@@ -12,13 +12,15 @@ export const subject = z.string().regex(/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/);
 /**
  * Who approves a step, found when someone looks (doctrine D-028: by relation or by role):
  * the requester's manager (the position her primary position reports to), the holders of a role
- * covering the request's unit, a position's holders, or a person.
+ * covering the request's unit, a position's holders, a person — or the lead of the project the
+ * request belongs to (spec 075).
  */
 export const approverRule = z.discriminatedUnion('rule', [
   z.object({ rule: z.literal('manager') }),
   z.object({ rule: z.literal('role'), roleId: id('rol') }),
   z.object({ rule: z.literal('position'), positionId: id('pos') }),
   z.object({ rule: z.literal('person'), personId: id('prs') }),
+  z.object({ rule: z.literal('project_lead') }),
 ]);
 export type ApproverRule = z.infer<typeof approverRule>;
 
@@ -27,6 +29,8 @@ export const stepInput = z.intersection(
   z.object({
     /** The step applies from this measure (an amount, a risk level); always without one. */
     minMeasure: z.number().nonnegative().optional(),
+    /** These people are told, and decide nothing: the request goes on at once (spec 075). */
+    inform: z.boolean().optional(),
   }),
 );
 export type StepInput = z.infer<typeof stepInput>;
@@ -46,14 +50,23 @@ export const defineCircuitInput = z.object({
 
 export const decideRequestInput = z.object({
   requestId,
-  decision: z.enum(['approve', 'refuse']),
+  /** `return`: back to who asked, to be corrected and sent again — with a reason (spec 075). */
+  decision: z.enum(['approve', 'refuse', 'return']),
   reason: z.string().trim().max(1000).optional(),
+});
+
+/** Who asked corrects a request sent back to her, and sends it again. */
+export const resubmitRequestInput = z.object({
+  requestId,
+  title: z.string().trim().min(1).max(200).optional(),
+  measure: z.number().nonnegative().nullable().optional(),
 });
 
 export interface CircuitStep {
   position: number;
   rule: ApproverRule;
   minMeasure: number | null;
+  inform: boolean;
 }
 
 export interface Circuit {
@@ -64,13 +77,16 @@ export interface Circuit {
   steps: CircuitStep[];
 }
 
-export type RequestStatus = 'pending' | 'approved' | 'refused';
-export type StepStatus = 'pending' | 'approved' | 'refused' | 'skipped';
+/** `returned`: sent back to who asked, waiting for her correction. */
+export type RequestStatus = 'pending' | 'approved' | 'refused' | 'returned';
+/** `informed`: its people were told; nobody decides it. */
+export type StepStatus = 'pending' | 'approved' | 'refused' | 'skipped' | 'informed';
 
 export interface DecisionStep {
   position: number;
   rule: ApproverRule;
   minMeasure: number | null;
+  inform: boolean;
   status: StepStatus;
   decidedBy: string | null;
   decidedAt: string | null;
@@ -87,7 +103,11 @@ export interface DecisionRequest {
   requesterUserId: string;
   unitId: string | null;
   measure: number | null;
+  /** The project it belongs to: a step may be decided by its lead. */
+  projectId: string | null;
   status: RequestStatus;
+  /** Who sent it back, why, and when — while it waits for its correction. */
+  returned: { by: string; reason: string; at: string } | null;
   createdAt: string;
   steps: DecisionStep[];
 }

@@ -10,7 +10,9 @@ export type Rule =
   | { rule: 'manager' }
   | { rule: 'role'; roleId: string }
   | { rule: 'position'; positionId: string }
-  | { rule: 'person'; personId: string };
+  | { rule: 'person'; personId: string }
+  /** The lead of the project the request belongs to (spec 075). */
+  | { rule: 'project_lead' };
 
 export interface InboxRequest {
   requestId: string;
@@ -18,7 +20,9 @@ export interface InboxRequest {
   /** An app's subject, in its card's words (spec 023). */
   subjectLabel: { fr: string; en: string } | null;
   title: string;
-  status: 'pending' | 'approved' | 'refused';
+  status: 'pending' | 'approved' | 'refused' | 'returned';
+  /** Who sent it back to her and why, while it waits for her correction (spec 075). */
+  returned: { by: string; reason: string } | null;
   createdAt: string;
   currentStep: number | null;
   overdue: boolean;
@@ -30,7 +34,7 @@ export interface Circuit {
   subject: string;
   name: string;
   remindAfterHours: number;
-  steps: { position: number; rule: Rule; minMeasure: number | null }[];
+  steps: { position: number; rule: Rule; minMeasure: number | null; inform?: boolean }[];
 }
 
 export interface InboxScreen {
@@ -53,6 +57,7 @@ const plain = (r: InboxRequest): InboxRequest => ({
   subjectLabel: r.subjectLabel ?? null,
   title: r.title,
   status: r.status,
+  returned: r.returned ? { by: r.returned.by, reason: r.returned.reason } : null,
   createdAt: r.createdAt,
   currentStep: r.currentStep,
   overdue: r.overdue,
@@ -96,7 +101,7 @@ export const fetchInbox = createServerFn({ method: 'GET' }).handler(
   },
 );
 
-const paths = /^\/(circuits|requests\/drq_[0-9a-f-]+\/decide)$/;
+const paths = /^\/(circuits|requests\/drq_[0-9a-f-]+\/(decide|resubmit))$/;
 
 export const changeDecisions = createServerFn({ method: 'POST' })
   .validator((input: unknown) => {

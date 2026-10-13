@@ -21,6 +21,8 @@ export function statusLabel(status: string): string {
     approved: m.status_approved,
     refused: m.status_refused,
     skipped: m.status_skipped,
+    returned: m.status_returned,
+    informed: m.status_informed,
   };
   return labels[status]?.() ?? status;
 }
@@ -31,6 +33,7 @@ export function ruleLabel(rule: Rule): string {
     role: m.rule_role,
     position: m.rule_position,
     person: m.rule_person,
+    project_lead: m.rule_project_lead,
   }[rule.rule]();
 }
 
@@ -39,7 +42,7 @@ function Decide({ request }: { request: InboxRequest }) {
   const router = useRouter();
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const decide = (decision: 'approve' | 'refuse') => {
+  const decide = (decision: 'approve' | 'refuse' | 'return') => {
     setError(null);
     void changeDecisions({
       data: {
@@ -76,6 +79,10 @@ function Decide({ request }: { request: InboxRequest }) {
         <Button variant="secondary" onClick={() => decide('refuse')}>
           {m.refuse()}
         </Button>
+        {/* Back to who asked, to be corrected: it needs a reason (spec 075). */}
+        <Button variant="secondary" disabled={!reason.trim()} onClick={() => decide('return')}>
+          {m.inbox_return()}
+        </Button>
       </div>
       {error && (
         <p role="alert" className="text-body-sm text-state-error-fg">
@@ -86,7 +93,48 @@ function Decide({ request }: { request: InboxRequest }) {
   );
 }
 
-type StepDraft = { rule: Rule['rule']; target: string; minMeasure: string };
+/** Her request, sent back to her: why, and the gesture to send it again once corrected. */
+function Returned({ request }: { request: InboxRequest }) {
+  const router = useRouter();
+  const [title, setTitle] = useState(request.title);
+  const [error, setError] = useState<string | null>(null);
+  const resubmit = () => {
+    setError(null);
+    void changeDecisions({
+      data: {
+        path: `/requests/${request.requestId}/resubmit`,
+        body: title.trim() && title.trim() !== request.title ? { title: title.trim() } : {},
+        key: crypto.randomUUID(),
+      },
+    }).then(async (answer) => {
+      if (!answer.ok) return setError(refusal(answer.error));
+      await router.invalidate();
+    });
+  };
+  return (
+    <div className="mt-1 grid w-full gap-2 rounded-box border border-line p-3">
+      <p>{m.inbox_returned_why({ reason: request.returned?.reason ?? '' })}</p>
+      <div className="flex flex-wrap items-end gap-2">
+        <TextField
+          className="min-w-64"
+          label={m.inbox_returned_title()}
+          value={title}
+          maxLength={200}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <Button onClick={resubmit}>{m.inbox_resubmit()}</Button>
+      </div>
+      <p className="text-body-sm text-fg-muted">{m.inbox_returned_note()}</p>
+      {error && (
+        <p role="alert" className="text-body-sm text-state-error-fg">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+type StepDraft = { rule: Rule['rule']; target: string; minMeasure: string; inform: boolean };
 
 /** The circuits, and the form to describe one (a new one replaces the active one of its subject). */
 export function Circuits({ circuits }: { circuits: NonNullable<InboxScreen['circuits']> }) {
@@ -96,7 +144,7 @@ export function Circuits({ circuits }: { circuits: NonNullable<InboxScreen['circ
     remindAfterHours: '48',
   });
   const [steps, setSteps] = useState<StepDraft[]>([
-    { rule: 'manager', target: '', minMeasure: '' },
+    { rule: 'manager', target: '', minMeasure: '', inform: false },
   ]);
   const unitName = new Map(circuits.chart.units.map((u) => [u.unitId, u.name]));
   const toRule = (s: StepDraft): Rule =>
@@ -106,8 +154,11 @@ export function Circuits({ circuits }: { circuits: NonNullable<InboxScreen['circ
         ? { rule: 'position', positionId: s.target }
         : s.rule === 'person'
           ? { rule: 'person', personId: s.target }
-          : { rule: 'manager' };
-  const complete = steps.every((s) => s.rule === 'manager' || s.target !== '');
+          : s.rule === 'project_lead'
+            ? { rule: 'project_lead' }
+            : { rule: 'manager' };
+  const direct = (rule: Rule['rule']) => rule === 'manager' || rule === 'project_lead';
+  const complete = steps.every((s) => direct(s.rule) || s.target !== '');
   return (
     <div className="grid gap-6">
       <Panel title={m.circuits_title()}>
@@ -123,6 +174,7 @@ export function Circuits({ circuits }: { circuits: NonNullable<InboxScreen['circ
                   {c.steps.map((s) => (
                     <li key={s.position}>
                       {ruleLabel(s.rule)}
+                      {s.inform ? ` · ${m.circuit_informed()}` : ''}
                       {s.minMeasure !== null &&
                         ` · ${m.circuit_from({ measure: String(s.minMeasure) })}`}
                     </li>
@@ -147,6 +199,7 @@ export function Circuits({ circuits }: { circuits: NonNullable<InboxScreen['circ
                 steps: steps.map((s) => ({
                   ...toRule(s),
                   ...(s.minMeasure.trim() ? { minMeasure: Number(s.minMeasure) } : {}),
+                  ...(s.inform ? { inform: true } : {}),
                 })),
               },
               key,
@@ -195,13 +248,13 @@ export function Circuits({ circuits }: { circuits: NonNullable<InboxScreen['circ
                 )
               }
             >
-              {(['manager', 'role', 'position', 'person'] as const).map((r) => (
+              {(['manager', 'project_lead', 'role', 'position', 'person'] as const).map((r) => (
                 <option key={r} value={r}>
                   {ruleLabel({ rule: r } as Rule)}
                 </option>
               ))}
             </Select>
-            {step.rule !== 'manager' && (
+            {!direct(step.rule) && (
               <Select
                 label={m.circuit_who()}
                 value={step.target}
@@ -232,6 +285,18 @@ export function Circuits({ circuits }: { circuits: NonNullable<InboxScreen['circ
                   ))}
               </Select>
             )}
+            <label className="flex items-center gap-2 text-body-sm">
+              <input
+                type="checkbox"
+                checked={step.inform}
+                onChange={(e) =>
+                  setSteps(
+                    steps.map((s, i) => (i === index ? { ...s, inform: e.target.checked } : s)),
+                  )
+                }
+              />
+              {m.circuit_inform()}
+            </label>
             <TextField
               label={m.circuit_threshold()}
               hint={m.circuit_threshold_hint()}
@@ -249,7 +314,9 @@ export function Circuits({ circuits }: { circuits: NonNullable<InboxScreen['circ
         <div className="flex gap-2">
           <Button
             variant="secondary"
-            onClick={() => setSteps([...steps, { rule: 'manager', target: '', minMeasure: '' }])}
+            onClick={() =>
+              setSteps([...steps, { rule: 'manager', target: '', minMeasure: '', inform: false }])
+            }
           >
             {m.circuit_add_step()}
           </Button>
@@ -292,7 +359,9 @@ export function InboxView({ screen }: { screen: InboxScreen }) {
                       ? 'validated'
                       : r.status === 'refused'
                         ? 'error'
-                        : 'info'
+                        : r.status === 'returned'
+                          ? 'verify'
+                          : 'info'
                   }
                 >
                   {statusLabel(r.status)}
@@ -300,6 +369,7 @@ export function InboxView({ screen }: { screen: InboxScreen }) {
                 <span className="text-fg-muted">
                   {r.steps.map((s) => statusLabel(s.status)).join(' → ')}
                 </span>
+                {r.status === 'returned' && <Returned request={r} />}
               </li>
             ))}
           </ul>

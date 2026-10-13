@@ -4,8 +4,10 @@ import {
   activeCircuit,
   approversOf,
   closeRequest,
+  enterStep,
   findRequest,
   insertRequest,
+  passInformed,
 } from './infrastructure/decisions.tables.js';
 
 /** What a feature does once a request of its subject is decided, in the same transaction. */
@@ -89,6 +91,80 @@ export async function announceWaiting(
   }
 }
 
+/**
+ * What is told when a step only informs, or when a request is sent back to who asked — in its
+ * transaction (spec 075). A listener that fails never fails the request.
+ */
+export type ToldListener = (
+  db: SqlExecutor,
+  organizationId: string,
+  request: DecisionRequest,
+  people: Set<string>,
+  why: 'informed' | 'returned',
+) => Promise<void>;
+const toldListeners: ToldListener[] = [];
+
+export function onTold(listener: ToldListener): void {
+  toldListeners.push(listener);
+}
+
+async function announceTold(
+  db: SqlExecutor,
+  organizationId: string,
+  request: DecisionRequest,
+  people: Set<string>,
+  why: 'informed' | 'returned',
+): Promise<void> {
+  if (people.size === 0) return;
+  for (const listener of toldListeners) {
+    await listener(db, organizationId, request, people, why).catch((error: unknown) => {
+      console.error('[decisions]', (error as Error).message);
+    });
+  }
+}
+
+/** Who asked is told her request came back, with the reason given. */
+export async function announceReturned(
+  db: SqlExecutor,
+  organizationId: string,
+  requestId: string,
+): Promise<void> {
+  const request = await findRequest(db, requestId);
+  if (request) {
+    await announceTold(db, organizationId, request, new Set([request.requesterUserId]), 'returned');
+  }
+}
+
+/**
+ * Moves a request on: a step that only informs tells its people and is passed; the first step
+ * that needs a decision waits, its approvers told; with none left, the request is approved.
+ */
+export async function advance(
+  db: SqlExecutor,
+  organizationId: string,
+  requestId: string,
+  decidedBy: string,
+): Promise<{ status: 'pending'; step: number } | { status: 'approved' }> {
+  for (;;) {
+    const request = (await findRequest(db, requestId)) as DecisionRequest;
+    const step = currentStep(request);
+    if (!step) {
+      await settle(db, request, 'approved', decidedBy);
+      return { status: 'approved' };
+    }
+    if (step.inform) {
+      const people = await approversOf(db, request, step.rule);
+      people.delete(request.requesterUserId);
+      await announceTold(db, organizationId, request, people, 'informed');
+      await passInformed(db, requestId, step.position);
+      continue;
+    }
+    await enterStep(db, requestId, step.position);
+    await announceWaiting(db, organizationId, requestId);
+    return { status: 'pending', step: step.position };
+  }
+}
+
 /** Listens to decided requests, once their transaction is over. */
 export function onDecided(listener: DecidedListener): void {
   listeners.push(listener);
@@ -151,14 +227,14 @@ export async function openRequest(
     requesterUserId: string;
     unitId: string | null;
     measure: number | null;
+    /** The project it belongs to: a step of its circuit may be its lead's. */
+    projectId?: string | null;
   },
 ): Promise<string | null> {
   const circuit = await activeCircuit(db, input.subject);
   if (!circuit) return null;
   const requestId = await insertRequest(db, organizationId, { circuit, ...input });
-  const request = (await findRequest(db, requestId)) as DecisionRequest;
-  if (!currentStep(request)) await settle(db, request, 'approved', 'circuit');
-  else await announceWaiting(db, organizationId, requestId);
+  await advance(db, organizationId, requestId, 'circuit');
   return requestId;
 }
 

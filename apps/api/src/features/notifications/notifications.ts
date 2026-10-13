@@ -15,7 +15,7 @@ import { z } from 'zod';
 import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
-import { onWaiting } from '../decisions/index.js';
+import { onTold, onWaiting } from '../decisions/index.js';
 import { notificationWords } from './words.js';
 
 // What a person is told (spec 030), on @kete/notify: her notifications in Kete Enterprise, and on
@@ -41,6 +41,8 @@ function push(): PushSender | null {
 export interface Tell {
   kind:
     | 'decision.waiting'
+    | 'decision.informed'
+    | 'decision.returned'
     | 'schedule.answered'
     | 'task.added'
     | 'agent.signal'
@@ -89,6 +91,20 @@ export function listenForNotifications(): void {
       await tell(db, organizationId, userId, {
         kind: 'decision.waiting',
         title: notificationWords().decisionWaiting(request.title),
+        href: '/a-faire',
+      });
+    }
+  });
+  // A step only informs its people; a request comes back to who asked (spec 075).
+  onTold(async (db, organizationId, request, people, why) => {
+    const words = notificationWords();
+    for (const userId of people) {
+      await tell(db, organizationId, userId, {
+        kind: why === 'informed' ? 'decision.informed' : 'decision.returned',
+        title:
+          why === 'informed'
+            ? words.decisionInformed(request.title)
+            : words.decisionReturned(request.title, request.returned?.reason ?? ''),
         href: '/a-faire',
       });
     }

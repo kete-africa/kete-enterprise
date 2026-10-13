@@ -2068,5 +2068,19 @@
   "funds_explain": "Reserved for projects: {reserved}. Committed in all: {committed}. What is in the bank is the treasury’s to say.",
   "funds_short": "Projects whose commitments exceed their funds: {count}",
   "permission_money_record": "Record movements of money",
-  "permission_money_read": "See the organization’s money"
+  "permission_money_read": "See the organization’s money",
+  "status_returned": "To correct",
+  "status_informed": "Informed",
+  "rule_project_lead": "The project’s lead",
+  "inbox_return": "Send back for correction",
+  "inbox_returned_why": "To correct: {reason}",
+  "inbox_returned_title": "Your request, corrected",
+  "inbox_resubmit": "Send the request again",
+  "inbox_returned_note": "It is the same request: what was approved stays approved, unless the amount goes up.",
+  "circuit_inform": "These people are only informed: they do not decide",
+  "circuit_informed": "informed, does not decide",
+  "error_reason_required": "Say what is to be corrected.",
+  "error_not_returned": "This request was not sent back to you.",
+  "error_not_the_requester": "Only who asked sends her request again.",
+  "inbox_return_what": "What is to be corrected"
 }

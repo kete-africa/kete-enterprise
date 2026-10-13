@@ -4,6 +4,9 @@ import type { Locale } from '../mail/index.js';
 const catalog = {
   fr: {
     decisionWaiting: (title: string) => `Votre décision est attendue : ${title}`,
+    decisionInformed: (title: string) => `Pour information : ${title}`,
+    decisionReturned: (title: string, reason: string) =>
+      `À corriger : ${title}${reason ? ` — ${reason}` : ''}`,
     scheduleAnswered: (title: string) => `Votre tâche « ${title} » a répondu`,
     taskAdded: (source: string, title: string) => `${source} : ${title}`,
     agentSignal: (subject: string) => `Votre agent signale : ${subject}`,
@@ -33,6 +36,9 @@ const catalog = {
   },
   en: {
     decisionWaiting: (title: string) => `Your decision is awaited: ${title}`,
+    decisionInformed: (title: string) => `For your information: ${title}`,
+    decisionReturned: (title: string, reason: string) =>
+      `To correct: ${title}${reason ? ` — ${reason}` : ''}`,
     scheduleAnswered: (title: string) => `Your task « ${title} » answered`,
     taskAdded: (source: string, title: string) => `${source}: ${title}`,
     agentSignal: (subject: string) => `Your agent reports: ${subject}`,

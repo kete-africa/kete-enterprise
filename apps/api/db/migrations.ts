@@ -35,7 +35,10 @@ import {
   agentsMigrationSql,
 } from '../src/features/agents/index.js';
 import { complianceMigrationSql } from '../src/features/compliance/index.js';
-import { decisionsMigrationSql } from '../src/features/decisions/index.js';
+import {
+  circuitsCompletedMigrationSql,
+  decisionsMigrationSql,
+} from '../src/features/decisions/index.js';
 import { gatewayAppendOnlySql, gatewayMigrationSql } from '../src/features/gateway/index.js';
 import { actionsMigrationSql } from '../src/features/actions/index.js';
 import { draftsMigrationSql } from '@kete/drafts';
@@ -234,4 +237,6 @@ export const migrations: Migration[] = [
   { name: '0057_projects', sql: (context) => projectsMigrationSql(context) },
   // The facts of money the apps say, by project (spec 076, doctrine D-049).
   { name: '0058_money_facts', sql: (context) => moneyMigrationSql(context) },
+  // Circuits completed: sent back for correction, informed, a project's lead (spec 075).
+  { name: '0059_circuits_completed', sql: (context) => circuitsCompletedMigrationSql(context) },
 ];
