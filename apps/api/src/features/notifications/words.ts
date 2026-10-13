@@ -15,6 +15,15 @@ const catalog = {
       `L’assistant de ${asker} vous demande : ${question}`,
     exchangeReplied: (colleague: string) => `${colleague} a répondu à votre assistant`,
     exchangeDeclined: (colleague: string) => `${colleague} ne répond pas à cette question`,
+    requestReceived: (asker: string, title: string) => `${asker} vous demande : ${title}`,
+    requestTaken: (colleague: string, title: string) =>
+      `${colleague} a pris en charge « ${title} »`,
+    requestWaiting: (colleague: string, title: string) =>
+      `${colleague} a besoin de vous pour « ${title} »`,
+    requestAnswered: (asker: string, title: string) => `${asker} a répondu sur « ${title} »`,
+    requestReturned: (colleague: string, title: string) => `${colleague} vous a rendu « ${title} »`,
+    requestDeclined: (colleague: string, title: string) => `${colleague} ne fera pas « ${title} »`,
+    requestReminded: (asker: string, title: string) => `${asker} vous relance pour « ${title} »`,
   },
   en: {
     decisionWaiting: (title: string) => `Your decision is awaited: ${title}`,
@@ -29,6 +38,14 @@ const catalog = {
       `${asker}’s assistant asks you: ${question}`,
     exchangeReplied: (colleague: string) => `${colleague} answered your assistant`,
     exchangeDeclined: (colleague: string) => `${colleague} does not answer this question`,
+    requestReceived: (asker: string, title: string) => `${asker} asks you: ${title}`,
+    requestTaken: (colleague: string, title: string) => `${colleague} took on “${title}”`,
+    requestWaiting: (colleague: string, title: string) => `${colleague} needs you for “${title}”`,
+    requestAnswered: (asker: string, title: string) => `${asker} answered on “${title}”`,
+    requestReturned: (colleague: string, title: string) =>
+      `${colleague} returned “${title}” to you`,
+    requestDeclined: (colleague: string, title: string) => `${colleague} will not do “${title}”`,
+    requestReminded: (asker: string, title: string) => `${asker} reminds you of “${title}”`,
   },
 } as const;
 

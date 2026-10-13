@@ -29,6 +29,8 @@ export interface DayReport {
   reminders: number;
   agentTasksDone: number;
   agentTasksWaiting: number;
+  /** A request from her colleague, handed to her agent, waiting for her signature (step C5). */
+  requests: number;
   /** The team's data the demo's assistant reads (step C3), when it could be dropped. */
   datasetId: string | null;
   /** What could not be played, in words: the day is still usable without it. */
@@ -44,6 +46,17 @@ export async function seedDay(options: {
   manager: { token: string; personId: string };
   /** A colleague who asks her for decisions. */
   colleague: { token: string };
+  /** Her own manager, who asks her for a piece of work (step C5). */
+  requester: { token: string };
+  /** Her name as the directory shows it: what a colleague asks her by. */
+  managerName: string;
+  /** Reads across the demo's schema as its owner: to find the task a gesture queued. */
+  lookup: {
+    query: <R extends Record<string, unknown>>(
+      sql: string,
+      values?: unknown[],
+    ) => Promise<{ rows: R[] }>;
+  };
 }): Promise<DayReport> {
   const { api, organizationId, admin, manager, colleague } = options;
   const report: DayReport = {
@@ -51,6 +64,7 @@ export async function seedDay(options: {
     reminders: 0,
     agentTasksDone: 0,
     agentTasksWaiting: 0,
+    requests: 0,
     datasetId: null,
     skipped: [],
   };
@@ -171,6 +185,35 @@ export async function seedDay(options: {
     }
     const waiting = await give('Résume les tickets critiques ouverts cette semaine.');
     if (waiting) report.agentTasksWaiting += 1;
+
+    // Her colleague asks her for a quote; she hands it to her agent, which prepares it: it waits
+    // for her signature before it goes back (doctrine D-044).
+    const asked = await call(options.requester.token, 'POST', '/requests', {
+      colleague: options.managerName,
+      title: 'Chiffre le devis Garage Bè',
+      detail: 'Huit batteries 200 Ah à remplacer sur le site de Bè, pose comprise.',
+      dueOn: tomorrow,
+    });
+    const requestId = String(
+      (asked.body.request as { requestId?: string } | undefined)?.requestId ?? '',
+    );
+    if (!requestId) skipped('request', asked.status);
+    else {
+      await call(manager.token, 'POST', `/requests/${requestId}/moves`, { kind: 'hand', agentId });
+      const { rows } = await options.lookup.query<{ task_id: string }>(
+        `select task_id from agent_tasks where agent_id = $1 and status = 'queued'
+          and instruction like 'Prépare la réponse%'`,
+        [agentId],
+      );
+      useTaskModel(
+        says(
+          'Devis Garage Bè : 8 batteries 200 Ah, pose comprise — 2 480 000 F CFA HT, délai 10 jours.',
+        ),
+      );
+      for (const row of rows) await runTask(organizationId, row.task_id).catch(() => 'failed');
+      useTaskModel(undefined);
+      report.requests += 1;
+    }
   }
   return report;
 }

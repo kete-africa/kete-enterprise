@@ -49,7 +49,14 @@ export interface Tell {
     | 'app.ready'
     | 'routine.watch'
     | 'exchange.asked'
-    | 'exchange.replied';
+    | 'exchange.replied'
+    | 'request.received'
+    | 'request.taken'
+    | 'request.waiting'
+    | 'request.answered'
+    | 'request.returned'
+    | 'request.declined'
+    | 'request.reminded';
   title: string;
   body?: string;
   href?: string;

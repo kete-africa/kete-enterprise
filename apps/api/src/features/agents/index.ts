@@ -9,8 +9,11 @@ export {
 export type { How } from './how.js';
 export { useAgentModel } from './record.js';
 export { agentsPermissions, agentsRoutes } from './routes.js';
+export { findAgent, personOfAgent } from './infrastructure/agents.tables.js';
 export {
   agentTasksMigrationSql,
+  getTask,
+  queueTask,
   failedTasksSince,
   finishedFor,
   ongoingFor,

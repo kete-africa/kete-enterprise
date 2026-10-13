@@ -17,6 +17,7 @@ const placed: Partial<Record<Page, Verb>> = {
   team: 'decide',
   notifications: 'decide',
   assistant: 'ask',
+  requests: 'ask',
   dossiers: 'ask',
   notebook: 'ask',
   dashboards: 'ask',
