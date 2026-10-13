@@ -1665,5 +1665,12 @@
   "dictation_another": "Dictate another report",
   "dictation_unsupported": "This browser cannot record. Write your report below.",
   "dictation_no_microphone": "The microphone is not available. Allow it, or write your report below.",
-  "notebook_about": "Report on: {title}"
+  "notebook_about": "Report on: {title}",
+  "nav_decide": "Decide",
+  "nav_delegate": "Delegate",
+  "nav_apps": "Apps",
+  "error_page_title": "This page could not be shown",
+  "error_page_body": "Nothing was changed. Try again, or go back to what waits for you.",
+  "error_page_retry": "Try again",
+  "error_page_home": "Back to Decide"
 }

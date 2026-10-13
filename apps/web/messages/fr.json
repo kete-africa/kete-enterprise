@@ -1665,5 +1665,12 @@
   "dictation_another": "Dicter un autre compte rendu",
   "dictation_unsupported": "Ce navigateur ne peut pas enregistrer. Écrivez votre compte rendu ci-dessous.",
   "dictation_no_microphone": "Le micro n’est pas accessible. Autorisez-le, ou écrivez votre compte rendu ci-dessous.",
-  "notebook_about": "Compte rendu de : {title}"
+  "notebook_about": "Compte rendu de : {title}",
+  "nav_decide": "Décider",
+  "nav_delegate": "Déléguer",
+  "nav_apps": "Apps",
+  "error_page_title": "Cette page n’a pas pu s’afficher",
+  "error_page_body": "Rien n’a été modifié. Réessayez, ou revenez à ce qui vous attend.",
+  "error_page_retry": "Réessayer",
+  "error_page_home": "Revenir à Décider"
 }

@@ -12,6 +12,7 @@ import {
   type Shortcut,
   type SidebarLayout,
 } from './sidebar';
+import { verbLabel, verbOf, verbs, type Verb } from './verbs';
 
 // The sidebar the person arranges (spec 049): the places Kete proposes, which she may hide but for
 // « Aujourd'hui » and « À faire »; her shortcuts, in sections she names and orders.
@@ -90,10 +91,15 @@ export function SidebarNav({
   const shown = proposedPlaces
     .map((page) => places.find((p) => p.page === page))
     .filter((p): p is Place => p !== undefined && !layout.hidden.includes(p.page));
-  return (
-    <>
-      <NavSection>
-        {shown.map((p) => (
+  // A place of the center (doctrine D-042): what she does there, then the pages it holds for now.
+  const place = (verb: Verb) => {
+    const pages = shown.filter((p) => verbOf(p.page) === verb);
+    // Her team's apps sit with the tools, behind the center.
+    const apps = verb === 'apps' ? me.apps : [];
+    if (pages.length === 0 && apps.length === 0) return null;
+    return (
+      <NavSection key={verb} label={verbLabel(verb)}>
+        {pages.map((p) => (
           <NavItem
             key={p.page}
             href={p.href}
@@ -104,7 +110,17 @@ export function SidebarNav({
             {p.label}
           </NavItem>
         ))}
+        {apps.map((app) => (
+          <NavItem key={app.resourceId} href={app.address} icon="apps" external>
+            {app.name}
+          </NavItem>
+        ))}
       </NavSection>
+    );
+  };
+  return (
+    <>
+      {verbs.filter((verb) => verb !== 'apps').map(place)}
       {layout.sections.map((section, i) => {
         const items = section.items.flatMap((s) => {
           const to = resolveShortcut(me, places, s);
@@ -126,15 +142,7 @@ export function SidebarNav({
           </NavSection>
         );
       })}
-      {me.apps.length > 0 && (
-        <NavSection label={m.nav_team_apps()}>
-          {me.apps.map((app) => (
-            <NavItem key={app.resourceId} href={app.address} icon="apps" external>
-              {app.name}
-            </NavItem>
-          ))}
-        </NavSection>
-      )}
+      {place('apps')}
       <div className="my-4 border-t border-line" />
       <NavSection>
         <NavItem href="/tout" icon="layers" current={current === 'all' || elsewhere}>

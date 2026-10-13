@@ -598,7 +598,7 @@ export function AppShell({
       tabBar={
         <TabBar label={m.nav_tabs()}>
           <TabBarItem href="/" icon="home" current={current === 'home'}>
-            {m.nav_today()}
+            {m.nav_decide()}
           </TabBarItem>
           <TabBarItem href="/a-faire" icon="check" current={current === 'todo'} count={me.waiting}>
             {m.nav_todo()}
@@ -606,8 +606,16 @@ export function AppShell({
           <TabBarItem icon="sparkle" primary onClick={openPalette}>
             {m.nav_ask()}
           </TabBarItem>
-          <TabBarItem href="/assistant" icon="agent" current={current === 'assistant'}>
-            {m.nav_assistant()}
+          <TabBarItem
+            href={me.modules.agents ? '/mes-agents' : '/assistant'}
+            icon="agent"
+            current={
+              me.modules.agents
+                ? current === 'my_agents' || current === 'routines'
+                : current === 'assistant'
+            }
+          >
+            {me.modules.agents ? m.nav_delegate() : m.nav_assistant()}
           </TabBarItem>
           <TabBarItem href="/tout" icon="menu" current={current === 'all'}>
             {m.nav_all()}
