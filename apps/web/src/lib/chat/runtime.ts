@@ -357,5 +357,7 @@ export function useKeteChat(options: {
     send,
     conversationId,
     running,
+    /** The thread as it stands: what its pieces are listed from. */
+    messages,
   };
 }
