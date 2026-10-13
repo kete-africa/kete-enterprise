@@ -21,4 +21,6 @@ flowchart TB
 - **Run locally**: `pnpm install` (a read:packages token for `@kete-africa` in your user
   configuration), a `.env` from `.env.example`, then `pnpm --filter @kete-enterprise/api dev` and
   `pnpm --filter @kete-enterprise/web dev`.
+- **Look at the screens**: `pnpm demo` — the KYA demo organization on a throwaway schema of the test
+  database, signed in through a local door (`apps/api/scripts/demo.ts`). Never a deployment.
 - **Test**: `pnpm test` (a real Postgres: the Neon `test` branch, or `KETE_TEST_POSTGRES=container`).

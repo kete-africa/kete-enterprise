@@ -15,3 +15,6 @@ Thumbs.db
 **/src/routeTree.gen.ts
 **/src/paraglide/
 **/project.inlang/cache/
+
+# The schema of a local demonstration that was not stopped cleanly (pnpm demo).
+.demo-schema
