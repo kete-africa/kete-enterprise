@@ -1,5 +1,6 @@
 import { newId } from '@kete/records';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
+import type { AnswerTable } from '../../platform/tables.js';
 
 /**
  * The assistant's conversations (spec 017): a person finds hers again, as in any assistant. Each
@@ -71,8 +72,13 @@ export interface StoredMessage {
   canvas: { title: string; content: string } | null;
   /** The apps' views shown with their tools' results (spec 030, MCP Apps). */
   views: AppView[];
+  /** The tables its tools read: an answer she sorts, filters and acts on (spec 063). */
+  tables: MessageTable[];
   createdAt: string;
 }
+
+/** A table as the thread shows it again: which tool read it, and what it read. */
+export type MessageTable = AnswerTable & { tool: string };
 
 /** An app's view, as the chat shows it again: which app, which page, its tool's input and result. */
 export interface AppView {
@@ -86,6 +92,11 @@ export interface AppView {
 /** The apps' views of the chat (spec 030): kept with each answer. */
 export function viewsMigrationSql(options: { schema: string }): string {
   return `alter table ${options.schema}.assistant_messages add column views jsonb not null default '[]';`;
+}
+
+/** The tables of an answer (spec 063): kept with it, as its tools read them. */
+export function tablesMigrationSql(options: { schema: string }): string {
+  return `alter table ${options.schema}.assistant_messages add column tables jsonb not null default '[]';`;
 }
 
 export async function listConversations(db: SqlExecutor, userId: string) {
@@ -128,9 +139,10 @@ export async function readConversationOf(db: SqlExecutor, conversationId: string
     sources: StoredMessage['sources'];
     canvas: StoredMessage['canvas'];
     views: AppView[];
+    tables: MessageTable[];
     created_at: Date;
   }>(
-    `select message_id, role, content, tools, drafts, attachments, sources, canvas, views,
+    `select message_id, role, content, tools, drafts, attachments, sources, canvas, views, tables,
             created_at
        from assistant_messages
       where conversation_id = $1 order by created_at, message_id`,
@@ -149,6 +161,7 @@ export async function readConversationOf(db: SqlExecutor, conversationId: string
       sources: m.sources,
       canvas: m.canvas,
       views: m.views,
+      tables: m.tables,
       createdAt: m.created_at.toISOString(),
     })),
   };
@@ -184,12 +197,13 @@ export async function appendMessage(
     sources?: StoredMessage['sources'];
     canvas?: StoredMessage['canvas'];
     views?: AppView[];
+    tables?: MessageTable[];
   },
 ): Promise<void> {
   await db.query(
     `insert into assistant_messages (message_id, organization_id, conversation_id, role, content,
-       tools, drafts, attachments, sources, canvas, views)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+       tools, drafts, attachments, sources, canvas, views, tables)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
     [
       newId('msg'),
       organizationId,
@@ -202,6 +216,7 @@ export async function appendMessage(
       JSON.stringify(message.sources ?? []),
       message.canvas ? JSON.stringify(message.canvas) : null,
       JSON.stringify(message.views ?? []),
+      JSON.stringify(message.tables ?? []),
     ],
   );
   await db.query(

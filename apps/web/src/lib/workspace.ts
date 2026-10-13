@@ -129,7 +129,26 @@ export interface StoredMessage {
   canvas: { title: string; content: string } | null;
   /** The apps' views shown with their tools' results (spec 030). */
   views?: AppView[];
+  /** The tables its tools read (spec 063). */
+  tables?: AnswerTable[];
   createdAt: string;
+}
+
+/** An answer that is a tool (spec 063): rows a tool read, and how to show them. */
+export interface AnswerTable {
+  /** The tool that read them. */
+  tool: string;
+  title: string;
+  columns: {
+    key: string;
+    /** The column's own name at its source; empty for a measure. */
+    label: string;
+    kind: 'text' | 'number' | 'date';
+    measure?: { fn: 'count' | 'sum' | 'avg' | 'min' | 'max'; column: string | null };
+  }[];
+  rows: Record<string, string | number | boolean | null>[];
+  truncated: boolean;
+  source: { label: string; href: string | null };
 }
 
 export const fetchConversations = createServerFn({ method: 'GET' }).handler(() =>

@@ -14,11 +14,14 @@ import {
   createDataset,
   getDataset,
   listDatasets,
+  measureName,
   QueryError,
   querySpec,
   readRows,
   removeDataset,
   replaceRows,
+  rowsSpec,
+  selectRows,
   updateDataset,
   type TeamDataset,
 } from './datasets.js';
@@ -241,10 +244,21 @@ const listInput = z.object({});
 const queryInput = querySpec.extend({
   datasetId: z.string().min(1).max(80).describe('Le jeu de données (team_datasets)'),
 });
+const rowsInput = rowsSpec.extend({
+  datasetId: z.string().min(1).max(80).describe('Le jeu de données (team_datasets)'),
+});
+
+/** Where a person reads the whole of a data set. */
+const sourceOf = (dataset: TeamDataset) => ({
+  label: dataset.name,
+  href: `/donnees/${dataset.datasetId}`,
+});
 
 /**
  * The assistant's tools (level 1: they read): the team data she may read, with their columns, and
  * a query that sums them up — filters, groups, measures — so that its figures come from the rows.
+ * Both readers say how to show what they read (`table`, spec 063): the answer is then a table she
+ * sorts, filters and acts on, with the very rows the code read.
  */
 export function datasetTools(identity: Identity): CapabilityTool[] {
   return [
@@ -301,6 +315,71 @@ export function datasetTools(identity: Identity): CapabilityTool[] {
                 dataset: dataset.name,
                 rows: aggregate(dataset.columns, rows, parsed.data),
                 truncated,
+                table: {
+                  title: dataset.name,
+                  columns: [
+                    ...parsed.data.groupBy.map((name) => ({
+                      key: name,
+                      label: name,
+                      kind: dataset.columns.find((c) => c.name === name)?.type ?? 'text',
+                    })),
+                    ...parsed.data.measures.map((measure) => ({
+                      key: measureName(measure),
+                      kind: 'number' as const,
+                      measure: { fn: measure.fn, column: measure.column ?? null },
+                    })),
+                  ],
+                  source: sourceOf(dataset),
+                },
+              },
+            };
+          });
+        } catch (error) {
+          if (error instanceof QueryError) {
+            return { status: 'done', output: { error: error.message } };
+          }
+          throw error;
+        }
+      },
+    },
+    {
+      name: 'team_data_rows',
+      description:
+        'Donne les lignes d’un jeu de données telles qu’elles sont : filtrées, triées, avec les colonnes utiles (200 lignes au plus). À utiliser quand elle demande une liste — « qui me doit de l’argent », « quelles commandes sont en retard » : la réponse lui est montrée en tableau, qu’elle trie, filtre et sur lequel elle agit. Ne recopie pas les lignes dans ta réponse : dis en une phrase ce que le tableau montre.',
+      input: rowsInput,
+      jsonSchema: z.toJSONSchema(rowsInput) as Record<string, unknown>,
+      autonomy: 1,
+      async execute(input) {
+        const parsed = rowsInput.safeParse(input);
+        if (!parsed.success) return { status: 'refused', reason: 'invalid_input' };
+        try {
+          return await transaction(identity.organizationId, async (db) => {
+            const dataset = await getDataset(db, parsed.data.datasetId);
+            const keys = new Set(await readerKeys(db, identity));
+            if (!dataset || !dataset.audience.some((k) => keys.has(k))) {
+              return { status: 'done' as const, output: { error: 'not_found' } };
+            }
+            const read = await readRows(db, dataset, {
+              from: parsed.data.from,
+              to: parsed.data.to,
+              limit: QUERY_ROWS,
+            });
+            const selected = selectRows(dataset.columns, read.rows, parsed.data);
+            return {
+              status: 'done' as const,
+              output: {
+                dataset: dataset.name,
+                rows: selected.rows,
+                truncated: selected.truncated || read.truncated,
+                table: {
+                  title: dataset.name,
+                  columns: selected.columns.map((column) => ({
+                    key: column.name,
+                    label: column.name,
+                    kind: column.type,
+                  })),
+                  source: sourceOf(dataset),
+                },
               },
             };
           });

@@ -39,6 +39,7 @@ import {
   feedbackMigrationSql,
   memoryMigrationSql,
   schedulesMigrationSql,
+  tablesMigrationSql,
   viewsMigrationSql,
 } from '../src/features/assistant/index.js';
 import { mailMigrationSql } from '../src/features/mail/index.js';
@@ -208,4 +209,6 @@ export const migrations: Migration[] = [
   { name: '0048_person_notes_about', sql: (context) => notesAboutMigrationSql(context) },
   // A task may lead to a page of the space by its path (spec 062).
   { name: '0049_task_paths', sql: (context) => taskPathsMigrationSql(context) },
+  // The tables of an answer, kept with it (spec 063).
+  { name: '0050_assistant_tables', sql: (context) => tablesMigrationSql(context) },
 ];

@@ -264,8 +264,84 @@ export class QueryError extends Error {
   }
 }
 
-const measureName = (m: QuerySpec['measures'][number]) =>
+/** The key a measure takes in a summed-up row. */
+export const measureName = (m: QuerySpec['measures'][number]) =>
   m.fn === 'count' && !m.column ? 'count' : `${m.fn}(${m.column ?? ''})`;
+
+/** Whether a row passes every filter. */
+function passes(row: Row, filters: QuerySpec['filters']): boolean {
+  return filters.every((f) => {
+    const v = row[f.column];
+    if (v === null || v === undefined) return f.op === 'neq';
+    switch (f.op) {
+      case 'eq':
+        return String(v).toLowerCase() === String(f.value).toLowerCase();
+      case 'neq':
+        return String(v).toLowerCase() !== String(f.value).toLowerCase();
+      case 'gte':
+        return typeof v === 'number' ? v >= Number(f.value) : String(v) >= String(f.value);
+      case 'lte':
+        return typeof v === 'number' ? v <= Number(f.value) : String(v) <= String(f.value);
+      case 'contains':
+        return String(v).toLowerCase().includes(String(f.value).toLowerCase());
+    }
+  });
+}
+
+/** The rows themselves, for a table a person reads: filtered, sorted, a few columns. */
+export const rowsSpec = z.object({
+  filters: querySpec.shape.filters,
+  columns: z.array(z.string().min(1).max(80)).max(12).default([]),
+  sortBy: z.string().min(1).max(80).optional(),
+  descending: z.boolean().default(true),
+  from: querySpec.shape.from,
+  to: querySpec.shape.to,
+  limit: z.number().int().min(1).max(200).default(50),
+});
+export type RowsSpec = z.infer<typeof rowsSpec>;
+
+/** An empty cell sorts last, whatever the direction. */
+function compare(a: Row[string] | undefined, b: Row[string] | undefined, down: boolean): number {
+  const none = (v: unknown) => v === null || v === undefined;
+  if (none(a) || none(b)) return none(a) === none(b) ? 0 : none(a) ? 1 : -1;
+  const order =
+    typeof a === 'number' && typeof b === 'number'
+      ? a - b
+      : String(a).localeCompare(String(b), 'fr', { numeric: true, sensitivity: 'base' });
+  return down ? -order : order;
+}
+
+/**
+ * The rows passing the filters, sorted, with the columns asked for (the first twelve otherwise).
+ * Only the data set's own columns are named.
+ */
+export function selectRows(
+  columns: Column[],
+  rows: Row[],
+  spec: RowsSpec,
+): { columns: Column[]; rows: Row[]; truncated: boolean } {
+  const known = new Map(columns.map((c) => [c.name, c]));
+  const named = [
+    ...spec.filters.map((f) => f.column),
+    ...spec.columns,
+    ...(spec.sortBy ? [spec.sortBy] : []),
+  ];
+  const unknown = named.filter((n) => !known.has(n));
+  if (unknown.length) throw new QueryError(`Unknown columns: ${unknown.join(', ')}`);
+  const shown = spec.columns.length
+    ? spec.columns.map((n) => known.get(n) as Column)
+    : columns.slice(0, 12);
+  const kept = rows.filter((row) => passes(row, spec.filters));
+  const by = spec.sortBy;
+  if (by) kept.sort((a, b) => compare(a[by], b[by], spec.descending));
+  return {
+    columns: shown,
+    rows: kept
+      .slice(0, spec.limit)
+      .map((row) => Object.fromEntries(shown.map((c) => [c.name, row[c.name] ?? null]))),
+    truncated: kept.length > spec.limit,
+  };
+}
 
 /**
  * The rows summed up: those passing the filters, grouped by up to three columns, each group with
@@ -285,25 +361,8 @@ export function aggregate(columns: Column[], rows: Row[], spec: QuerySpec): Row[
       throw new QueryError(`${m.fn} needs a number column.`);
     }
   }
-  const passes = (row: Row) =>
-    spec.filters.every((f) => {
-      const v = row[f.column];
-      if (v === null || v === undefined) return f.op === 'neq';
-      switch (f.op) {
-        case 'eq':
-          return String(v).toLowerCase() === String(f.value).toLowerCase();
-        case 'neq':
-          return String(v).toLowerCase() !== String(f.value).toLowerCase();
-        case 'gte':
-          return typeof v === 'number' ? v >= Number(f.value) : String(v) >= String(f.value);
-        case 'lte':
-          return typeof v === 'number' ? v <= Number(f.value) : String(v) <= String(f.value);
-        case 'contains':
-          return String(v).toLowerCase().includes(String(f.value).toLowerCase());
-      }
-    });
   const groups = new Map<string, { key: Row; rows: Row[] }>();
-  for (const row of rows.filter(passes)) {
+  for (const row of rows.filter((candidate) => passes(candidate, spec.filters))) {
     const key = Object.fromEntries(spec.groupBy.map((g) => [g, row[g] ?? null]));
     const id = JSON.stringify(key);
     const group = groups.get(id) ?? { key, rows: [] };
