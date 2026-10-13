@@ -9,6 +9,7 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import pg from 'pg';
+import { seedDay } from '../db/demo/day.js';
 import { seedDemo } from '../db/demo/seed.js';
 import { migrations } from '../db/migrations.js';
 
@@ -29,6 +30,9 @@ const WEB_PORT = 3500;
 const DOOR_PORT = 3501;
 const ORGANIZATION = 'org_demo_kya';
 const ADMINISTRATOR = { userId: 'usr_demo_admin', name: 'Administratrice (démo)' };
+// Whose morning the demo plays, and who asks her for decisions (db/demo/kya.ts).
+const MANAGER = 'Abla Nyuiadzi';
+const COLLEAGUE = 'Délali Tchalla';
 const issuer = 'https://compte.kete.demo';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const say = (line: string) => console.log(`[demo] ${line}`);
@@ -96,25 +100,45 @@ const report = await seedDemo({
 say(`Semé : ${report.units} unités, ${report.positions} postes, ${report.people} personnes.`);
 
 const people = await inOrganization(db.app, ORGANIZATION, (client) =>
-  client.query<{ person_id: string; name: string }>(
+  client.query<{ person_id: string; name: string; account_user_id: string }>(
     // Only a person with an account can be viewed as (spec 010).
-    'select person_id, name from people where account_user_id is not null order by name limit 12',
+    'select person_id, name, account_user_id from people where account_user_id is not null order by name',
   ),
 );
 
-const token = await new SignJWT({
-  email: `${ADMINISTRATOR.userId}@example.test`,
-  name: ADMINISTRATOR.name,
-  org: ORGANIZATION,
-  role: 'owner',
-})
-  .setProtectedHeader({ alg: 'EdDSA', kid: 'demo-1' })
-  .setSubject(ADMINISTRATOR.userId)
-  .setIssuer(issuer)
-  .setAudience('urn:kete:apps')
-  .setIssuedAt()
-  .setExpirationTime('8h')
-  .sign(pair.privateKey);
+/** A token as the Compte Kete would issue it, signed with this run's key. */
+const tokenFor = (userId: string, name: string, role: 'owner' | 'member') =>
+  new SignJWT({ email: `${userId}@example.test`, name, org: ORGANIZATION, role })
+    .setProtectedHeader({ alg: 'EdDSA', kid: 'demo-1' })
+    .setSubject(userId)
+    .setIssuer(issuer)
+    .setAudience('urn:kete:apps')
+    .setIssuedAt()
+    .setExpirationTime('8h')
+    .sign(pair.privateKey);
+const token = await tokenFor(ADMINISTRATOR.userId, ADMINISTRATOR.name, 'owner');
+
+// A day in it (step C2): the morning of the head of after-sales, played through the API.
+const app = createApi();
+const manager = people.rows.find((person) => person.name === MANAGER);
+const colleague = people.rows.find((person) => person.name === COLLEAGUE);
+if (manager && colleague) {
+  const day = await seedDay({
+    api: app,
+    organizationId: ORGANIZATION,
+    admin: token,
+    manager: {
+      token: await tokenFor(manager.account_user_id, manager.name, 'member'),
+      personId: manager.person_id,
+    },
+    colleague: { token: await tokenFor(colleague.account_user_id, colleague.name, 'member') },
+  });
+  say(
+    `Journée de ${manager.name} : ${day.decisions} décisions, ` +
+      `${day.agentTasksDone} tâche d’agent faite, ${day.agentTasksWaiting} en attente.`,
+  );
+  for (const what of day.skipped) say(`  non joué : ${what}`);
+}
 // The screens' own session, as their sign-in would have written it (@kete/auth).
 const session = await new SignJWT({
   email: `${ADMINISTRATOR.userId}@example.test`,
@@ -131,7 +155,7 @@ const session = await new SignJWT({
   .setExpirationTime('8h')
   .sign(new TextEncoder().encode(sessionSecret));
 
-const api = serve({ fetch: createApi().fetch, port: API_PORT, hostname: '127.0.0.1' });
+const api = serve({ fetch: app.fetch, port: API_PORT, hostname: '127.0.0.1' });
 
 const web = spawn(
   `pnpm --filter @kete-enterprise/web exec srvx serve --entry dist/server/server.js --static "${root}apps/web/dist/client" --prod --host 127.0.0.1 --port ${WEB_PORT}`,
@@ -189,7 +213,10 @@ for (let attempt = 0; attempt < 90; attempt++) {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 say(`Ouvrez http://localhost:${DOOR_PORT} (administratrice de la démonstration).`);
-for (const person of people.rows) {
+if (manager) {
+  say(`Le matin de ${manager.name} : http://localhost:${DOOR_PORT}/as/${manager.person_id}`);
+}
+for (const person of people.rows.filter((row) => row !== manager).slice(0, 8)) {
   say(`  comme ${person.name} : http://localhost:${DOOR_PORT}/as/${person.person_id}`);
 }
 say('Ctrl C pour arrêter.');
