@@ -14,7 +14,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "i18n:check": "tsx tooling/check-hardcoded-strings.ts",
-    "audit:check": "pnpm audit --audit-level high"
+    "audit:check": "pnpm audit --audit-level high",
+    "demo": "pnpm --filter @kete-enterprise/api exec tsx scripts/demo.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

@@ -1,0 +1,195 @@
+import { serve } from '@hono/node-server';
+import { createTokenVerifier } from '@kete/auth';
+import { inOrganization } from '@kete/tenancy';
+import { createTestSchema, loadRepositoryEnv } from '@kete/testing';
+import { spawn, spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { fileURLToPath } from 'node:url';
+import { exportJWK, generateKeyPair, SignJWT } from 'jose';
+import pg from 'pg';
+import { seedDemo } from '../db/demo/seed.js';
+import { migrations } from '../db/migrations.js';
+
+// Kete Enterprise on this machine, to look at its screens: `pnpm demo` from the repository's root.
+//
+// Nothing here is a deployment. The data live in a throwaway schema of the *test* database (the
+// repository's .env: KETE_TEST_OWNER_URL, KETE_TEST_APP_URL), seeded with the KYA demo profile and
+// dropped when the script stops. There is no Compte Kete: the script signs tokens with a key of its
+// own, which this API alone trusts, and a local « door » puts the session in the browser.
+//
+//   http://localhost:3501        enters as the organization's administrator
+//   http://localhost:3501/as/…   enters viewing the space of a demo person (the script lists them)
+//
+// The screens are built first; `--fresh` reuses the build that is there.
+
+const API_PORT = 3600;
+const WEB_PORT = 3500;
+const DOOR_PORT = 3501;
+const ORGANIZATION = 'org_demo_kya';
+const ADMINISTRATOR = { userId: 'usr_demo_admin', name: 'Administratrice (démo)' };
+const issuer = 'https://compte.kete.demo';
+const root = fileURLToPath(new URL('../../../', import.meta.url));
+const say = (line: string) => console.log(`[demo] ${line}`);
+
+loadRepositoryEnv();
+const sessionSecret = randomBytes(32).toString('hex');
+Object.assign(process.env, {
+  KETE_ACCOUNT_URL: issuer,
+  KETE_ENVIRONMENT: 'development',
+  PUBLIC_API_URL: `http://localhost:${API_PORT}`,
+  PUBLIC_WEB_URL: `http://localhost:${WEB_PORT}`,
+  // No e-mail leaves, no worker runs: this is a look at the screens.
+  KETE_MAIL_MODE: 'capture',
+  KETE_WORKER_IN_PROCESS: 'false',
+});
+
+// The identity of this run: one key, known to this API only.
+const pair = await generateKeyPair('EdDSA', { crv: 'Ed25519' });
+const jwk = { ...(await exportJWK(pair.publicKey)), kid: 'demo-1', alg: 'EdDSA' };
+const { usePool } = await import('../src/platform/db.js');
+const { acceptedAudiences, useVerifier } = await import('../src/platform/identity.js');
+const { createApi, permissionCatalog } = await import('../src/app.js');
+useVerifier(createTokenVerifier({ issuer, audience: acceptedAudiences(), jwks: { keys: [jwk] } }));
+
+// A run that was killed could not drop its schema: the next one does.
+const leftover = fileURLToPath(new URL('../.demo-schema', import.meta.url));
+if (existsSync(leftover)) {
+  const name = readFileSync(leftover, 'utf8').trim();
+  if (/^t_[0-9a-f]{6,32}$/.test(name) && process.env.KETE_TEST_OWNER_URL) {
+    const owner = new pg.Pool({ connectionString: process.env.KETE_TEST_OWNER_URL, max: 1 });
+    await owner.query(`drop schema if exists ${name} cascade`).catch(() => undefined);
+    await owner.end();
+  }
+  rmSync(leftover, { force: true });
+}
+
+if (!process.argv.includes('--fresh') || !existsSync(`${root}apps/web/dist/server/server.js`)) {
+  say('Construction des écrans…');
+  const built = spawnSync('pnpm --filter @kete-enterprise/web build', {
+    cwd: root,
+    shell: true,
+    stdio: 'ignore',
+    env: process.env,
+  });
+  if (built.status !== 0)
+    throw new Error('The screens did not build: run `pnpm --filter @kete-enterprise/web build`.');
+}
+
+say('Création d’un schéma jetable dans la base de test…');
+const db = await createTestSchema({
+  migrate: async (owner, context) => {
+    for (const migration of migrations) await owner.query(migration.sql(context));
+  },
+});
+usePool(db.app);
+writeFileSync(leftover, db.schema);
+say(`Schéma ${db.schema}. Données de démonstration (profil KYA)…`);
+const report = await seedDemo({
+  app: db.app,
+  owner: db.owner,
+  schema: db.schema,
+  organizationId: ORGANIZATION,
+  permissions: permissionCatalog,
+});
+say(`Semé : ${report.units} unités, ${report.positions} postes, ${report.people} personnes.`);
+
+const people = await inOrganization(db.app, ORGANIZATION, (client) =>
+  client.query<{ person_id: string; name: string }>(
+    // Only a person with an account can be viewed as (spec 010).
+    'select person_id, name from people where account_user_id is not null order by name limit 12',
+  ),
+);
+
+const token = await new SignJWT({
+  email: `${ADMINISTRATOR.userId}@example.test`,
+  name: ADMINISTRATOR.name,
+  org: ORGANIZATION,
+  role: 'owner',
+})
+  .setProtectedHeader({ alg: 'EdDSA', kid: 'demo-1' })
+  .setSubject(ADMINISTRATOR.userId)
+  .setIssuer(issuer)
+  .setAudience('urn:kete:apps')
+  .setIssuedAt()
+  .setExpirationTime('8h')
+  .sign(pair.privateKey);
+// The screens' own session, as their sign-in would have written it (@kete/auth).
+const session = await new SignJWT({
+  email: `${ADMINISTRATOR.userId}@example.test`,
+  name: ADMINISTRATOR.name,
+  org: ORGANIZATION,
+  role: 'owner',
+  apps: {},
+  two_factor: true,
+  at: token,
+})
+  .setProtectedHeader({ alg: 'HS256' })
+  .setSubject(ADMINISTRATOR.userId)
+  .setIssuedAt()
+  .setExpirationTime('8h')
+  .sign(new TextEncoder().encode(sessionSecret));
+
+const api = serve({ fetch: createApi().fetch, port: API_PORT, hostname: '127.0.0.1' });
+
+const web = spawn(
+  `pnpm --filter @kete-enterprise/web exec srvx serve --entry dist/server/server.js --static "${root}apps/web/dist/client" --prod --host 127.0.0.1 --port ${WEB_PORT}`,
+  {
+    cwd: root,
+    shell: true,
+    stdio: 'ignore',
+    env: {
+      ...process.env,
+      PUBLIC_URL: `http://localhost:${WEB_PORT}`,
+      API_URL: `http://localhost:${API_PORT}`,
+      KETE_CLIENT_ID: 'demo',
+      KETE_CLIENT_SECRET: 'demo',
+      SESSION_SECRET: sessionSecret,
+    },
+  },
+);
+
+// The door: cookies of « localhost » are shared by its ports, so the session set here is the
+// screens' own. It only ever answers this machine.
+const cookie = (name: string, value: string, maxAge: number) =>
+  `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
+const door = createServer((request, response) => {
+  const viewed = /^\/as\/(prs_[0-9a-f-]{8,64})$/.exec(request.url ?? '')?.[1];
+  response.writeHead(302, {
+    location: `http://localhost:${WEB_PORT}/`,
+    'set-cookie': [
+      cookie('kete_session', session, 8 * 3600),
+      viewed ? cookie('kete_view_as', viewed, 8 * 3600) : cookie('kete_view_as', '', 0),
+    ],
+  });
+  response.end();
+}).listen(DOOR_PORT, '127.0.0.1');
+
+let stopping = false;
+async function stop() {
+  if (stopping) return;
+  stopping = true;
+  say('Arrêt : le schéma de démonstration est supprimé.');
+  door.close();
+  api.close();
+  if (web.pid) spawnSync(`taskkill /pid ${web.pid} /T /F`, { shell: true, stdio: 'ignore' });
+  await db.drop().catch(() => undefined);
+  rmSync(leftover, { force: true });
+  process.exit(0);
+}
+process.on('SIGINT', () => void stop());
+process.on('SIGTERM', () => void stop());
+
+for (let attempt = 0; attempt < 90; attempt++) {
+  const up = await fetch(`http://localhost:${WEB_PORT}/`, { redirect: 'manual' })
+    .then((answer) => answer.status < 500)
+    .catch(() => false);
+  if (up) break;
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+}
+say(`Ouvrez http://localhost:${DOOR_PORT} (administratrice de la démonstration).`);
+for (const person of people.rows) {
+  say(`  comme ${person.name} : http://localhost:${DOOR_PORT}/as/${person.person_id}`);
+}
+say('Ctrl C pour arrêter.');
