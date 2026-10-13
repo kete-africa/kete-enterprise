@@ -17,6 +17,7 @@ import { skillRoutes } from './features/skills/index.js';
 import { dossierRoutes, listenForDossiers } from './features/dossiers/index.js';
 import { knowledgeRoutes } from './features/knowledge/index.js';
 import { listenForNotifications, notificationRoutes } from './features/notifications/index.js';
+import { listenForPhones, phoneRoutes, phoneWebhookRoutes } from './features/phone/index.js';
 import { searchRoutes } from './features/search/index.js';
 import { compliancePermissions, complianceRoutes } from './features/compliance/index.js';
 import { decisionsPermissions, decisionsRoutes } from './features/decisions/index.js';
@@ -213,6 +214,8 @@ async function me(c: Ctx) {
 tellAppsWith(transaction);
 // The people a request waits for are told (spec 030).
 listenForNotifications();
+// What waits for a decision reaches the phones tied to the center (spec 077).
+listenForPhones();
 // A dossier's documents are read by its members (spec 034).
 listenForDossiers();
 // Each form is a subject of the decisions engine (spec 032).
@@ -319,6 +322,8 @@ export function createApi(): Hono {
   });
   // Her session's gestures: a subject set aside for today, taken back (spec 058).
   v1.route('/today', todaySessionRoutes);
+  // Her phone, and the organization's WhatsApp number and Telegram bot (spec 077).
+  v1.route('/phone', phoneRoutes);
   api.route('/v1', v1);
 
   const open = new Hono();
@@ -331,6 +336,8 @@ export function createApi(): Hono {
   open.route('/factory', factoryReportRoutes);
   // The apps' business events, with their own token (spec 025).
   open.route('/apps', appEventRoutes);
+  // WhatsApp and Telegram, each checked with the organization's own secret (spec 077).
+  open.route('/chat', phoneWebhookRoutes);
   api.route('/public', open);
   // A refused gesture says why, with a stable code the screens translate.
   api.onError((error, c) => {

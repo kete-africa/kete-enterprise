@@ -52,6 +52,7 @@ export type Page =
   | 'admin_library'
   | 'my_agents'
   | 'reception'
+  | 'phone'
   | 'surveys'
   | 'performance'
   | 'team'
@@ -139,6 +140,13 @@ export function placesOf(me: Me): Place[] {
       href: '/mon-accueil',
       icon: 'people',
       label: m.nav_reception(),
+      group: 'me',
+    },
+    {
+      page: 'phone',
+      href: '/mon-telephone',
+      icon: 'people',
+      label: m.nav_phone(),
       group: 'me',
     },
     {

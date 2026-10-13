@@ -77,6 +77,7 @@ import {
   todaySessionMigrationSql,
 } from '../src/features/workspace/index.js';
 import { appRequestsMigrationSql } from '../src/features/app-requests/index.js';
+import { phoneMigrationSql } from '../src/features/phone/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -239,4 +240,6 @@ export const migrations: Migration[] = [
   { name: '0058_money_facts', sql: (context) => moneyMigrationSql(context) },
   // Circuits completed: sent back for correction, informed, a project's lead (spec 075).
   { name: '0059_circuits_completed', sql: (context) => circuitsCompletedMigrationSql(context) },
+  // WhatsApp and Telegram: senders, phones tied, every message (spec 077).
+  { name: '0060_phone', sql: (context) => phoneMigrationSql(context) },
 ];
