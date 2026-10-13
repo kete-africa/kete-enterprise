@@ -119,7 +119,7 @@ describe('a third party is one record, cited by every app', () => {
   it('carries what each app knows of it', async () => {
     // Apps speak with the token of a person who reads third parties.
     const said = await post(t.kofi, `/parties/${ids.hotel}/facts`, {
-      source: 'Gestion',
+      source: 'Kete Finance',
       key: 'F-0412',
       label: 'Facture F-0412 · 2 480 000 F',
       state: 'Due depuis 6 jours',
@@ -132,13 +132,13 @@ describe('a third party is one record, cited by every app', () => {
     ).toBe(403);
     // Said again, it is replaced, not doubled.
     await post(t.kofi, `/parties/${ids.hotel}/facts`, {
-      source: 'Gestion',
+      source: 'Kete Finance',
       key: 'F-0412',
       label: 'Facture F-0412 · 2 480 000 F',
       state: 'Payée',
     });
     const fiche = (await get(t.kofi, `/parties/${ids.hotel}`)).body;
-    expect(fiche.facts).toMatchObject([{ source: 'Gestion', key: 'F-0412', state: 'Payée' }]);
+    expect(fiche.facts).toMatchObject([{ source: 'Kete Finance', key: 'F-0412', state: 'Payée' }]);
   });
 
   it('is proposed as a duplicate by its phone or its name, to who may merge', async () => {
@@ -188,10 +188,10 @@ describe('a third party is one record, cited by every app', () => {
       facts: { source: string }[];
     };
     expect(followed.party.partyId).toBe(ids.hotel);
-    expect(followed.facts.map((fact) => fact.source).sort()).toEqual(['Gestion', 'Support']);
+    expect(followed.facts.map((fact) => fact.source).sort()).toEqual(['Kete Finance', 'Support']);
     // And an app may go on saying what it knows under the old identifier.
     await post(t.kofi, `/parties/${ids.hotelTwice}/facts`, {
-      source: 'Engagements',
+      source: 'Kete Commitments',
       key: 'CTR-7',
       label: 'Contrat de maintenance',
     });
