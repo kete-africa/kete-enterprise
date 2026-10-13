@@ -12,7 +12,7 @@ import pg from 'pg';
 import { scriptedAnswers, scriptedProposal } from '../db/demo/answers.js';
 import { seedDay } from '../db/demo/day.js';
 import { seedErp } from '../db/demo/erp.js';
-import { seedParties, seedProject } from '../db/demo/references.js';
+import { seedMoney, seedParties, seedProject } from '../db/demo/references.js';
 import { demoEmail } from '../db/demo/kya.js';
 import { seedLibrary } from '../db/demo/library.js';
 import { seedDemo } from '../db/demo/seed.js';
@@ -150,6 +150,8 @@ if (manager && colleague) {
     })
   ) {
     say('Projet : « Chantier Garage Bè », son client, son budget par poste, dans /projets.');
+    const moneySaid = await seedMoney({ api: app, admin: token });
+    if (moneySaid > 0) say(`Argent : ${moneySaid} mouvements écrits d’avance sur ce projet.`);
   }
   const day = await seedDay({
     api: app,

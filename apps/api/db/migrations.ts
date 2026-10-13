@@ -13,6 +13,7 @@ import { datasetsMigrationSql } from '../src/features/datasets/index.js';
 import { exchangesMigrationSql } from '../src/features/exchanges/index.js';
 import { receptionMigrationSql, requestsMigrationSql } from '../src/features/requests/index.js';
 import { connectorsMigrationSql } from '../src/features/connectors/index.js';
+import { moneyMigrationSql } from '../src/features/money/index.js';
 import { partiesMigrationSql } from '../src/features/parties/index.js';
 import { projectsMigrationSql } from '../src/features/projects/index.js';
 import { rulesMigrationSql } from '../src/features/rules/index.js';
@@ -231,4 +232,6 @@ export const migrations: Migration[] = [
   { name: '0056_parties', sql: (context) => partiesMigrationSql(context) },
   // Projects: one object — a dossier, a team, a client, a budget by post (spec 074, D-047).
   { name: '0057_projects', sql: (context) => projectsMigrationSql(context) },
+  // The facts of money the apps say, by project (spec 076, doctrine D-049).
+  { name: '0058_money_facts', sql: (context) => moneyMigrationSql(context) },
 ];
