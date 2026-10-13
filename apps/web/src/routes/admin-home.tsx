@@ -90,6 +90,14 @@ function AdminHome() {
               description={m.admin_modules({ on: String(modulesOn) })}
             />
           )}
+          {me.administrator && (
+            <AppCard
+              href="/administration/regles"
+              icon={<Icon name="check" />}
+              name={m.nav_rules()}
+              description={m.admin_rules()}
+            />
+          )}
           <AppCard
             href="/administration/circuits"
             icon={<Icon name="arrow" />}

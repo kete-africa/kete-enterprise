@@ -47,3 +47,9 @@ flowchart LR
   R -->|tools/call| V[POST /v1/views/call · her token] --> A[the app]
   L[tools/list] -->|visibility app| X[kept from the model]
 ```
+
+## Rules (spec 068)
+
+Every tool an agent is given (`toolsForAgent`, `toolsForPerson`) is wrapped by `ruled`: before it
+runs, the organization's rules are asked (`ruleAgainst`, feature `rules`). A copilot's `tools/call`
+through `/mcp` is checked the same way (`refusedCalls`) and answered with the rule's sentence.

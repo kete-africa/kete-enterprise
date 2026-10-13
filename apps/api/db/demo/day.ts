@@ -222,6 +222,13 @@ export async function seedDay(options: {
     if (rule.status >= 300) skipped('reception rule', rule.status);
   }
 
+  // A rule of the organization, on trial: it counts what it would refuse (spec 068).
+  const rule = await call(admin, 'POST', '/rules', {
+    family: 'autonomy',
+    sentence: 'Aucun agent n’agit seul : il lit et prépare, une personne décide.',
+  });
+  if (rule.status >= 300) skipped('rule', rule.status);
+
   // Her director shares one of his agents with everyone: she may call it, with her own rights
   // (spec 066, doctrine D-044).
   const shared = await call(options.requester.token, 'POST', '/agents', {

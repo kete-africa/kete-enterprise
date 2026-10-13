@@ -10,6 +10,8 @@ export interface HowStep {
   permission?: string;
   level?: number;
   sources?: { label: string; href: string }[];
+  /** The organization's rule that refused it (spec 068). */
+  rule?: string;
 }
 
 export interface How {

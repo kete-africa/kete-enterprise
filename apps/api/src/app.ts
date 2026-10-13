@@ -68,6 +68,7 @@ import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
 import { exchangeRoutes } from './features/exchanges/index.js';
 import { receptionRoutes, requestRoutes } from './features/requests/index.js';
+import { rulesRoutes } from './features/rules/index.js';
 import { governanceRoutes } from './features/governance/index.js';
 import { noteRoutes } from './features/notes/index.js';
 import { listenForRoutines, routineRoutes } from './features/routines/index.js';
@@ -227,6 +228,7 @@ export function createApi(): Hono {
   v1.route('/exchanges', exchangeRoutes);
   v1.route('/requests', requestRoutes);
   v1.route('/reception', receptionRoutes);
+  v1.route('/rules', rulesRoutes(permissionCatalog));
   v1.route('/organization', organizationRoutes);
   v1.route('/structure', structureRoutes);
   v1.route('/rights', rightsRoutes(permissionCatalog, appPermissions));
