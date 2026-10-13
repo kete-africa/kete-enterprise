@@ -13,6 +13,7 @@ import { datasetsMigrationSql } from '../src/features/datasets/index.js';
 import { exchangesMigrationSql } from '../src/features/exchanges/index.js';
 import { receptionMigrationSql, requestsMigrationSql } from '../src/features/requests/index.js';
 import { connectorsMigrationSql } from '../src/features/connectors/index.js';
+import { partiesMigrationSql } from '../src/features/parties/index.js';
 import { rulesMigrationSql } from '../src/features/rules/index.js';
 import { notesAboutMigrationSql, notesMigrationSql } from '../src/features/notes/index.js';
 import { routinesMigrationSql } from '../src/features/routines/index.js';
@@ -225,4 +226,6 @@ export const migrations: Migration[] = [
   { name: '0054_ai_rules', sql: (context) => rulesMigrationSql(context) },
   // Connectors: a business tool read through its MCP server (spec 069).
   { name: '0055_connectors', sql: (context) => connectorsMigrationSql(context) },
+  // Third parties: who the organization works with, one record each (spec 073, doctrine D-047).
+  { name: '0056_parties', sql: (context) => partiesMigrationSql(context) },
 ];

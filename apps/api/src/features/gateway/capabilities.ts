@@ -4,6 +4,7 @@ import { actingPerson } from '../../platform/acting.js';
 import { createAction } from '../actions/index.js';
 import { inboxFor } from '../decisions/index.js';
 import { measureFromReading, readingsToTake } from '../performance/index.js';
+import { listParties } from '../parties/index.js';
 import { registerInput, registerResourceForAgent, registryFor } from '../registry/index.js';
 import { covers, reach } from '../rights/index.js';
 import { chartFor } from '../structure/index.js';
@@ -96,6 +97,25 @@ export const gatewayCapabilities = [
     autonomy: 2,
     input: registerInput,
     command: registerResourceForAgent,
+  }),
+  defineCapability({
+    name: 'parties_find',
+    description:
+      'The third parties the organization works with — clients, suppliers, funders — found by name or phone, with their roles and how to reach them.',
+    permission: 'parties:read',
+    autonomy: 1,
+    input: z.object({ q: z.string().trim().max(120).default('') }),
+    async run(input, { db }) {
+      return (await listParties(db, { q: input.q })).slice(0, 20).map((party) => ({
+        partyId: party.partyId,
+        name: party.name,
+        kind: party.kind,
+        roles: party.roles,
+        phone: party.phone,
+        email: party.email,
+        channel: party.channel,
+      }));
+    },
   }),
   defineCapability({
     name: 'decisions_inbox',

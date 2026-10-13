@@ -6,10 +6,10 @@ import type { Page } from './shell';
 // and the phone's tabs group by it. Pages merge inside their place step by step (docs/ROADMAP.md,
 // steps C2 to C7); until then a place lists its pages.
 
-export type Verb = 'decide' | 'ask' | 'delegate' | 'apps';
+export type Verb = 'decide' | 'ask' | 'delegate' | 'references' | 'apps';
 
 /** In the order a person meets them. */
-export const verbs: Verb[] = ['decide', 'ask', 'delegate', 'apps'];
+export const verbs: Verb[] = ['decide', 'ask', 'delegate', 'references', 'apps'];
 
 const placed: Partial<Record<Page, Verb>> = {
   home: 'decide',
@@ -29,6 +29,8 @@ const placed: Partial<Record<Page, Verb>> = {
   reception: 'delegate',
   routines: 'delegate',
   skills: 'delegate',
+  // What every place and every app cites (doctrine D-047).
+  parties: 'references',
 };
 
 /** Where a page lives; a business tool is an app, behind the center. */
@@ -39,5 +41,6 @@ export const verbLabel = (verb: Verb): string =>
     decide: m.nav_decide,
     ask: m.nav_ask,
     delegate: m.nav_delegate,
+    references: m.nav_references,
     apps: m.nav_apps,
   })[verb]();

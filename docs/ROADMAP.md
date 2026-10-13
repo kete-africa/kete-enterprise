@@ -146,6 +146,48 @@ New apps, each in its own repository, created by the factory: `kete-fieldwork`, 
 `kete-inventory`, `kete-projects`, `kete-lab`, `kete-correspondence`; then Frappe's flows, one by
 one (inventory, classification, recoding, history, parallel run, Frappe form switched off).
 
+## References, and four apps behind the center (decided 2026-10-13)
+
+### Objective
+
+The center holds the three references every app cites — **people**, **third parties**,
+**projects** — and four apps hold the facts: **Gestion**, **Équipe**, **Engagements**, **Support**
+(doctrine D-047 to D-049). A project is one object: where a job is discussed is where its money,
+its team, its contract and its tickets are seen. Every fact of money carries its project.
+
+The model, each app and its screens are in [`docs/design/apps-2026-10.md`](design/apps-2026-10.md).
+
+### Specs, in order
+
+`kete-core` carries what the apps share (its roadmap, phase 8: E1 to E4). The apps each have their
+own repository, created from the template; their steps are listed here because they close on the
+center.
+
+| Step | Where                          | Delivers                                                                                                                                                                   | Proof                                                                 | Needs  |
+| ---- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ------ |
+| F1   | `073-tiers` (done)             | Third parties: one record per company or person outside, its roles (client, supplier, funder), duplicates proposed and merged, what each app knows of it; read by the apps | Two records of one company are merged, and every app follows          | —      |
+| F2   | `074-projects`                 | Projects: one object — its thread, files and instructions; its team; its budget by post; its phases — a second axis of rights; read by the apps                            | A project born from a sentence shows its team, its budget, its thread | F1     |
+| F3   | `075-circuits-completed`       | Circuits: send back for correction, a person informed, steps in parallel, escalation after a delay, a step decided by the project's lead                                   | A request sent back is corrected and decided, without a new one       | F2     |
+| F4   | `076-money-by-project`         | The facts of money the apps send, kept by project: received, committed, spent, available; the three states of money; funds of one project paying another                   | A project's available funds follow what Gestion sends                 | F2, E3 |
+| F5   | `077-phone`                    | WhatsApp and Telegram in the center: what waits for her arrives there, she decides by a reply                                                                              | A decision is taken by a reply on a phone                             | F3     |
+| G1   | `kete-africa/kete-gestion`     | Gestion, part 1 — sales: quotes with their cost, invoices, receipts of payment, delivered and not invoiced; a won quote opens its project                                  | A won quote becomes a project with its budget                         | F2, E2 |
+| G2   | `kete-africa/kete-gestion`     | Gestion, part 2 — purchases and expenses: requests with their project and post, expense notes read from a photo, advances to justify, the memory of prices                 | A request beyond its post goes up the circuit                         | G1, F3 |
+| G3   | `kete-africa/kete-gestion`     | Gestion, part 3 — treasury: accounts, movements, the three states of money, funds by project, the daily closing of a till                                                  | « Really available » is the bank less reserved and committed          | G2, F4 |
+| H1   | `kete-africa/kete-team`        | Équipe: leave and absences, authorisations that expire, time by project in one answer a week, advances on salary, the month's pay elements                                 | A person without a valid authorisation cannot be assigned             | F2     |
+| I1   | `kete-africa/kete-commitments` | Engagements: contracts read into dates and obligations with the passage cited, retentions and bonds to recover, a funder's agreement as rules of spending                  | A funder's clause refuses a purchase in Gestion                       | G2     |
+| J1   | `kete-africa/kete-helpdesk`    | Support: a ticket knows what the client bought and who pays — warranty, contract, billable; its cost goes to its project; a billable one prepares its invoice              | A billable intervention prepares an invoice in Gestion                | G1     |
+
+### Not done
+
+General accounting, payroll, stock; executing a payment; a country's legal calendar maintained by
+Kete; shared costs spread over projects (they stay in « Fonctionnement »). Enquêtes joins the
+center's forms and Réunions becomes a thread with several people (D-048): neither is an app.
+
+### What depends on the author
+
+A real bank statement, real receipts and a real contract read by a real model: the reading on
+which treasury and commitments rest is unproven. A WhatsApp number and a Telegram bot for F5.
+
 ## Later, when a real need appears
 
 The internal chat and knowledge (`assistant`, `knowledge`), finance and HR operations with the books

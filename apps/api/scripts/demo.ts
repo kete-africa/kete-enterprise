@@ -12,6 +12,7 @@ import pg from 'pg';
 import { scriptedAnswers, scriptedProposal } from '../db/demo/answers.js';
 import { seedDay } from '../db/demo/day.js';
 import { seedErp } from '../db/demo/erp.js';
+import { seedParties } from '../db/demo/references.js';
 import { demoEmail } from '../db/demo/kya.js';
 import { seedLibrary } from '../db/demo/library.js';
 import { seedDemo } from '../db/demo/seed.js';
@@ -127,6 +128,10 @@ const token = await tokenFor(ADMINISTRATOR.userId, ADMINISTRATOR.name, 'owner');
 
 // A day in it (step C2): the morning of the head of after-sales, played through the API.
 const app = createApi();
+// The center's references (step F1): the third parties, one of them written twice.
+const partiesSeeded = await seedParties({ api: app, admin: token });
+if (partiesSeeded > 0)
+  say(`Tiers : ${partiesSeeded} fiches, dont un doublon à fusionner dans /tiers.`);
 // A library with one report, indexed without a model (step C4).
 if (await seedLibrary({ api: app, admin: token })) {
   say('Bibliothèque : un rapport SAV indexé ; cherchez « batteries » dans /bibliotheque.');
