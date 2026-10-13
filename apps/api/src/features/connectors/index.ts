@@ -2,6 +2,7 @@
 export { connectorRoutes } from './routes.js';
 export {
   connectorsMigrationSql,
+  listConnectors,
   readConnected,
   useConnectorFetch,
   type ReadReport,

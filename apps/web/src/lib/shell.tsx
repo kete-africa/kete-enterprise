@@ -32,6 +32,7 @@ export type Page =
   | 'todo'
   | 'assistant'
   | 'resources'
+  | 'apps'
   | 'notifications'
   | 'search'
   | 'library'
@@ -208,6 +209,8 @@ export function placesOf(me: Me): Place[] {
       label: m.nav_library(),
       group: 'me',
     },
+    // What stands behind the center (spec 070): one door to every business tool.
+    { page: 'apps', href: '/apps', icon: 'apps', label: m.nav_apps(), group: 'me' },
     { page: 'resources', href: '/ressources', icon: 'apps', label: m.nav_resources(), group: 'me' },
     {
       page: 'notifications',

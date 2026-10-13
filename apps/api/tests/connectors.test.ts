@@ -213,6 +213,19 @@ describe('a purchase request made in the ERP lands in Décider', () => {
     );
     // Hers only: a colleague sees none of it.
     expect(await todoOf(t.kofi)).toEqual([]);
+    // « Apps » says what the center receives from it — to her, what waits for her (spec 070).
+    const behind = (await get(t.awa, '/apps')).body.apps as {
+      kind: string;
+      name: string | null;
+      receives: { waiting: number; reads: string | null };
+    }[];
+    expect(behind.filter((entry) => entry.kind === 'connector')).toMatchObject([
+      { name: 'ERP', receives: { waiting: 2, reads: 'Demande d’achat' } },
+    ]);
+    const his = (await get(t.kofi, '/apps')).body.apps as typeof behind;
+    expect(his.find((entry) => entry.kind === 'connector')?.receives.waiting).toBe(0);
+    // Its address and its credential stay with the administrators.
+    expect(JSON.stringify(behind)).not.toContain('erp-mcp.kya.test');
     // Read again, nothing doubles.
     await post(t.admin, `/connectors/${connectorId}/read`);
     expect(await todoOf(t.awa)).toHaveLength(2);
