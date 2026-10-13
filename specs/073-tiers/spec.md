@@ -49,4 +49,6 @@ units; un-merging.
   kept once; a duplicate is proposed by its phone or its name; **two records of one company are
   merged, and every app follows** — the old identifier answers with the record that stays and its
   facts from both apps; two records said distinct are not proposed again; a record is corrected.
-- Seen with `pnpm demo` on 2026-10-13: see the pull request.
+- Seen with `pnpm demo` on 2026-10-13, as the administrator: « Tiers » lists the six records and
+  proposes « Hôtel du Golfe · Hotel du Golf SARL — même téléphone »; « Fusionner dans Hôtel du Golfe »
+  leaves five records, and Hôtel du Golfe is « Client » and « Fournisseur ».
