@@ -12,7 +12,7 @@ import pg from 'pg';
 import { scriptedAnswers, scriptedProposal } from '../db/demo/answers.js';
 import { seedDay } from '../db/demo/day.js';
 import { seedErp } from '../db/demo/erp.js';
-import { seedParties } from '../db/demo/references.js';
+import { seedParties, seedProject } from '../db/demo/references.js';
 import { demoEmail } from '../db/demo/kya.js';
 import { seedLibrary } from '../db/demo/library.js';
 import { seedDemo } from '../db/demo/seed.js';
@@ -141,6 +141,16 @@ const colleague = people.rows.find((person) => person.name === COLLEAGUE);
 // Her own manager, who asks her for a quote (step C5).
 const director = people.rows.find((person) => person.name === DIRECTOR);
 if (manager && colleague) {
+  // The center's project (step F2): the Garage Bè site, led by the head of after-sales.
+  if (
+    await seedProject({
+      api: app,
+      admin: token,
+      lead: { userId: manager.account_user_id, name: manager.name },
+    })
+  ) {
+    say('Projet : « Chantier Garage Bè », son client, son budget par poste, dans /projets.');
+  }
   const day = await seedDay({
     api: app,
     organizationId: ORGANIZATION,
