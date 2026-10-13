@@ -30,3 +30,38 @@ export async function seedParties(options: { api: Hono; admin: string }): Promis
   }
   return written;
 }
+
+/**
+ * The demo's project (step F2): the Garage Bè site, led by the head of after-sales, with what it
+ * was sold for and its budget by post. Returns whether it was written.
+ */
+export async function seedProject(options: {
+  api: Hono;
+  admin: string;
+  lead: { userId: string; name: string };
+}): Promise<boolean> {
+  const headers = (key: string) => ({
+    authorization: `Bearer ${options.admin}`,
+    'content-type': 'application/json',
+    'idempotency-key': key,
+  });
+  const listed = await options.api.request('/v1/parties?q=Garage', { headers: headers('demo-p') });
+  const found = (await listed.json()) as { parties?: { partyId: string }[] };
+  const made = await options.api.request('/v1/projects', {
+    method: 'POST',
+    headers: headers('demo-project-1'),
+    body: JSON.stringify({
+      name: 'Chantier Garage Bè',
+      ...(found.parties?.[0] ? { partyId: found.parties[0].partyId } : {}),
+      lead: options.lead,
+      phase: 'Exécution',
+      sold: 2_480_000,
+      posts: [
+        { name: 'Matériel', budget: 1_450_000 },
+        { name: 'Main-d’œuvre', budget: 300_000 },
+        { name: 'Déplacements', budget: 150_000 },
+      ],
+    }),
+  });
+  return made.status < 300;
+}

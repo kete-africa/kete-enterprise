@@ -5,6 +5,7 @@ import { createAction } from '../actions/index.js';
 import { inboxFor } from '../decisions/index.js';
 import { measureFromReading, readingsToTake } from '../performance/index.js';
 import { listParties } from '../parties/index.js';
+import { projectsFor } from '../projects/index.js';
 import { registerInput, registerResourceForAgent, registryFor } from '../registry/index.js';
 import { covers, reach } from '../rights/index.js';
 import { chartFor } from '../structure/index.js';
@@ -114,6 +115,28 @@ export const gatewayCapabilities = [
         phone: party.phone,
         email: party.email,
         channel: party.channel,
+      }));
+    },
+  }),
+  defineCapability({
+    name: 'projects_mine',
+    description:
+      "The projects the person belongs to: their client, their lead, their phase, their budget by post and what they were sold for. Amounts are in the currency's smallest unit.",
+    permission: GATEWAY_PERMISSION,
+    autonomy: 1,
+    input: z.object({}),
+    async run(_input, { db }) {
+      return (await projectsFor(db, person().userId, { all: false })).map((project) => ({
+        projectId: project.projectId,
+        name: project.name,
+        client: project.party?.name ?? null,
+        lead: project.lead.name,
+        status: project.status,
+        phase: project.phase,
+        sold: project.sold,
+        budget: project.budget,
+        currency: project.currency,
+        posts: project.posts.map((post) => ({ name: post.name, budget: post.budget })),
       }));
     },
   }),

@@ -30,6 +30,7 @@ const placed: Partial<Record<Page, Verb>> = {
   routines: 'delegate',
   skills: 'delegate',
   // What every place and every app cites (doctrine D-047).
+  projects: 'references',
   parties: 'references',
 };
 

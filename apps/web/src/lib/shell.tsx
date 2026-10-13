@@ -34,6 +34,7 @@ export type Page =
   | 'resources'
   | 'apps'
   | 'parties'
+  | 'projects'
   | 'notifications'
   | 'search'
   | 'library'
@@ -210,7 +211,9 @@ export function placesOf(me: Me): Place[] {
       label: m.nav_library(),
       group: 'me',
     },
-    // The center's references (doctrine D-047): who the organization works with.
+    // The center's references (doctrine D-047): what she works on — the projects she belongs to.
+    { page: 'projects', href: '/projets', icon: 'folder', label: m.nav_projects(), group: 'me' },
+    // And who the organization works with.
     (me.administrator ||
       me.permissions.includes('parties:read') ||
       me.permissions.includes('parties:manage')) && {
