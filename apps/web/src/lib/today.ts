@@ -32,7 +32,7 @@ export interface Meanwhile {
     taskId: string;
     agentName: string;
     instruction: string;
-    status: 'queued' | 'running';
+    status: 'queued' | 'running' | 'paused';
   }[];
   routines: { runId: string; title: string; cause: string; status: 'queued' | 'running' }[];
 }

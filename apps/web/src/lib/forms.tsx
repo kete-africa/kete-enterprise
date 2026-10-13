@@ -7,6 +7,8 @@ import * as m from '@/paraglide/messages.js';
 export function refusal(code: string | null): string {
   const messages: Record<string, () => string> = {
     forbidden: m.error_forbidden,
+    task_settled: m.error_task_settled,
+    unknown_unit: m.error_unknown_unit,
     herself: m.error_request_herself,
     ambiguous: m.error_request_ambiguous,
     not_hers: m.error_request_not_hers,

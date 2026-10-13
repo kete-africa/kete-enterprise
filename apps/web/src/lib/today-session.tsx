@@ -150,8 +150,12 @@ const linkClass = 'text-body-sm font-semibold text-link underline';
 
 /** « Pendant ce temps »: what her agents and her routines are doing right now. */
 export function MeanwhileList({ meanwhile }: { meanwhile: Meanwhile }) {
-  const state = (status: 'queued' | 'running') =>
-    status === 'running' ? m.meanwhile_running() : m.meanwhile_queued();
+  const state = (status: 'queued' | 'running' | 'paused') =>
+    status === 'paused'
+      ? m.agent_state_paused()
+      : status === 'running'
+        ? m.meanwhile_running()
+        : m.meanwhile_queued();
   if (meanwhile.agents.length + meanwhile.routines.length === 0) {
     return <p className="text-fg-muted">{m.meanwhile_none()}</p>;
   }

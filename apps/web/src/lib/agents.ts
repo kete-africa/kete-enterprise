@@ -28,6 +28,11 @@ export interface AgentView {
   wakeEveryMinutes: number;
   watches: string[];
   status: 'active' | 'paused';
+  /** Private, or shared with colleagues — everyone, or the units named (spec 066). */
+  visibility: 'private' | 'shared';
+  sharedWith: string[];
+  /** Where it stands: one of six states, the same on every screen (spec 066). */
+  state: AgentState;
   nextWakeAt: string;
   lastRunAt: string | null;
   signals: AgentSignal[];
@@ -35,8 +40,31 @@ export interface AgentView {
   tasks?: AgentTask[];
 }
 
+/** The six states of an agent (spec 066). */
+export interface AgentState {
+  kind: 'idle' | 'working' | 'waiting' | 'blocked' | 'paused' | 'stopped';
+  taskId?: string;
+  instruction?: string;
+  step?: string;
+  steps?: number;
+  reason?: string;
+  drafts?: number;
+  since?: string;
+  by?: string;
+}
+
+/** An agent a colleague shares with her: what it is for, never how it is set (D-044). */
+export interface SharedAgent {
+  agentId: string;
+  name: string;
+  mission: string;
+}
+
 export interface AgentsScreen {
   agents: AgentView[];
+  /** The agents colleagues share with her, and what she asked of them. */
+  shared: SharedAgent[];
+  given: (AgentTask & { agentName: string })[];
   watches: string[];
   manages: boolean;
   permissions: string[];
@@ -50,20 +78,50 @@ export interface AgentTask {
   agentId: string;
   parentTaskId: string | null;
   instruction: string;
-  status: 'queued' | 'running' | 'done' | 'failed' | 'stopped';
+  status: 'queued' | 'running' | 'paused' | 'done' | 'failed' | 'stopped' | 'taken_over';
   answer: string | null;
   draftIds: string[];
   createdAt: string;
+  /** The steps it took, written as they happen (spec 066). */
+  steps: { tool: string; status: string }[];
+  /** What she wrote to it while it worked. */
+  notes: { text: string; at: string }[];
+  /** Asked of it while it runs, and not yet obeyed. */
+  control: 'pause' | 'redirect' | 'takeover' | null;
+  steeredBy: { name: string; at: string } | null;
 }
+
+const taskOf = (t: AgentTask): AgentTask => ({
+  taskId: t.taskId,
+  agentId: t.agentId,
+  parentTaskId: t.parentTaskId,
+  instruction: t.instruction,
+  status: t.status,
+  answer: t.answer,
+  draftIds: t.draftIds,
+  createdAt: t.createdAt,
+  steps: (t.steps ?? []).map((s) => ({ tool: s.tool, status: s.status })),
+  notes: (t.notes ?? []).map((n) => ({ text: n.text, at: n.at })),
+  control: t.control ?? null,
+  steeredBy: t.steeredBy ? { name: t.steeredBy.name, at: t.steeredBy.at } : null,
+});
 
 export const fetchAgents = createServerFn({ method: 'GET' }).handler(
   async (): Promise<AgentsScreen> => {
     const request = getRequest();
-    const [screen, permissions, me, chart] = await Promise.all([
-      callApi<{ agents: AgentView[]; watches: string[]; manages: boolean }>(request, '/v1/agents'),
+    const [screen, permissions, me, chart, given] = await Promise.all([
+      callApi<{
+        agents: AgentView[];
+        shared?: SharedAgent[];
+        watches: string[];
+        manages: boolean;
+      }>(request, '/v1/agents'),
       callApi<{ permissions: string[] }>(request, '/v1/rights/permissions'),
       callApi<{ userId: string }>(request, '/v1/me'),
       callApi<Chart>(request, '/v1/structure'),
+      callApi<{ tasks: (AgentTask & { agentName: string })[] }>(request, '/v1/agents/tasks/given')
+        .then((r) => r.tasks)
+        .catch(() => []),
     ]);
     const agents = screen.agents.map((a) => ({
       agentId: a.agentId,
@@ -80,6 +138,9 @@ export const fetchAgents = createServerFn({ method: 'GET' }).handler(
       wakeEveryMinutes: a.wakeEveryMinutes,
       watches: a.watches,
       status: a.status,
+      visibility: a.visibility ?? 'private',
+      sharedWith: a.sharedWith ?? [],
+      state: a.state ?? { kind: 'idle' as const },
       nextWakeAt: a.nextWakeAt,
       lastRunAt: a.lastRunAt,
       signals: a.signals.map((s) => ({
@@ -93,23 +154,18 @@ export const fetchAgents = createServerFn({ method: 'GET' }).handler(
     const tasks = await Promise.all(
       agents.map((a) =>
         callApi<{ tasks: AgentTask[] }>(request, `/v1/agents/${a.agentId}/tasks`)
-          .then((r) =>
-            r.tasks.slice(0, 5).map((t) => ({
-              taskId: t.taskId,
-              agentId: t.agentId,
-              parentTaskId: t.parentTaskId,
-              instruction: t.instruction,
-              status: t.status,
-              answer: t.answer,
-              draftIds: t.draftIds,
-              createdAt: t.createdAt,
-            })),
-          )
+          .then((r) => r.tasks.slice(0, 5).map(taskOf))
           .catch(() => [] as AgentTask[]),
       ),
     );
     return {
       agents: agents.map((a, i) => ({ ...a, tasks: tasks[i] ?? [] })),
+      shared: (screen.shared ?? []).map((a) => ({
+        agentId: a.agentId,
+        name: a.name,
+        mission: a.mission,
+      })),
+      given: given.map((t) => ({ ...taskOf(t), agentName: t.agentName })),
       watches: screen.watches,
       manages: screen.manages,
       permissions: permissions.permissions,
@@ -120,7 +176,7 @@ export const fetchAgents = createServerFn({ method: 'GET' }).handler(
 );
 
 const paths =
-  /^\/(|agt_[0-9a-f-]+\/(status|wake|tasks|autonomy)|signals\/sig_[0-9a-f-]+\/close|tasks\/tsk_[0-9a-f-]+\/stop)$/;
+  /^\/(|agt_[0-9a-f-]+\/(status|wake|tasks|autonomy|sharing)|signals\/sig_[0-9a-f-]+\/close|tasks\/tsk_[0-9a-f-]+\/(stop|pause|resume|write|take-over))$/;
 
 export const changeAgents = createServerFn({ method: 'POST' })
   .validator((input: unknown) => {

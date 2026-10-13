@@ -104,7 +104,7 @@ The steps are those of the plan shared with `kete-core` (its roadmap, phase 7: A
 | C3   | `063-answers` (first part done)                 | Demander: an answer that is a tool (a table to sort, filter and act on), its steps, its sources, the gestures under it; the input with its modes, mentions, commands and a queue while an agent works                                                                         | A question returns a table a person acts on                             | —                      |
 | C4   | `064-files-and-pieces` (first part done)        | The files and media of a thread listed once; the viewer (PDF, document, spreadsheet, images in focused and canvas view); the review of changes, for a document as for code; versions                                                                                          | A cited source opens its file at the right line                         | —                      |
 | C5   | `065-projects-and-colleagues` (first part done) | Projects (threads, files, instructions, memory she can read and erase), threads with several people, **a request to a colleague with its states** (D-044), sharing, long research in the background, voice                                                                    | Two people and an agent work in one thread; a request comes back signed | B4                     |
-| C6   | `066-agents-at-work`                            | Déléguer: my agents **private or shared** (D-044), their card, the six states everywhere, the run seen live (pause, write to it, take over), hand-overs shown in the thread; agents and routines moved onto the runtime                                                       | An agent is paused, redirected and taken over                           | B3                     |
+| C6   | `066-agents-at-work` (first part done)          | Déléguer: my agents **private or shared** (D-044), their card, the six states everywhere, the run seen live (pause, write to it, take over), hand-overs shown in the thread; agents and routines moved onto the runtime                                                       | An agent is paused, redirected and taken over                           | B3                     |
 | C7   | `067-my-desk`                                   | An agent from a sentence with its dry run on last week, routines, the factory's agent seen at work (file, terminal, preview, tests), **« Mon accueil »** with its safeguards                                                                                                  | An agent created from a sentence runs after its dry run                 | B3                     |
 | C8   | `068-rules-and-registry`                        | Administration in six entries; **rules** in eight families, each tried on last month before it is switched on; the **registry** (owner, review, duplicates, a leaver's agents handed on); **evidence**; an organization imported from a spreadsheet or described in sentences | A rule refuses a gesture and the journal names it                       | B3, B4                 |
 | C9   | `069-apps-and-connectors`                       | Apps: the list and what the center receives from each, « ask for an app », connectors through MCP — Frappe first (read), then e-mail and calendar                                                                                                                             | A purchase request made in Frappe lands in Décider                      | —                      |
@@ -117,17 +117,17 @@ The fleet (D1: creating a space, offers, health) is built in Kete Cockpit (doctr
 
 ### Built on (open source)
 
-| Library                                       | Where                                               | Status                             |
-| --------------------------------------------- | --------------------------------------------------- | ---------------------------------- |
-| assistant-ui, AI SDK, the MCP SDK, mcp-ui     | The chat, the gateway, the views of apps            | In use                             |
-| ECharts, react-grid-layout, croner, cmdk      | Dashboards, routines' hours, Ctrl K                 | In use                             |
-| Mastra, through `@kete/agents`                | C6: the agents' runtime (`kete-core` decision 0010) | Decided; agents move onto it in C6 |
-| TanStack Table                                | C3: answers as tables                               | In use                             |
-| PDF.js                                        | C4: the viewer                                      | Decided                            |
-| CodeMirror 6 (merge view), jsdiff, Tiptap     | C4: the review of changes, editing a document       | Evaluated against what exists      |
-| xterm.js                                      | C7: the terminal of an agent that codes             | Evaluated                          |
-| Existing MCP servers (Frappe, mail, calendar) | C9: connectors, rather than writing them            | To be checked before any is taken  |
-| A2A                                           | C5 and C6: exchanges between assistants and agents  | Evaluated against spec 057         |
+| Library                                       | Where                                               | Status                            |
+| --------------------------------------------- | --------------------------------------------------- | --------------------------------- |
+| assistant-ui, AI SDK, the MCP SDK, mcp-ui     | The chat, the gateway, the views of apps            | In use                            |
+| ECharts, react-grid-layout, croner, cmdk      | Dashboards, routines' hours, Ctrl K                 | In use                            |
+| Mastra, through `@kete/agents`                | C6: the agents' runtime (`kete-core` decision 0010) | Used: tasks run on it (spec 066)  |
+| TanStack Table                                | C3: answers as tables                               | In use                            |
+| PDF.js                                        | C4: the viewer                                      | Decided                           |
+| CodeMirror 6 (merge view), jsdiff, Tiptap     | C4: the review of changes, editing a document       | Evaluated against what exists     |
+| xterm.js                                      | C7: the terminal of an agent that codes             | Evaluated                         |
+| Existing MCP servers (Frappe, mail, calendar) | C9: connectors, rather than writing them            | To be checked before any is taken |
+| A2A                                           | C5 and C6: exchanges between assistants and agents  | Evaluated against spec 057        |
 
 A library's licence is checked before it is adopted.
 

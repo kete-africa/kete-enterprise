@@ -54,6 +54,13 @@ export const agentAutonomyInput = z.object({
   level: z.number().int().min(1).max(3).nullable(),
 });
 
+/** Its person opens it to colleagues, or keeps it to herself (spec 066, doctrine D-044). */
+export const agentSharingInput = z.object({
+  agentId,
+  visibility: z.enum(['private', 'shared']),
+  sharedWith: z.array(id('unt')).max(20).default([]),
+});
+
 export interface Agent {
   agentId: string;
   name: string;
@@ -70,6 +77,10 @@ export interface Agent {
   wakeEveryMinutes: number;
   watches: string[];
   status: 'active' | 'paused';
+  /** Private: its person and the administrator. Shared: colleagues may call it (D-044). */
+  visibility: 'private' | 'shared';
+  /** The units it is open to, each with everything under it; none for the whole organization. */
+  sharedWith: string[];
   nextWakeAt: string;
   lastRunAt: string | null;
 }

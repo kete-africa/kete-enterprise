@@ -25,6 +25,7 @@ import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/comm
 import { outboxMigrationSql } from '@kete/sdk';
 import {
   agentAutonomyMigrationSql,
+  agentsAtWorkMigrationSql,
   agentTasksMigrationSql,
   agentsMigrationSql,
 } from '../src/features/agents/index.js';
@@ -214,4 +215,6 @@ export const migrations: Migration[] = [
   { name: '0050_assistant_tables', sql: (context) => tablesMigrationSql(context) },
   // Work asked of a colleague, its states and its thread (spec 065, doctrine D-044).
   { name: '0051_colleague_requests', sql: (context) => requestsMigrationSql(context) },
+  // Tasks steered while they run, agents private or shared (spec 066, doctrine D-044).
+  { name: '0052_agents_at_work', sql: (context) => agentsAtWorkMigrationSql(context) },
 ];

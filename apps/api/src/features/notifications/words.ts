@@ -8,6 +8,8 @@ const catalog = {
     taskAdded: (source: string, title: string) => `${source} : ${title}`,
     agentSignal: (subject: string) => `Votre agent signale : ${subject}`,
     agentTaskDone: (agent: string) => `${agent} a terminé la tâche que vous lui avez confiée`,
+    agentTaskTakenOver: (agent: string, instruction: string) =>
+      `Repris à ${agent} : ${instruction}`,
     decisionComment: (author: string, title: string) => `${author} a écrit sur « ${title} »`,
     routineCrossed: (title: string, value: string, line: string, above: boolean) =>
       `« ${title} » est ${above ? 'au-dessus' : 'au-dessous'} de ${line} : ${value}`,
@@ -31,6 +33,8 @@ const catalog = {
     taskAdded: (source: string, title: string) => `${source}: ${title}`,
     agentSignal: (subject: string) => `Your agent reports: ${subject}`,
     agentTaskDone: (agent: string) => `${agent} finished the task you gave it`,
+    agentTaskTakenOver: (agent: string, instruction: string) =>
+      `Taken over from ${agent}: ${instruction}`,
     decisionComment: (author: string, title: string) => `${author} wrote on “${title}”`,
     routineCrossed: (title: string, value: string, line: string, above: boolean) =>
       `“${title}” is ${above ? 'above' : 'below'} ${line}: ${value}`,

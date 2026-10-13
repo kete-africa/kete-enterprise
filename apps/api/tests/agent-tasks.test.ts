@@ -193,6 +193,15 @@ describe('a task given to an agent', () => {
       title: string;
     }[];
     expect(told[0]?.title).toContain('Agent de suivi');
+    // Its draft waits for her: the agent « vous attend » (spec 066).
+    const agents = (await call(t.awa, 'GET', '/agents')).body.agents as {
+      agentId: string;
+      state: { kind: string; drafts?: number };
+    }[];
+    expect(agents.find((agent) => agent.agentId === ids.planner)?.state).toEqual({
+      kind: 'waiting',
+      drafts: 1,
+    });
   });
 
   it('says how it did it: each step with its right and level, its rights — to her only (spec 056)', async () => {
