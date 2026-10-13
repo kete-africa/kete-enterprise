@@ -89,6 +89,31 @@ describe('a note', () => {
     ]);
   });
 
+  it('files its reminder on an instance served without an https address, by its path', async () => {
+    // A local instance: the reminder leads to the page of the space by its path (spec 062).
+    const before = process.env.PUBLIC_WEB_URL;
+    process.env.PUBLIC_WEB_URL = 'http://localhost:3500';
+    try {
+      useNoteModel(
+        reading({
+          summary: 'Appeler le fournisseur.',
+          reminder: { title: 'Appeler le fournisseur', at: tomorrow() },
+        }),
+      );
+      const written = await call(t.admin, 'POST', '/notes', {
+        text: 'Appeler le fournisseur demain à 9 h',
+      });
+      expect(written.status).toBe(201);
+      const tasks = (await call(t.admin, 'GET', '/workspace/tasks')).body.tasks as {
+        source: string;
+        href: string;
+      }[];
+      expect(tasks.find((task) => task.source === 'notes')?.href).toBe('/carnet');
+    } finally {
+      process.env.PUBLIC_WEB_URL = before;
+    }
+  });
+
   it('files nothing when it names no moment, or without a model', async () => {
     useNoteModel(reading({ summary: 'Idée pour le stock.', reminder: null }));
     await call(t.awa, 'POST', '/notes', { text: 'Idée : regrouper les commandes de batteries' });

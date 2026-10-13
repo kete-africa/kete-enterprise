@@ -62,6 +62,7 @@ import { surveysMigrationSql } from '../src/features/surveys/index.js';
 import {
   appTasksMigrationSql,
   sidebarMigrationSql,
+  taskPathsMigrationSql,
   todaySessionMigrationSql,
 } from '../src/features/workspace/index.js';
 import { appRequestsMigrationSql } from '../src/features/app-requests/index.js';
@@ -205,4 +206,6 @@ export const migrations: Migration[] = [
   { name: '0047_today_set_aside', sql: (context) => todaySessionMigrationSql(context) },
   // A note says what it reports on: a report dictated in the field (spec 059).
   { name: '0048_person_notes_about', sql: (context) => notesAboutMigrationSql(context) },
+  // A task may lead to a page of the space by its path (spec 062).
+  { name: '0049_task_paths', sql: (context) => taskPathsMigrationSql(context) },
 ];

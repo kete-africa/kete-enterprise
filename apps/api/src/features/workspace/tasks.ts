@@ -161,3 +161,25 @@ export const appTasksRoutes = new Hono<{ Variables: IdentityVariables }>()
     );
     return c.json({ status: 'done' });
   });
+
+/**
+ * A task may lead to a page of the space by its path (spec 062): an instance served without an
+ * https address — a local one — files its own reminders too. An app's task stays an https address.
+ * A path starts with one slash only: « //host » is another site.
+ */
+export function taskPathsMigrationSql(options: { schema: string }): string {
+  const s = options.schema;
+  return `
+alter table ${s}.app_tasks drop constraint app_tasks_href_check;
+alter table ${s}.app_tasks add constraint app_tasks_href_check
+  check (href like 'https://%' or href ~ '^/([^/]|$)');
+`;
+}
+
+/**
+ * Where a page of the space is reached from a task: its public address when the instance has an
+ * https one, its path otherwise.
+ */
+export function spaceHref(publicWebUrl: string, path: string): string {
+  return publicWebUrl.startsWith('https://') ? `${publicWebUrl}${path}` : path;
+}

@@ -15,6 +15,8 @@ const STORE = 'kete.today.session';
  */
 export function useSession() {
   const [started, setStarted] = useState<string[] | null>(null);
+  // True once the tab's kept session was read: only then may a new one start by itself.
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     try {
       const kept: unknown = JSON.parse(sessionStorage.getItem(STORE) ?? 'null');
@@ -22,9 +24,11 @@ export function useSession() {
     } catch {
       // A tab without storage has no session to find again.
     }
+    setReady(true);
   }, []);
   return {
     started,
+    ready,
     start(keys: string[]) {
       setStarted(keys);
       try {

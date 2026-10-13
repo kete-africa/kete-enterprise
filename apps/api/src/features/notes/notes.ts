@@ -11,7 +11,7 @@ import type { IdentityVariables } from '../../platform/identity.js';
 import { organizationLanguageModel } from '../../platform/models.js';
 import { transcribeAudio, TranscriptionUnavailable } from '../../platform/transcription.js';
 import { usageStore } from '../../platform/usage.js';
-import { closeTask, putTask } from '../workspace/index.js';
+import { closeTask, putTask, spaceHref } from '../workspace/index.js';
 
 // « Noter » and « Mon carnet » (spec 055): a person writes down what she knows — « réunion demain
 // à 10 h avec Kofi sur l'enquête T3 » — as she would on paper. Kete keeps it in her notebook,
@@ -222,13 +222,13 @@ export const noteRoutes = new Hono<{ Variables: IdentityVariables }>()
           parsed.data.about?.title ?? null,
         ],
       );
-      // The reminder waits in « À faire » — an address of the space, so it needs its public URL.
-      if (reminder && env.publicWebUrl) {
+      // The reminder waits in « À faire »: a page of the space, by its address or by its path.
+      if (reminder) {
         await putTask(db, identity.organizationId, identity.userId, {
           source: 'notes',
           key: reminderKey(noteId),
           title: reminder.title,
-          href: `${env.publicWebUrl}/carnet`,
+          href: spaceHref(env.publicWebUrl, '/carnet'),
           dueAt: reminder.at.toISOString(),
         });
       }

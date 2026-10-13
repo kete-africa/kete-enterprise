@@ -11,7 +11,7 @@ import type { IdentityVariables } from '../../platform/identity.js';
 import { colleagueCard } from '../directory/index.js';
 import { notificationWords, tell } from '../notifications/index.js';
 import { readChartAt } from '../structure/index.js';
-import { closeTask, openTasksOf, putTask } from '../workspace/index.js';
+import { closeTask, openTasksOf, putTask, spaceHref } from '../workspace/index.js';
 
 // Exchanges between assistants (spec 057, doctrine D-039): a person's assistant asks a
 // colleague's. The colleague's assistant answers alone only on the subjects she allowed, with
@@ -257,14 +257,12 @@ export async function ask(
       identity.name || identity.userId,
       input.question,
     );
-    if (env.publicWebUrl) {
-      await putTask(db, identity.organizationId, to.userId, {
-        source: 'exchanges',
-        key: exchangeId,
-        title: title.slice(0, 300),
-        href: `${env.publicWebUrl}/assistant/echanges`,
-      });
-    }
+    await putTask(db, identity.organizationId, to.userId, {
+      source: 'exchanges',
+      key: exchangeId,
+      title: title.slice(0, 300),
+      href: spaceHref(env.publicWebUrl, '/assistant/echanges'),
+    });
     await tell(db, identity.organizationId, to.userId, {
       kind: 'exchange.asked',
       title,
