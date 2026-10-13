@@ -1,8 +1,8 @@
 # The screens of the center — reference (2026-10-13)
 
-What Kete Enterprise looks like once the plan of `docs/ROADMAP.md` (steps C1 to C11) is delivered:
-three places named by what a person does there — **Décider**, **Demander**, **Déléguer** — with the
-apps and the Administration behind (doctrine D-042 to D-046). This document is the reference the
+What Kete Enterprise looks like once the plan of `docs/ROADMAP.md` (steps C1 to C14) is delivered:
+four places named by what a person does there — **Décider**, **Demander**, **Déléguer**, **Planifier** —
+with the apps and the Administration behind (doctrine D-042 to D-046, D-050 to D-054). This document is the reference the
 steps are built against; each screen names its step.
 
 - The screens are drawn in text so that they live with the code and are reviewed like it.
@@ -28,7 +28,8 @@ is said; never dressed as a human.
 
 ## The frame (step C1)
 
-Three places, the projects with their threads, what she pinned; apps and the Administration below.
+Four places (Planifier joined them with D-050), the projects with their threads, what she pinned —
+« Mon tableau » first; apps and the Administration below.
 « Demander » (Ctrl K) is at the top, everywhere.
 
 ### Décider (step C2)
@@ -838,16 +839,138 @@ The fleet, in Kete Cockpit — counters, never a client's data:
 +----------------------+--------------+-----------+-----------+------------+----------+
 ```
 
+## The method, time and memory (doctrine D-050 to D-054)
+
+Added on 2026-10-13, evening, from the canvas 3.1 the author validated. Each screen is built on the
+modules of `kete-core`'s phase 9 (L1 to L8); the steps are in `docs/ROADMAP.md`.
+
+### Décider through the day (step C2)
+
+Décider carries a moment: **Matin**, **Soir**, **Semaine** (D-051). The morning is the pile drawn
+above; the evening closes the day; the week reviews it.
+
+```text
++--------------------------------------------------------------------+
+| Clôturer la journée            mardi 13 octobre   [Matin][Soir][Semaine]
+| .................................................................. |
+| VOTRE NOTE                                   2 min · écrite ou dite |
+|  Fait      Décidé l'outillage. Validé l'acompte. Point chantier.   |
+|  Pas fait  Le rapport au Fonds.                                    |
+|  Bloqué    La réception de vendredi : Kossi est en congé.          |
+|  Demain    Le rapport le matin. Appeler la Pharmacie du Port.      |
+|  Appris    La mairie exige 3 devis au-delà de 500 000 F.           |
+| .................................................................. |
+| CE QUE JE PROPOSE DE RANGER                          5 sur 6 cochés |
+|  [x] Bloquer   demain 8 h 30 – 10 h 30 · Rapport au Fonds          |
+|  [x] Reporter  « Relancer la Pharmacie du Port » à demain 11 h     |
+|  [x] Confier   Réception vendredi 10 h → Yao (il peut refuser)     |
+|  [x] Clore     « Point chantier du 13 » — compte rendu au fil      |
+|  [ ] Corriger  Fiche École La Colombe : paie à 30 jours            |
+|  [x] Leçon     « 3 devis pour un achat public » → Devis solaire    |
+|  [Ranger la sélection]        rien ne change sans ce geste         |
+| .................................................................. |
+| VOTRE RÉSUMÉ DU JOUR             chiffres figés à 18 h · indexé ?  |
+|  5 décisions · 0 F encaissé · 4 339 500 F disponible               |
+|  Envoyé à : moi, équipe La Colombe   [Indexer : projet La Colombe] |
+|  [Envoyer et indexer]   [À 18 h]                                   |
++--------------------------------------------------------------------+
+```
+
+The week shows the week's summary (draft, Friday 17 h), next week proposed, what was learned (the
+lessons proposed and kept) and what the agents did.
+
+### Planifier (step C12, doctrine D-050)
+
+```text
++---------------------+----------------------------------------------------------+
+| > PLANIFIER 1 conflit| Planifier   semaine du 12 oct.  [Ma vue][Mon équipe][Toute l'organisation]
+|                     |                                     [Organiser ma semaine] |
+|                     | (!) Vendredi 10 h, réception du matériel : Kossi, qui en  |
+|                     |     est responsable, est en congé.  [Confier à Yao] [Avancer]
+|                     | [x] Réunions [x] Échéances [x] Congés [x] Tâches [x] Agents |
+|                     |       lun 12  mar 13  mer 14  jeu 15      ven 16   s  d   |
+|                     | Jour.                       Éch. F-0003  Kossi congé       |
+|                     |                             Kossi congé  (!) réception     |
+|                     |  9 h          Point ch.     Relancer*                      |
+|                     | 11 h          Câbles*       Ecobank                        |
+|                     | 14 h          Rapport*                                     |
+|                     |        * proposé par l'assistant : [Garder] [Retirer]      |
++---------------------+----------------------------------------------------------+
+```
+
+- _Mon équipe_: one row per person, a week across; an absence says « En congé », never why; the
+  others' meetings show as « Occupé » unless shared.
+- _Toute l'organisation_: the same, grouped by unit, with the absent counted; opened by rights.
+- On a phone, and when the assistant is open beside it, the week becomes a list of days.
+
+### Mon tableau (step C13, doctrine D-052)
+
+One entry, three tabs: **En direct** (the board she composed), **Résumés** (the board frozen at a
+moment, with where it is indexed, who read it, where the assistant cited it), **Carnet** (her notes,
+each with what Kete understood: a reminder, a lesson proposed, a correction to validate). Three
+cards say the three moments of the same object: looked at, sent (every evening, every Friday),
+kept. « Noter » (the pencil, or N) works from every page.
+
+### Déléguer: an agent's job description, and know-how (steps C6 and C7, D-053)
+
+```text
++--------------------------------------------------------------------+
+| Agent Relances                 Privé · responsable Afi    Vous attend
+|  Faire payer les factures en retard sans abîmer la relation.       |
+|  Il lit          Kete Finance : factures · Tiers : contacts        |
+|  Il ne fait jamais  Accorder une remise, annuler une facture       |
+|  Il se réveille  lundi 8 h · une facture passe 7 jours de retard   |
+|  Son mandat      il agit pour Afi, jamais avec plus de droits      |
+|  Où il tourne    sur le serveur de l'organisation, jour et nuit    |
+|  Son budget      1 840 F sur 5 000 F ce mois                       |
+| AUTONOMIE         Lire [Seul]  Écrire [Prépare]  Envoyer [Jamais seul]
+|  [Essai à blanc] [Pause] [Arrêt d'urgence]                         |
++--------------------------------------------------------------------+
+| SAVOIR-FAIRE · Design Kete v1.4 · Mawuli · Moi > Équipe > Unité > Org
+|  LEÇONS EN ATTENTE (venues de l'usage, avec consentement)          |
+|   « Le PDF du devis coupe le total »  → [Garder] [Essayer] [Écarter]
+|  24 sur 24 cas réussis · [Publier la 1.5] [Proposer à l'Unité]     |
++--------------------------------------------------------------------+
+```
+
+The same lifecycle shows for an app born in the factory, in Apps (D-053).
+
+### The project's memory and calendar (step C14)
+
+The project gains a tab **Mémoire** — what the assistant knows of it (notes, instructions), each
+readable and erasable, and the summaries indexed there — and a block **Calendrier** (its reception,
+its works, its penalty date), opened in Planifier.
+
+### The phone, native (steps C2 and C14, doctrine D-054)
+
+```text
++--------------------------+  +--------------------------+  +--------------------------+
+| Le matin  1 sur 5  ■□□□□ |  | Clôturer la journée      |  | Terrain   [Plein soleil] |
+| Kossi · La Colombe       |  |                          |  | Maintenant · 9 h         |
+| Achat « Outillage »      |  |        ( micro )         |  | POINT CHANTIER           |
+| 145 000 F                |  |   Touchez pour parler    |  | LA COLOMBE               |
+| Hors budget : la marge   |  | Ou une note vocale sur   |  | [ Dicter le rapport ]    |
+| passe à 95 000 F.        |  | WhatsApp : même résultat |  | [ Photo ]                |
+| [ Non ]  [ Oui, approuver]  |  | [Écrire plutôt]          |  | Ensuite : 11 h câbles    |
++--------------------------+  +--------------------------+  +--------------------------+
+```
+
+After the voice, the same proposals as on a computer, to tick; after a dictated report, Kete reads
+it back aloud before it is validated and draws its drafts for Décider.
+
 ## Where today's menu goes
 
-| Today                                                            | In this structure                                                 |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Aujourd'hui, À faire                                             | **Décider**                                                       |
-| Assistant, Dossiers, Mon carnet                                  | **Demander**: a thread, a project, or her own project of notes    |
-| Mes agents, Routines, Skills                                     | **Déléguer**: an agent's card carries its routines and its skills |
-| Tableaux de bord, Documents, Formulaires, Données                | Pieces in a project, pinned on Décider                            |
-| Bibliothèque                                                     | The shared project « Entreprise »                                 |
-| Mon équipe                                                       | A view of Décider for managers                                    |
-| Terrain, Enquêtes, Performance, Réunions, Conformité, Ressources | **Apps** (step C10)                                               |
-| Notifications                                                    | The bell                                                          |
-| Administration (thirteen entries)                                | Six entries                                                       |
+| Today                                                   | In this structure                                                 |
+| ------------------------------------------------------- | ----------------------------------------------------------------- |
+| Aujourd'hui, À faire                                    | **Décider**                                                       |
+| Assistant, Dossiers                                     | **Demander**: a thread, or a project                              |
+| Mon carnet, Tableaux de bord, Routines’ deliveries      | **Mon tableau** (D-052): En direct, Résumés, Carnet               |
+| Calendrier, Mon équipe (absences)                       | **Planifier** (D-050): my view, my team, the organization         |
+| Mes agents, Routines, Skills                            | **Déléguer**: an agent's card carries its routines and its skills |
+| Documents, Formulaires, Données                         | Pieces in a project, pinned on Décider                            |
+| Bibliothèque                                            | The shared project « Entreprise »                                 |
+| Mon équipe                                              | A view of Décider for managers                                    |
+| Terrain                                                 | A mode of the phone (D-054)                                       |
+| Enquêtes, Performance, Réunions, Conformité, Ressources | **Apps** (step C10)                                               |
+| Notifications                                           | The bell                                                          |
+| Administration (thirteen entries)                       | Six entries                                                       |

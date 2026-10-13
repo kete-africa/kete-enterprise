@@ -190,6 +190,33 @@ center's forms and Réunions becomes a thread with several people (D-048): neith
 A real bank statement, real receipts and a real contract read by a real model: the reading on
 which treasury and commitments rest is unproven. A WhatsApp number and a Telegram bot for F5.
 
+## The method, time and memory (decided 2026-10-13, evening)
+
+Doctrine D-050 to D-054. The center gains a fourth place, **Planifier**; Décider carries the rhythm
+of the day (morning, evening, week); dashboards, routines, summaries and notes become one entry,
+**Mon tableau**; agents show their job description and know-how its lessons; the phone is native.
+The screens are in [`docs/design/screens-2026.md`](design/screens-2026.md), section « The method,
+time and memory ».
+
+What the center and the apps share is built first in `kete-core` (its roadmap, phase 9: L1 to L8):
+the app manifest and the contracts, `@kete/shell`, `@kete/intelligence` (extracted from this
+repository's chat, which then consumes it), `@kete/time`, `@kete/metrics` and `@kete/boards`, the
+proposal sets and the voice, the lifecycle of resources, the phone's screens. The center is then
+rebuilt on them, without a second implementation of anything.
+
+| Step | Spec                    | Delivers                                                                                                                                  | Proof                                                                               |
+| ---- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| C1   | `061-frame` (continued) | The frame on `@kete/shell`: four places, the drawer of `@kete/intelligence`, « Noter » everywhere, the phone's tabs                       | The same frame and drawer as a generated app; no page `/demander` left              |
+| C2   | `062-decide` (cont.)    | Décider's moments: the morning (the pile on a phone), the evening closure written or spoken (WhatsApp included), the week's review        | A spoken note becomes ticked proposals; nothing changes without the gesture; undone |
+| C12  | `079-plan`              | Planifier: my view, my team, the organization by rights; dated facts from the apps; conflicts said; blocks proposed; an external agenda   | A leave and a delivery the same day make a conflict, settled in one gesture         |
+| C13  | `080-my-board`          | Mon tableau: En direct, Résumés, Carnet — dashboards (050), routines (051) and notes (055) merged; a summary frozen and indexed by choice | An indexed summary is cited by the assistant; taken out of the index, it is not     |
+| C6   | `066-agents-at-work`    | An agent's job description, its six states, « Pendant ce temps », autonomy earned by proofs                                               | An agent's autonomy is proposed after its proofs and withdrawn in one gesture       |
+| C7   | `067-my-desk` (cont.)   | Know-how: a skill's lessons from use, its tests, its versions, its promotion by tiers with a review; the same for a factory's app         | A kept lesson becomes a test; a version breaking an old case is refused             |
+| C14  | `081-project-memory`    | The project's Mémoire and Calendrier; « Terrain » (059) on the shared phone screens                                                       | A dictated report is read back, validated, and draws its drafts                     |
+
+C3 to C5 and C8 to C11, D2 and D3 keep their place above. Not done: a new business tool inside the
+center; a query builder for people; surveillance of time (D-051).
+
 ## Later, when a real need appears
 
 The internal chat and knowledge (`assistant`, `knowledge`), finance and HR operations with the books
