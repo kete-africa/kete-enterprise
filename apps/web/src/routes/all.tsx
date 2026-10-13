@@ -18,11 +18,12 @@ export const Route = createFileRoute('/tout')({
 function Everything() {
   const { me } = Route.useRouteContext();
   const places = placesOf(me);
-  // The three places of the center, then the tools behind it (doctrine D-042).
+  // The three places of the center (doctrine D-042). The business tools are apps: they stand
+  // behind it, at « Apps » (spec 070).
   const groups = verbs
     .map((verb) => ({
       title: verbLabel(verb),
-      places: places.filter((p) => verbOf(p.page) === verb),
+      places: places.filter((p) => (verb === 'apps' ? p.page === 'apps' : verbOf(p.page) === verb)),
     }))
     .filter((g) => g.places.length > 0);
   return (

@@ -27,7 +27,7 @@ export const proposedPlaces: Page[] = [
   'dossiers',
   'dashboards',
   'team',
-  'resources',
+  'apps',
 ];
 const fixed: Page[] = ['home'];
 

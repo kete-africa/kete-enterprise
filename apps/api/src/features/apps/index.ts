@@ -25,4 +25,5 @@ export {
   type AcceptedEvent,
   type AppNews,
 } from './events.js';
+export { appsListingRoutes } from './listing-routes.js';
 export { appRoutes } from './routes.js';

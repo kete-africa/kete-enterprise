@@ -20,3 +20,10 @@ with a person's token. See [the spec](../../../../../specs/022-app-permissions/s
   for a person's briefing, never a secret one.
 - `openAppDecision`: an app's subject (`<product>.<subject>`) goes to the organization's circuit;
   once decided, the app is told the request's id at its callback (`tellAppsWith`).
+
+## « Apps » (spec 070)
+
+`GET /v1/apps` (`appsFor`, `listing.ts`): what stands behind the center for the person — the packs
+switched on that her rights open (`packs`: where each opens, the prefix of its permissions), the
+team's apps of the registry, the connected connectors — each with what the center receives: what
+waits for her (`app_tasks` by source), the capabilities agents may call (the gateway's list), a watch.

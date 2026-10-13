@@ -84,7 +84,13 @@ import {
   waitingCount,
 } from './features/workspace/index.js';
 import { appRequestRoutes, factoryReportRoutes } from './features/app-requests/index.js';
-import { appEventRoutes, appPermissions, appRoutes, tellAppsWith } from './features/apps/index.js';
+import {
+  appEventRoutes,
+  appPermissions,
+  appRoutes,
+  appsListingRoutes,
+  tellAppsWith,
+} from './features/apps/index.js';
 import { directoryRoutes } from './features/directory/index.js';
 
 /** Every permission a role may allow: each feature declares its own (spec 003). */
@@ -231,6 +237,7 @@ export function createApi(): Hono {
   v1.route('/reception', receptionRoutes);
   v1.route('/rules', rulesRoutes(permissionCatalog));
   v1.route('/connectors', connectorRoutes);
+  v1.route('/apps', appsListingRoutes(permissionCatalog));
   v1.route('/organization', organizationRoutes);
   v1.route('/structure', structureRoutes);
   v1.route('/rights', rightsRoutes(permissionCatalog, appPermissions));
