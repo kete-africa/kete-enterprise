@@ -19,6 +19,8 @@ export function toolLabel(name: string): string {
     dashboard_read: m.tool_dashboard_read,
     dashboard_change: m.tool_dashboard_change,
     team_datasets: m.tool_team_datasets,
+    team_data_query: m.tool_team_data_query,
+    team_data_rows: m.tool_team_data_rows,
     delegate_task: m.tool_delegate_task,
     ask_colleague_assistant: m.tool_ask_colleague,
   };

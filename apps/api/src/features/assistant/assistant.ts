@@ -16,6 +16,7 @@ import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { secretsOn } from '../../platform/secrets.js';
+import { tableOf } from '../../platform/tables.js';
 import { usageStore } from '../../platform/usage.js';
 import {
   markSubscriptionUsed,
@@ -45,6 +46,7 @@ import {
   explainDraft,
   type AppView,
   listConversations,
+  type MessageTable,
   readConversation,
   startConversation,
   type ToolUse,
@@ -108,6 +110,9 @@ const budgets = () => (store ??= usageStore());
 
 type Model = Parameters<typeof ask>[0]['model'];
 let override: Model | undefined;
+
+/** How many tables one answer shows: more is a report, written in the canvas. */
+const MAX_TABLES = 4;
 
 /** Tests: answer with another model. */
 export function useModel(model: Model | undefined): void {
@@ -765,6 +770,7 @@ async function streamChat(c: Ctx): Promise<Response> {
       const sources: Source[] = [];
       let canvas: { title: string; content: string } | null = null;
       const views: AppView[] = [];
+      const tables: MessageTable[] = [];
       try {
         if (answerer.kind === 'subscription') {
           // Her own subscription answers, on her own machine: the whole answer at once.
@@ -872,6 +878,13 @@ ${skills.prompt}`
                   views.push(shown);
                   send({ type: 'view', ...shown });
                 }
+                // A tool that read rows and says how to show them: the answer is a table.
+                const read = state === 'done' ? tableOf(result) : null;
+                if (read && tables.length < MAX_TABLES) {
+                  const table: MessageTable = { tool: String(part['toolName']), ...read };
+                  tables.push(table);
+                  send({ type: 'table', ...table });
+                }
                 if (part['toolName'] === 'canvas_write' && result) {
                   // The document goes to the canvas, beside the conversation.
                   canvas = result as { title: string; content: string };
@@ -901,7 +914,7 @@ ${skills.prompt}`
         }
       } finally {
         // What was said is kept, even when the person stopped the answer.
-        if (text.trim() || tools.length || canvas || views.length) {
+        if (text.trim() || tools.length || canvas || views.length || tables.length) {
           await transaction(organizationId, (db) =>
             appendMessage(db, organizationId, conversationId, {
               role: 'assistant',
@@ -911,6 +924,7 @@ ${skills.prompt}`
               sources,
               canvas,
               views,
+              tables,
             }),
           ).catch(() => undefined);
         }

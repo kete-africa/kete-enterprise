@@ -4,24 +4,28 @@ import {
   AuiIf,
   ComposerPrimitive,
   MessagePrimitive,
+  QueueItemPrimitive,
   ThreadPrimitive,
   unstable_defaultDirectiveFormatter,
+  useAuiState,
   type SourceMessagePartComponent,
   type TextMessagePartComponent,
   type ToolCallMessagePartComponent,
   type Unstable_TriggerItem,
 } from '@assistant-ui/react';
 import { Icon, IconButton, Markdown, Tag, ToolCard } from '@kete/design';
-import type { ComponentProps, FC, ReactNode } from 'react';
+import type { ComponentProps, FC, PropsWithChildren, ReactNode } from 'react';
 import { DraftCard } from '@/lib/draft-card';
-import type { AppView as AppViewData, DraftReview } from '@/lib/workspace';
 import { toolLabel } from '@/lib/tool-words';
 import * as m from '@/paraglide/messages.js';
+import { AnswerTable } from './answer-table';
 import { AppView } from './app-view';
+import type { Produced } from './runtime';
 
 // The chat's thread on assistant-ui's primitives (spec 027), dressed with @kete/design's tokens
-// and components: the conversation, the tools as cards with their drafts, the sources, the files,
-// and a composer that attaches, dictates, mentions (@) and runs commands (/).
+// and components: the conversation, an answer's steps that unfold, what it produced under its
+// words — drafts, tables, views (spec 063) — the sources, the files, and a composer that attaches,
+// dictates, mentions (@), runs commands (/) and keeps a message in line while an answer is written.
 
 const toolState = (state: 'running' | 'done' | 'refused') =>
   ({ running: m.tool_running, done: m.tool_done, refused: m.tool_refused })[state]();
@@ -69,39 +73,67 @@ export interface ToolViews {
   sandboxUrl: string | null;
 }
 
-function makeToolCard(views: ToolViews): ToolCallMessagePartComponent {
-  const Card: ToolCallMessagePartComponent = ({ toolName, result }) => {
-    const outcome = (result ?? null) as {
-      state?: 'done' | 'refused';
-      drafts?: DraftReview[];
-      canvas?: { title: string; content: string } | null;
-      view?: AppViewData | null;
-    } | null;
-    const state = outcome?.state ?? 'running';
-    return (
-      <div className="my-2 grid gap-2">
-        <ToolCard name={toolLabel(toolName)} state={state} stateLabel={toolState(state)}>
-          {outcome?.canvas && (
-            <button
-              type="button"
-              onClick={() => views.openCanvas(outcome.canvas as { title: string; content: string })}
-              className="mt-1 inline-flex items-center gap-2 font-semibold text-link underline"
-            >
-              <Icon name="panel" size={16} />
-              {m.canvas_open({ title: outcome.canvas.title })}
-            </button>
-          )}
-        </ToolCard>
-        {(outcome?.drafts ?? []).map((draft) => (
-          <DraftCard key={draft.draftId} draft={draft} />
+/** A step of an answer: the tool it called, and where it is. */
+const Step: ToolCallMessagePartComponent = ({ toolName, result }) => {
+  const state = (result as { state?: 'done' | 'refused' } | undefined)?.state ?? 'running';
+  return <ToolCard name={toolLabel(toolName)} state={state} stateLabel={toolState(state)} />;
+};
+
+/** An answer's steps, folded once it has its words: she unfolds them to see how it got there. */
+const Steps: FC<PropsWithChildren<{ startIndex: number; endIndex: number }>> = ({
+  startIndex,
+  endIndex,
+  children,
+}) => {
+  const working = useAuiState((s) => s.message.status?.type === 'running');
+  return (
+    <details open={working} className="group my-1">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-control px-1 py-0.5 text-body-sm font-semibold text-fg-muted hover:bg-surface-hover hover:text-fg">
+        <span className="inline-flex transition-transform group-open:rotate-90">
+          <Icon name="chevron" size={12} />
+        </span>
+        {m.chat_steps({ count: endIndex - startIndex + 1 })}
+      </summary>
+      <div className="mt-1 grid gap-1.5 border-s-2 border-line ps-3">{children}</div>
+    </details>
+  );
+};
+
+/** What an answer produced, under its words: what waits for her, what she can act on. */
+function ProducedParts({ views }: { views: ToolViews }) {
+  const produced = useAuiState(
+    (s) => (s.message.metadata?.custom as { produced?: Produced } | undefined)?.produced,
+  );
+  if (!produced) return null;
+  const { canvas } = produced;
+  return (
+    <div className="grid gap-2 empty:hidden">
+      {produced.tables.map((table, index) => (
+        <AnswerTable key={`${table.tool}-${index}`} table={table} />
+      ))}
+      {canvas && (
+        <button
+          type="button"
+          onClick={() => views.openCanvas(canvas)}
+          className="inline-flex items-center gap-2 justify-self-start font-semibold text-link underline"
+        >
+          <Icon name="panel" size={16} />
+          {m.canvas_open({ title: canvas.title })}
+        </button>
+      )}
+      {produced.drafts.map((draft) => (
+        <DraftCard key={draft.draftId} draft={draft} />
+      ))}
+      {views.sandboxUrl &&
+        produced.views.map((view, index) => (
+          <AppView
+            key={`${view.tool}-${index}`}
+            view={view}
+            sandboxUrl={views.sandboxUrl as string}
+          />
         ))}
-        {outcome?.view && views.sandboxUrl && (
-          <AppView view={outcome.view} sandboxUrl={views.sandboxUrl} />
-        )}
-      </div>
-    );
-  };
-  return Card;
+    </div>
+  );
 }
 
 const MessageAttachment: FC = () => (
@@ -146,7 +178,6 @@ const feedbackClass =
   'rounded-control px-2 py-1 text-body-sm font-semibold text-fg-muted hover:bg-surface-hover hover:text-fg data-[submitted]:bg-surface-selected data-[submitted]:text-fg';
 
 function makeAssistantMessage(views: ToolViews): FC {
-  const ToolCardView = makeToolCard(views);
   const AssistantMessage: FC = () => (
     <MessagePrimitive.Root className="grid gap-1.5 py-2">
       <p className="text-body-sm font-semibold text-fg-muted">{m.nav_assistant()}</p>
@@ -155,9 +186,11 @@ function makeAssistantMessage(views: ToolViews): FC {
           components={{
             Text: AssistantText,
             Source,
-            tools: { Fallback: ToolCardView },
+            tools: { Fallback: Step },
+            ToolGroup: Steps,
           }}
         />
+        <ProducedParts views={views} />
         <MessagePrimitive.If hasContent={false}>
           <p className="text-fg-muted">{m.assistant_thinking()}</p>
         </MessagePrimitive.If>
@@ -272,6 +305,24 @@ const Composer: FC<{
   <div className="sticky bottom-0 bg-canvas pt-2 pb-3">
     <ComposerPrimitive.Unstable_TriggerPopoverRoot>
       <ComposerPrimitive.Root className="relative">
+        {/* What she wrote while an answer was being written: in line, each can be taken back. */}
+        <div aria-label={m.chat_queue()} className="mb-2 grid gap-1 empty:hidden">
+          <ComposerPrimitive.Queue>
+            {() => (
+              <div className="flex items-center gap-2 rounded-control border border-line bg-surface px-3 py-1.5 text-body-sm">
+                <span className="font-semibold text-fg-muted">{m.chat_queue()}</span>
+                <span className="min-w-0 flex-1 truncate">
+                  <QueueItemPrimitive.Text />
+                </span>
+                <QueueItemPrimitive.Remove asChild>
+                  <IconButton label={m.chat_queue_remove()}>
+                    <Icon name="close" size={14} />
+                  </IconButton>
+                </QueueItemPrimitive.Remove>
+              </div>
+            )}
+          </ComposerPrimitive.Queue>
+        </div>
         <TriggerPopover char="@" adapter={mentions} label={m.chat_mentions()} />
         <TriggerPopover char="/" adapter={commands} label={m.chat_commands()} />
         <ComposerPrimitive.AttachmentDropzone className="flex flex-wrap items-end gap-2 rounded-overlay border border-line-control bg-surface-control px-3 py-2 focus-within:border-accent data-[dragging=true]:border-dashed data-[dragging=true]:border-accent">
@@ -287,6 +338,7 @@ const Composer: FC<{
             rows={1}
             placeholder={m.assistant_placeholder()}
             aria-label={m.assistant_message()}
+            data-kete-composer=""
             className="max-h-[196px] min-h-[38px] flex-1 resize-none border-0 bg-transparent py-2 text-fg outline-0 placeholder:text-fg-muted"
           />
           <AuiIf condition={(s) => s.thread.capabilities.dictation}>
@@ -305,16 +357,15 @@ const Composer: FC<{
               </ComposerPrimitive.StopDictation>
             </AuiIf>
           </AuiIf>
-          <AuiIf condition={(s) => !s.thread.isRunning}>
-            <ComposerPrimitive.Send asChild>
-              <IconButton
-                label={m.assistant_send()}
-                className="bg-action text-on-action hover:bg-action-strong disabled:opacity-40"
-              >
-                <Icon name="send" size={18} />
-              </IconButton>
-            </ComposerPrimitive.Send>
-          </AuiIf>
+          {/* Always there: while an answer is written, what she sends waits in line. */}
+          <ComposerPrimitive.Send asChild>
+            <IconButton
+              label={m.assistant_send()}
+              className="bg-action text-on-action hover:bg-action-strong disabled:opacity-40"
+            >
+              <Icon name="send" size={18} />
+            </IconButton>
+          </ComposerPrimitive.Send>
           <AuiIf condition={(s) => s.thread.isRunning}>
             <ComposerPrimitive.Cancel asChild>
               <IconButton label={m.assistant_stop()}>

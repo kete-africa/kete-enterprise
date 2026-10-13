@@ -7,6 +7,7 @@ export {
   conversationsMigrationSql,
   listConversations,
   readConversationOf,
+  tablesMigrationSql,
   viewsMigrationSql,
 } from './conversations.js';
 export {

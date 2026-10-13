@@ -3,6 +3,7 @@ import { MockLanguageModelV4 } from 'ai/test';
 import { runTask, useTaskModel } from '../../src/features/agents/index.js';
 import { useNoteModel } from '../../src/features/notes/index.js';
 import { useCardReader } from '../../src/features/registry/index.js';
+import { UNPAID_INVOICES } from './answers.js';
 
 // A day for the demo (step C2): what waits for the head of after-sales when she opens the center
 // in the morning — two decisions, a reminder, what her agent did overnight and what it is doing
@@ -28,6 +29,8 @@ export interface DayReport {
   reminders: number;
   agentTasksDone: number;
   agentTasksWaiting: number;
+  /** The team's data the demo's assistant reads (step C3), when it could be dropped. */
+  datasetId: string | null;
   /** What could not be played, in words: the day is still usable without it. */
   skipped: string[];
 }
@@ -48,6 +51,7 @@ export async function seedDay(options: {
     reminders: 0,
     agentTasksDone: 0,
     agentTasksWaiting: 0,
+    datasetId: null,
     skipped: [],
   };
   let key = 0;
@@ -108,6 +112,18 @@ export async function seedDay(options: {
     if (asked.body.decisionRequestId) report.decisions += 1;
     else skipped(`decision « ${tool.name} »`, asked.status);
   }
+
+  // Her team's unpaid invoices, dropped as a sheet: what the assistant's answer is a table of.
+  await call(admin, 'POST', '/organization/modules', { module: 'datasets', enabled: true });
+  const dataset = await call(manager.token, 'POST', '/datasets', {
+    name: 'Factures impayées',
+    fileName: 'factures-impayees.csv',
+    contentType: 'text/csv',
+    data: Buffer.from(UNPAID_INVOICES, 'utf8').toString('base64'),
+  });
+  report.datasetId =
+    (dataset.body.dataset as { datasetId?: string } | undefined)?.datasetId ?? null;
+  if (!report.datasetId) skipped('dataset', dataset.status);
 
   // A reminder from her notebook, dated tomorrow morning.
   const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);

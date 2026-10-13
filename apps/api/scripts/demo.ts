@@ -9,9 +9,11 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import pg from 'pg';
+import { scriptedAnswers } from '../db/demo/answers.js';
 import { seedDay } from '../db/demo/day.js';
 import { seedDemo } from '../db/demo/seed.js';
 import { migrations } from '../db/migrations.js';
+import { useModel } from '../src/features/assistant/index.js';
 
 // Kete Enterprise on this machine, to look at its screens: `pnpm demo` from the repository's root.
 //
@@ -138,6 +140,14 @@ if (manager && colleague) {
       `${day.agentTasksDone} tâche d’agent faite, ${day.agentTasksWaiting} en attente.`,
   );
   for (const what of day.skipped) say(`  non joué : ${what}`);
+  // No model here: the assistant's answers are written in advance, on the demo's own data.
+  if (day.datasetId) {
+    useModel(scriptedAnswers(day.datasetId));
+    say(
+      'Assistant : réponses écrites d’avance (aucun modèle). Toute question rend le tableau ' +
+        'des factures impayées, lu par son outil.',
+    );
+  }
 }
 /** The screens' own session, as their sign-in would have written it (@kete/auth). */
 const sessionFor = async (userId: string, name: string, role: 'owner' | 'member') =>

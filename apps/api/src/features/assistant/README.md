@@ -40,6 +40,24 @@ flowchart LR
   V -->|Refuse| X[Refused, frozen]
 ```
 
+## An answer that is a table (spec 063)
+
+A tool that read rows may say how to show them: `table` — a title, columns, a source — beside its
+`rows` (`platform/tables.ts`). The chat then streams a `table` event and keeps the table with the
+answer (`assistant_messages.tables`). The rows are the tool's, never the model's; only the columns
+the table names are kept, 200 rows at most, four tables an answer. The team's data give theirs
+(`team_data_rows`, `team_data_query`); an app's tool does the same with no view of its own.
+
+```mermaid
+flowchart LR
+  M[the model calls a tool] --> T[the tool reads what she may read]
+  T -->|rows + table| A[the chat]
+  A -->|tool: done| S[the stream]
+  A -->|table: the tool's rows| S
+  A -->|text| S
+  A --> K[(assistant_messages.tables)]
+```
+
 ## Pay with (spec 026b)
 
 Under the composer, « Payer avec » lets the person choose who pays for her answers — only among

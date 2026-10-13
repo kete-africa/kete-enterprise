@@ -1,4 +1,5 @@
 import {
+  createMessageQueue,
   useExternalStoreRuntime,
   WebSpeechDictationAdapter,
   type AppendMessage,
@@ -6,8 +7,8 @@ import {
   type ThreadMessageLike,
 } from '@assistant-ui/react';
 import { useRouter } from '@tanstack/react-router';
-import { useMemo, useRef, useState } from 'react';
-import type { AppView, DraftReview, Payer, StoredMessage } from '@/lib/workspace';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import type { AnswerTable, AppView, DraftReview, Payer, StoredMessage } from '@/lib/workspace';
 import { sendFeedback, uploadAttachment } from './api';
 
 // The chat's runtime (spec 027), on assistant-ui's external store: the conversations stay Kete
@@ -24,6 +25,15 @@ export interface ChatMessage {
   sources: { label: string; href: string }[];
   canvas: { title: string; content: string } | null;
   views: AppView[];
+  tables: AnswerTable[];
+}
+
+/** What an answer produced beside its words: shown under them, never folded with its steps. */
+export interface Produced {
+  drafts: DraftReview[];
+  canvas: ChatMessage['canvas'];
+  views: AppView[];
+  tables: AnswerTable[];
 }
 
 export const fromStored = (m: StoredMessage): ChatMessage => ({
@@ -40,6 +50,7 @@ export const fromStored = (m: StoredMessage): ChatMessage => ({
   sources: m.sources ?? [],
   canvas: m.canvas ?? null,
   views: m.views ?? [],
+  tables: m.tables ?? [],
 });
 
 /** A message as assistant-ui draws it: its text, its tools (with their drafts), its sources. */
@@ -47,27 +58,16 @@ function convert(message: ChatMessage): ThreadMessageLike {
   return {
     id: message.id,
     role: message.role,
+    // Its steps first, folded; then its words; what it produced comes under them.
     content: [
-      ...(message.text ? [{ type: 'text' as const, text: message.text }] : []),
       ...message.tools.map((tool, index) => ({
         type: 'tool-call' as const,
         toolCallId: `${message.id}-tool-${index}`,
         toolName: tool.name,
         args: {},
-        ...(tool.state === 'running'
-          ? {}
-          : {
-              result: {
-                state: tool.state,
-                drafts:
-                  index === message.tools.length - 1
-                    ? (message.drafts as unknown as Record<string, unknown>[])
-                    : [],
-                canvas: tool.name === 'canvas_write' ? message.canvas : null,
-                view: message.views.find((v) => v.tool === tool.name) ?? null,
-              },
-            }),
+        ...(tool.state === 'running' ? {} : { result: { state: tool.state } }),
       })),
+      ...(message.text ? [{ type: 'text' as const, text: message.text }] : []),
       ...message.sources.map((source, index) => ({
         type: 'source' as const,
         sourceType: 'url' as const,
@@ -76,6 +76,16 @@ function convert(message: ChatMessage): ThreadMessageLike {
         title: source.label,
       })),
     ],
+    metadata: {
+      custom: {
+        produced: {
+          drafts: message.drafts,
+          canvas: message.canvas,
+          views: message.views,
+          tables: message.tables,
+        } satisfies Produced,
+      },
+    },
     attachments: message.attachments.map((a) => ({
       id: a.attachmentId,
       type: a.kind === 'image' ? 'image' : 'document',
@@ -164,6 +174,20 @@ export function useKeteChat(options: {
   conversationRef.current = conversationId;
   const [messages, setMessages] = useState<ChatMessage[]>(options.initial.map(fromStored));
   const [running, setRunning] = useState(false);
+  // What she writes while an answer is being written waits in line (assistant-ui's own queue)
+  // and leaves once the answer ends. The driver calls the latest `deliver`, kept in a ref.
+  const deliver = useRef<(message: AppendMessage) => void>(() => undefined);
+  const queue = useMemo(
+    () =>
+      createMessageQueue({
+        // No `cancel` here: a message written while an answer comes waits its turn — it never
+        // interrupts the answer. « Arrêter » is the only gesture that stops one.
+        run: (message) => deliver.current(message),
+      }),
+    [],
+  );
+  const [, redraw] = useReducer((count: number) => count + 1, 0);
+  useEffect(() => queue.subscribe(redraw), [queue]);
   const stopper = useRef<AbortController | null>(null);
   const payer = useRef(options.payer);
   payer.current = options.payer;
@@ -175,8 +199,9 @@ export function useKeteChat(options: {
 
   async function send(text: string, files: ChatMessage['attachments']) {
     options.onError(null);
+    queue.notifyBusy();
     setRunning(true);
-    const empty = { tools: [], drafts: [], sources: [], canvas: null, views: [] };
+    const empty = { tools: [], drafts: [], sources: [], canvas: null, views: [], tables: [] };
     setMessages((list) => [
       ...list,
       { id: crypto.randomUUID(), role: 'user', text, ...empty, attachments: files },
@@ -250,6 +275,9 @@ export function useKeteChat(options: {
           } else if (event.type === 'view') {
             const view = event as unknown as AppView;
             patchLast((last) => ({ ...last, views: [...last.views, view] }));
+          } else if (event.type === 'table') {
+            const table = event as unknown as AnswerTable;
+            patchLast((last) => ({ ...last, tables: [...last.tables, table] }));
           } else if (event.type === 'source') {
             const source = { label: String(event.label ?? ''), href: String(event.href ?? '') };
             patchLast((last) => ({ ...last, sources: [...last.sources, source] }));
@@ -264,8 +292,24 @@ export function useKeteChat(options: {
       stopper.current = null;
       setRunning(false);
       if (options.followAddress !== false) void router.invalidate();
+      // The next message in line may leave.
+      queue.notifyIdle();
     }
   }
+
+  deliver.current = (message) => {
+    const text = message.content
+      .map((part) => (part.type === 'text' ? part.text : ''))
+      .join('')
+      .trim();
+    const files = (message.attachments ?? []).map((a) => ({
+      attachmentId: a.id,
+      name: a.name,
+      kind: a.type === 'image' ? ('image' as const) : ('text' as const),
+    }));
+    if (text) void send(text, files);
+    else queue.notifyIdle();
+  };
 
   const dictation = useMemo(
     () =>
@@ -279,17 +323,9 @@ export function useKeteChat(options: {
     messages,
     isRunning: running,
     convertMessage: convert,
+    queue: queue.adapter,
     onNew: async (message: AppendMessage) => {
-      const text = message.content
-        .map((part) => (part.type === 'text' ? part.text : ''))
-        .join('')
-        .trim();
-      const files = (message.attachments ?? []).map((a) => ({
-        attachmentId: a.id,
-        name: a.name,
-        kind: a.type === 'image' ? ('image' as const) : ('text' as const),
-      }));
-      if (text) await send(text, files);
+      deliver.current(message);
     },
     onCancel: async () => {
       stopper.current?.abort();
@@ -315,5 +351,11 @@ export function useKeteChat(options: {
 
   /** The latest document the assistant wrote in the canvas, if any. */
   const canvas = [...messages].reverse().find((m) => m.canvas)?.canvas ?? null;
-  return { runtime, canvas, send, conversationId, running };
+  return {
+    runtime,
+    canvas,
+    send,
+    conversationId,
+    running,
+  };
 }
