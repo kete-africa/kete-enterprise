@@ -271,7 +271,7 @@ export interface OrganizationMoney {
 
 /**
  * The organization's money as the facts tell it, in one currency: what is reserved for projects
- * and what is committed. What is in the bank is the treasury's to say (Gestion): the center only
+ * and what is committed. What is in the bank is the treasury's to say (Kete Finance): the center only
  * knows what was said to it.
  */
 export async function organizationMoney(

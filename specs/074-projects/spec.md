@@ -40,7 +40,7 @@ flowchart LR
 
 ## What stays for later
 
-Its money as it happens — received, committed, spent, available — which Gestion sends (step F4);
+Its money as it happens — received, committed, spent, available — which Kete Finance sends (step F4);
 phases with their gates, and a circuit that passes by its lead (F3); an agent attached to it;
 its contract and its tickets shown on its page; a project filtered in Décider, Demander and
 Déléguer; amounts typed in a currency with decimals (the screens read whole units).

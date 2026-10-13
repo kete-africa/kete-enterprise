@@ -39,7 +39,7 @@ flowchart LR
 ## What stays for later
 
 Contacts of a company (several people); a third party's payment behaviour and balance, which
-Gestion will say as facts; an address book imported from a spreadsheet; a third party seen by
+Kete Finance will say as facts; an address book imported from a spreadsheet; a third party seen by
 units; un-merging.
 
 ## Proof

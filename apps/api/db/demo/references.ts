@@ -68,7 +68,7 @@ export async function seedProject(options: {
 
 /**
  * The demo's facts of money (step F4): what an app would say of the Garage Bè site — a deposit
- * received, three expenses, an order placed, a milestone invoiced. Written in advance: Gestion
+ * received, three expenses, an order placed, a milestone invoiced. Written in advance: Kete Finance
  * does not exist yet. Its orders exceed what is left of its funds, so the alert can be seen.
  */
 export async function seedMoney(options: { api: Hono; admin: string }): Promise<number> {
@@ -119,7 +119,7 @@ export async function seedMoney(options: { api: Hono; admin: string }): Promise<
       method: 'POST',
       headers: headers(`demo-money-${fact.key}`),
       body: JSON.stringify({
-        source: 'Gestion (démonstration)',
+        source: 'Kete Finance (démonstration)',
         fact: {
           ...fact,
           currency: 'XOF',

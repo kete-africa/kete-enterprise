@@ -47,15 +47,15 @@ flowchart LR
 ## What stays for later
 
 What is in the bank, the tills and mobile money, and so « really available »: the treasury's to
-say (Gestion, step G3). A funder's rules of spending applied to a fact (Engagements). Time and
+say (Kete Finance, step G3). A funder's rules of spending applied to a fact (Kete Commitments). Time and
 shared costs charged to a project. A request for a purchase checked against a post before it is
-approved — it is Gestion's gesture, with this reading. Several currencies added up.
+approved — it is Kete Finance's gesture, with this reading. Several currencies added up.
 
 ## Proof
 
 - `apps/api/tests/money.test.ts` (7): a fact is said by who records money, and refused when the
   contract refuses it, when its project or post does not exist, when its currency is not the
-  project's; **a project's available funds follow what Gestion sends** — 992 000 received,
+  project's; **a project's available funds follow what Kete Finance sends** — 992 000 received,
   896 000 spent in three posts, 700 000 committed: 96 000 available, short of 604 000, and
   130 000 left on « Matériel »; a fact said again replaces itself and one taken back is gone; what
   is spent outside the budget is counted apart; a fact follows its third party through a merge;

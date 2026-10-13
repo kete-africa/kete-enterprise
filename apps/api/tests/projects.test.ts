@@ -191,7 +191,7 @@ describe('a project is one object', () => {
       name: 'Maintenance Hôtel du Golfe',
       sold: 3_600_000,
       lead: { userId: 'usr_kofi', name: 'Kofi Agbo' },
-      bornFrom: { source: 'Gestion', ref: 'D-0098' },
+      bornFrom: { source: 'Kete Finance', ref: 'D-0098' },
       posts: [
         { name: 'Pièces', budget: 1_200_000 },
         { name: 'Main-d’œuvre', budget: 900_000 },
@@ -204,7 +204,7 @@ describe('a project is one object', () => {
     const project = made.body.project as Project;
     ids.kofis = project.projectId;
     expect(project).toMatchObject({
-      bornFrom: { source: 'Gestion', ref: 'D-0098' },
+      bornFrom: { source: 'Kete Finance', ref: 'D-0098' },
       lead: { userId: 'usr_kofi' },
       budget: 2_200_000,
       expectedMargin: 1_400_000,

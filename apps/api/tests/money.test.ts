@@ -39,10 +39,10 @@ type Fact = {
   party_id?: string;
   project_id?: string;
 };
-/** Gestion says a fact, with the token of who records money. */
+/** Kete Finance says a fact, with the token of who records money. */
 const say = (fact: Fact, token = t.esi, project: string | null = ids.project) =>
   post(token, '/money/facts', {
-    source: 'Gestion',
+    source: 'Kete Finance',
     fact: {
       currency: 'XOF',
       occurred_on: '2026-10-09',
@@ -141,7 +141,7 @@ afterAll(async () => {
   await db?.drop();
 });
 
-describe('a project’s available funds follow what Gestion sends', () => {
+describe('a project’s available funds follow what Kete Finance sends', () => {
   it('is said by who records money, in the contract’s shape', async () => {
     const deposit = {
       key: 'ENC-0007',
@@ -158,7 +158,7 @@ describe('a project’s available funds follow what Gestion sends', () => {
     expect(
       (
         await post(t.esi, '/money/facts', {
-          source: 'Gestion',
+          source: 'Kete Finance',
           fact: { ...deposit, key: 'x', currency: 'XOF', occurred_on: '13/10/2026' },
         })
       ).status,
@@ -173,7 +173,7 @@ describe('a project’s available funds follow what Gestion sends', () => {
     expect(
       (
         await post(t.esi, '/money/facts', {
-          source: 'Gestion',
+          source: 'Kete Finance',
           fact: {
             ...deposit,
             key: 'x',
@@ -279,12 +279,12 @@ describe('a project’s available funds follow what Gestion sends', () => {
     });
     expect((await moneyOf(t.awa)).available).toBe(140_000 - 5_000_000);
     expect(
-      (await post(t.esi, '/money/facts/drop', { source: 'Gestion', key: 'ERREUR' })).body,
+      (await post(t.esi, '/money/facts/drop', { source: 'Kete Finance', key: 'ERREUR' })).body,
     ).toEqual({
       dropped: true,
     });
     expect(
-      (await post(t.yao, '/money/facts/drop', { source: 'Gestion', key: 'ENC-0009' })).status,
+      (await post(t.yao, '/money/facts/drop', { source: 'Kete Finance', key: 'ENC-0009' })).status,
     ).toBe(403);
     expect((await moneyOf(t.awa)).available).toBe(140_000);
   });
@@ -312,7 +312,7 @@ describe('a project’s available funds follow what Gestion sends', () => {
     }[];
     expect(facts.find((fact) => fact.key === 'BC-0040')).toMatchObject({
       party: 'Garage Bè',
-      source: 'Gestion',
+      source: 'Kete Finance',
     });
     expect(facts.some((fact) => fact.key === 'ERREUR')).toBe(false);
   });

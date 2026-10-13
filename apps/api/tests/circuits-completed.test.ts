@@ -17,8 +17,8 @@ let key = 0;
 const told: string[] = [];
 
 const card: IdentityCard = {
-  product: 'prd_kete_gestion',
-  name: 'Gestion',
+  product: 'prd_kete_finance',
+  name: 'Kete Finance',
   version: '1.0.0',
   client: 'cli_gestion',
   subjects: [
@@ -49,7 +49,7 @@ const get = (token: string, path: string) => call(token, 'GET', `/v1${path}`);
 
 /** Kofi asks a purchase through the app, on the project or not. */
 const ask = (reference: string, measure: number, project = true) =>
-  post(t.kofi, '/apps/prd_kete_gestion/decisions', {
+  post(t.kofi, '/apps/prd_kete_finance/decisions', {
     subject: 'purchase',
     reference,
     title: `Achat ${reference}`,
@@ -100,7 +100,7 @@ beforeAll(async () => {
   }
   await post(t.admin, '/registry/resources', {
     kind: 'app',
-    name: 'Gestion',
+    name: 'Kete Finance',
     address: 'https://gestion.example.test',
   });
   const type = (await post(t.admin, '/structure/unit-types', { key: 'unit', name: 'Unité' })).body
@@ -152,7 +152,7 @@ beforeAll(async () => {
     }
   ).projectId;
   const circuit = await post(t.admin, '/decisions/circuits', {
-    subject: 'prd_kete_gestion.purchase',
+    subject: 'prd_kete_finance.purchase',
     name: 'Achats',
     steps: [
       { rule: 'manager' },
