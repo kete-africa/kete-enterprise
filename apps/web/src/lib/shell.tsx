@@ -597,11 +597,13 @@ export function AppShell({
       }
       tabBar={
         <TabBar label={m.nav_tabs()}>
-          <TabBarItem href="/" icon="home" current={current === 'home'}>
+          <TabBarItem
+            href="/"
+            icon="home"
+            current={current === 'home' || current === 'todo'}
+            count={me.waiting}
+          >
             {m.nav_decide()}
-          </TabBarItem>
-          <TabBarItem href="/a-faire" icon="check" current={current === 'todo'} count={me.waiting}>
-            {m.nav_todo()}
           </TabBarItem>
           <TabBarItem icon="sparkle" primary onClick={openPalette}>
             {m.nav_ask()}

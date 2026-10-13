@@ -134,26 +134,28 @@ if (manager && colleague) {
     colleague: { token: await tokenFor(colleague.account_user_id, colleague.name, 'member') },
   });
   say(
-    `Journée de ${manager.name} : ${day.decisions} décisions, ` +
+    `Journée de ${manager.name} : ${day.decisions} décisions, ${day.reminders} rappel, ` +
       `${day.agentTasksDone} tâche d’agent faite, ${day.agentTasksWaiting} en attente.`,
   );
   for (const what of day.skipped) say(`  non joué : ${what}`);
 }
-// The screens' own session, as their sign-in would have written it (@kete/auth).
-const session = await new SignJWT({
-  email: `${ADMINISTRATOR.userId}@example.test`,
-  name: ADMINISTRATOR.name,
-  org: ORGANIZATION,
-  role: 'owner',
-  apps: {},
-  two_factor: true,
-  at: token,
-})
-  .setProtectedHeader({ alg: 'HS256' })
-  .setSubject(ADMINISTRATOR.userId)
-  .setIssuedAt()
-  .setExpirationTime('8h')
-  .sign(new TextEncoder().encode(sessionSecret));
+/** The screens' own session, as their sign-in would have written it (@kete/auth). */
+const sessionFor = async (userId: string, name: string, role: 'owner' | 'member') =>
+  new SignJWT({
+    email: `${userId}@example.test`,
+    name,
+    org: ORGANIZATION,
+    role,
+    apps: {},
+    two_factor: true,
+    at: await tokenFor(userId, name, role),
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(userId)
+    .setIssuedAt()
+    .setExpirationTime('8h')
+    .sign(new TextEncoder().encode(sessionSecret));
+const session = await sessionFor(ADMINISTRATOR.userId, ADMINISTRATOR.name, 'owner');
 
 const api = serve({ fetch: app.fetch, port: API_PORT, hostname: '127.0.0.1' });
 
@@ -178,12 +180,18 @@ const web = spawn(
 // screens' own. It only ever answers this machine.
 const cookie = (name: string, value: string, maxAge: number) =>
   `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
-const door = createServer((request, response) => {
+const door = createServer(async (request, response) => {
   const viewed = /^\/as\/(prs_[0-9a-f-]{8,64})$/.exec(request.url ?? '')?.[1];
+  // « /comme/… »: signed in as the demo person herself, not viewed by the administrator.
+  const herself = /^\/comme\/(prs_[0-9a-f-]{8,64})$/.exec(request.url ?? '')?.[1];
+  const person = people.rows.find((row) => row.person_id === herself);
+  const entering = person
+    ? await sessionFor(person.account_user_id, person.name, 'member')
+    : session;
   response.writeHead(302, {
     location: `http://localhost:${WEB_PORT}/`,
     'set-cookie': [
-      cookie('kete_session', session, 8 * 3600),
+      cookie('kete_session', entering, 8 * 3600),
       viewed ? cookie('kete_view_as', viewed, 8 * 3600) : cookie('kete_view_as', '', 0),
     ],
   });
@@ -214,7 +222,7 @@ for (let attempt = 0; attempt < 90; attempt++) {
 }
 say(`Ouvrez http://localhost:${DOOR_PORT} (administratrice de la démonstration).`);
 if (manager) {
-  say(`Le matin de ${manager.name} : http://localhost:${DOOR_PORT}/as/${manager.person_id}`);
+  say(`Le matin de ${manager.name} : http://localhost:${DOOR_PORT}/comme/${manager.person_id}`);
 }
 for (const person of people.rows.filter((row) => row !== manager).slice(0, 8)) {
   say(`  comme ${person.name} : http://localhost:${DOOR_PORT}/as/${person.person_id}`);

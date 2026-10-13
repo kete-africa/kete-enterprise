@@ -20,7 +20,6 @@ import { verbLabel, verbOf, verbs, type Verb } from './verbs';
 /** The places the sidebar proposes, in this order; the rest is under « Tout ». */
 export const proposedPlaces: Page[] = [
   'home',
-  'todo',
   'assistant',
   'my_agents',
   'routines',
@@ -29,7 +28,7 @@ export const proposedPlaces: Page[] = [
   'team',
   'resources',
 ];
-const fixed: Page[] = ['home', 'todo'];
+const fixed: Page[] = ['home'];
 
 const kindIcon: Record<Shortcut['kind'], IconName> = {
   place: 'layers',
@@ -97,6 +96,22 @@ export function SidebarNav({
     // Her team's apps sit with the tools, behind the center.
     const apps = verb === 'apps' ? me.apps : [];
     if (pages.length === 0 && apps.length === 0) return null;
+    const only = verb !== 'apps' && pages.length === 1 ? pages[0] : undefined;
+    // A place that holds one page is that page: it takes the place's name.
+    if (only) {
+      return (
+        <NavSection key={verb}>
+          <NavItem
+            href={only.href}
+            icon={only.icon}
+            current={current === only.page || (verb === 'decide' && current === 'todo')}
+            {...(verb === 'decide' ? { count: me.waiting } : {})}
+          >
+            {verbLabel(verb)}
+          </NavItem>
+        </NavSection>
+      );
+    }
     return (
       <NavSection key={verb} label={verbLabel(verb)}>
         {pages.map((p) => (

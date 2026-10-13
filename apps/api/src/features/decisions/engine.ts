@@ -33,9 +33,17 @@ const sources: SubjectSource[] = [];
 export type DecidedListener = (organizationId: string, requestId: string) => Promise<void>;
 const listeners: DecidedListener[] = [];
 
-/** A feature declares a subject of requests, and what deciding one does. */
-export function registerSubject(subject: string, handler: SubjectHandler): void {
+/** The words of the features' own subjects: a person reads them, never the subject's code. */
+const ownLabels = new Map<string, { fr: string; en: string }>();
+
+/** A feature declares a subject of requests, what deciding one does, and its words. */
+export function registerSubject(
+  subject: string,
+  handler: SubjectHandler,
+  label?: { fr: string; en: string },
+): void {
   subjects.set(subject, handler);
+  if (label) ownLabels.set(subject, label);
 }
 
 /** A family of subjects handled alike: the apps' (`prd_….…`, spec 023). */
@@ -102,7 +110,13 @@ export function knownSubjects(): string[] {
 /** Every subject a circuit may be defined for in this organization, with its words if any. */
 export async function subjectsOf(db: SqlExecutor): Promise<SubjectEntry[]> {
   const fromApps = (await Promise.all(sources.map((source) => source(db)))).flat();
-  return [...knownSubjects().map((subject) => ({ subject })), ...fromApps];
+  return [
+    ...knownSubjects().map((subject) => {
+      const label = ownLabels.get(subject);
+      return label ? { subject, label } : { subject };
+    }),
+    ...fromApps,
+  ];
 }
 
 function handlerOf(subject: string): SubjectHandler | undefined {

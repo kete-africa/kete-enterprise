@@ -1,6 +1,6 @@
 import { Button, Icon, Markdown, PageSection, PageTitle, Tag } from '@kete/design';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { CardView } from '@/lib/dashboard-card';
 import { kindIcon, why } from '@/lib/day';
 import { pinDashboard } from '@/lib/dashboards';
@@ -82,6 +82,8 @@ function Today() {
   // The session (spec 058): one subject at a time; what she set aside for today leaves it.
   const session = useSession();
   const [skipped, setSkipped] = useState(0);
+  // Décider opens on one subject at a time (spec 062); she may ask for the whole list.
+  const [listed, setListed] = useState(false);
   const later = new Set(today.later);
   const waiting = today.day.filter((item) => !later.has(keyOf(item)));
   const setAside = today.day.length - waiting.length;
@@ -92,6 +94,10 @@ function Today() {
     remaining: waiting.length,
   };
   const current = waiting.length > 0 ? (waiting[skipped % waiting.length] ?? null) : null;
+  const piles = !me.viewedBy && !listed && waiting.length > 0;
+  useEffect(() => {
+    if (piles && session.ready && !session.started) session.start(waiting.map(keyOf));
+  }, [piles, session, waiting]);
   const working = today.meanwhile.agents.length + today.meanwhile.routines.length > 0;
   const shown = waiting.slice(0, SHOWN);
   const more = waiting.length - shown.length;
@@ -138,6 +144,7 @@ function Today() {
             onEnd={() => {
               session.end();
               setSkipped(0);
+              setListed(true);
             }}
           />
         ) : shown.length === 0 ? (
@@ -163,6 +170,7 @@ function Today() {
                 variant="secondary"
                 onClick={() => {
                   setSkipped(0);
+                  setListed(false);
                   session.start(waiting.map(keyOf));
                 }}
               >

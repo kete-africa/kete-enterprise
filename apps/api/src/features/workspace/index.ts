@@ -22,5 +22,7 @@ export {
   closeTask,
   openTasksOf,
   putTask,
+  spaceHref,
+  taskPathsMigrationSql,
   type AppTask,
 } from './tasks.js';

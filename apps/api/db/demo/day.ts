@@ -1,10 +1,11 @@
 import type { Hono } from 'hono';
 import { MockLanguageModelV4 } from 'ai/test';
 import { runTask, useTaskModel } from '../../src/features/agents/index.js';
+import { useNoteModel } from '../../src/features/notes/index.js';
 import { useCardReader } from '../../src/features/registry/index.js';
 
 // A day for the demo (step C2): what waits for the head of after-sales when she opens the center
-// in the morning — two decisions, what her agent did overnight and what it is doing
+// in the morning — two decisions, a reminder, what her agent did overnight and what it is doing
 // now. Played through the API as the demo's own people, so that every line is a real gesture with
 // its journal; the words a model would write are scripted here, and no model is called.
 
@@ -24,6 +25,7 @@ const says = (text: string) =>
 
 export interface DayReport {
   decisions: number;
+  reminders: number;
   agentTasksDone: number;
   agentTasksWaiting: number;
   /** What could not be played, in words: the day is still usable without it. */
@@ -43,6 +45,7 @@ export async function seedDay(options: {
   const { api, organizationId, admin, manager, colleague } = options;
   const report: DayReport = {
     decisions: 0,
+    reminders: 0,
     agentTasksDone: 0,
     agentTasksWaiting: 0,
     skipped: [],
@@ -106,9 +109,22 @@ export async function seedDay(options: {
     else skipped(`decision « ${tool.name} »`, asked.status);
   }
 
-  // A reminder from her notebook is not played: on an instance served in http (this demo), the
-  // reminder's task is refused by the database, which only accepts an https address — see
-  // docs/design/gaps-2026-10.md. It joins the day when the link becomes a path of the space.
+  // A reminder from her notebook, dated tomorrow morning.
+  const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  useNoteModel(
+    says(
+      JSON.stringify({
+        summary: 'Appeler le fournisseur des onduleurs.',
+        reminder: { title: 'Appeler le fournisseur des onduleurs', at: `${tomorrow}T09:00` },
+      }),
+    ),
+  );
+  const note = await call(manager.token, 'POST', '/notes', {
+    text: 'Appeler le fournisseur des onduleurs demain à 9 h',
+  });
+  if (note.status < 300) report.reminders += 1;
+  else skipped('reminder', note.status);
+  useNoteModel(undefined);
 
   // Her agent: one task done overnight, one still waiting — « Pendant ce temps ».
   const agent = await call(manager.token, 'POST', '/agents', {
