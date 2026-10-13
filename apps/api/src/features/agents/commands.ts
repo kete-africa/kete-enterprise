@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { registerAgent } from '../registry/index.js';
 import {
   agentAutonomyInput,
+  agentSharingInput,
   agentStatusInput,
   closeSignalInput,
   createAgentInput,
@@ -15,13 +16,20 @@ import {
   insertAgent,
   insertSignal,
   setAutonomy,
+  setSharing,
   setStatus,
 } from './infrastructure/agents.tables.js';
 
 /** A rule of the agents was not met: the change is refused, nothing is written. */
 export class AgentRuleError extends Error {
   constructor(
-    readonly code: 'not_found' | 'unknown_watch' | 'closed' | 'not_its_permission' | 'above_max',
+    readonly code:
+      | 'not_found'
+      | 'unknown_watch'
+      | 'closed'
+      | 'not_its_permission'
+      | 'above_max'
+      | 'unknown_unit',
     message: string,
   ) {
     super(message);
@@ -108,6 +116,27 @@ export const setAgentAutonomy = defineCommand({
   },
   summarize: (input) =>
     `Agent ${input.agentId}: ${input.permission} at level ${input.level ?? 'its maximum'}`,
+});
+
+/** Its person opens it to colleagues, or keeps it to herself (spec 066, doctrine D-044). */
+export const shareAgent = defineCommand({
+  name: 'share-agent',
+  input: agentSharingInput,
+  reversibility: { reversible: true, inverse: 'share-agent' },
+  async handler(input, { db }) {
+    const agent = await findAgent(db, input.agentId);
+    if (!agent) throw new AgentRuleError('not_found', 'The agent does not exist here.');
+    if (!(await setSharing(db, input.agentId, input.visibility, input.sharedWith))) {
+      throw new AgentRuleError('unknown_unit', 'A unit it is opened to does not exist here.');
+    }
+    return {
+      agentId: input.agentId,
+      before: { visibility: agent.visibility, sharedWith: agent.sharedWith },
+      visibility: input.visibility,
+      sharedWith: input.visibility === 'shared' ? input.sharedWith : [],
+    };
+  },
+  summarize: (input) => `Agent ${input.agentId}: ${input.visibility}`,
 });
 
 /** Level 1: an agent says what it found; it changes nothing else. */

@@ -11,6 +11,7 @@ export { useAgentModel } from './record.js';
 export { agentsPermissions, agentsRoutes } from './routes.js';
 export { findAgent, personOfAgent } from './infrastructure/agents.tables.js';
 export {
+  agentsAtWorkMigrationSql,
   agentTasksMigrationSql,
   getTask,
   queueTask,
@@ -19,7 +20,9 @@ export {
   ongoingFor,
   runQueuedTasks,
   runTask,
+  stateOfAgent,
   useTaskModel,
+  type AgentState,
   type AgentTask,
 } from './tasks.js';
 export { wakeAgent, wakeDueAgents, type WakeReport } from './wake.js';

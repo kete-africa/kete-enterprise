@@ -80,3 +80,26 @@ flowchart LR
 - Every task's actor carries its trace, delegated or not; a delegated work shares one trace, so
   `howOf` keeps the lines whose actor is the task's own agent.
 - Read by whoever may see the agent (`ownAgent`): its person, or who manages agents.
+
+## Agents at work (spec 066)
+
+A task is steered while it runs, an agent is in one of six states, and it is private or shared.
+
+```mermaid
+flowchart LR
+  P[Her gesture: pause · write · take over] -->|control on the task| T[(agent_tasks)]
+  R[runTask · runAgent of @kete/agents] -->|before each tool: reads control| T
+  R -->|after each tool: appends the step, the draft| T
+  R -->|park| S{control}
+  S -->|pause| A[paused]
+  S -->|redirect| B[queued again, her words first]
+  S -->|takeover| C[taken_over · putTask in her « À faire »]
+  T --> E[stateOfAgent: idle · working · waiting · blocked · paused · stopped]
+```
+
+- **Controls** (migration 0052): `control` is what she asked of a running task; `park` obeys it
+  when the run returns or breaks. A task not running obeys in the gesture itself.
+- **Steps** are appended by the tool wrapper, not at the end: `finish` only writes the outcome.
+- **Shared** (`visibility`, `shared_with`): `openTo` decides who may call it; a called task acts
+  for `given_by`, an owned one for the agent's person (`runTask`).
+- **Followed by** who gave the task or the agent's person (`followedTask`).

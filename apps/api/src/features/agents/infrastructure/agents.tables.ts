@@ -83,6 +83,8 @@ type AgentRow = {
   wake_every_minutes: number;
   watches: string[];
   status: 'active' | 'paused';
+  visibility: 'private' | 'shared';
+  shared_with: string[];
   next_wake_at: Date;
   last_run_at: Date | null;
 };
@@ -102,13 +104,15 @@ const toAgent = (r: AgentRow): Agent => ({
   wakeEveryMinutes: r.wake_every_minutes,
   watches: r.watches,
   status: r.status,
+  visibility: r.visibility,
+  sharedWith: r.shared_with,
   nextWakeAt: new Date(r.next_wake_at).toISOString(),
   lastRunAt: r.last_run_at ? new Date(r.last_run_at).toISOString() : null,
 });
 
 const agentColumns = `agent_id, name, kind, mission, responsible_user_id, position_id, scope_unit_id,
   permissions, autonomy_max, autonomy_by_permission, draft_budget, wake_every_minutes, watches,
-  status, next_wake_at, last_run_at`;
+  status, visibility, shared_with, next_wake_at, last_run_at`;
 
 export async function insertAgent(
   db: SqlExecutor,
@@ -167,6 +171,26 @@ export async function setAutonomy(
     agentId,
     JSON.stringify(levels),
   ]);
+}
+
+/** Opens an agent to colleagues, or closes it; the units it names must be the organization's. */
+export async function setSharing(
+  db: SqlExecutor,
+  agentId: string,
+  visibility: Agent['visibility'],
+  sharedWith: string[],
+): Promise<boolean> {
+  const units = [...new Set(sharedWith)].sort();
+  if (units.length > 0) {
+    const { rows } = await db.query('select unit_id from units where unit_id = any($1)', [units]);
+    if (rows.length !== units.length) return false;
+  }
+  await db.query('update agents set visibility = $2, shared_with = $3 where agent_id = $1', [
+    agentId,
+    visibility,
+    visibility === 'shared' ? units : [],
+  ]);
+  return true;
 }
 
 export async function findAgent(db: SqlExecutor, agentId: string): Promise<Agent | null> {

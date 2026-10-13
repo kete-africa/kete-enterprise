@@ -215,5 +215,22 @@ export async function seedDay(options: {
       report.requests += 1;
     }
   }
+
+  // Her director shares one of his agents with everyone: she may call it, with her own rights
+  // (spec 066, doctrine D-044).
+  const shared = await call(options.requester.token, 'POST', '/agents', {
+    name: 'Agent Achats',
+    kind: 'personal',
+    mission: 'Donner le prix actuel des pièces et le délai des fournisseurs.',
+    watches: ['decisions'],
+  });
+  const sharedId = String(shared.body.agentId ?? '');
+  if (!sharedId) skipped('shared agent', shared.status);
+  else {
+    const opened = await call(options.requester.token, 'POST', `/agents/${sharedId}/sharing`, {
+      visibility: 'shared',
+    });
+    if (opened.status >= 300) skipped('shared agent', opened.status);
+  }
   return report;
 }

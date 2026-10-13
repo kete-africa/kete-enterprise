@@ -5,13 +5,15 @@ import type { z } from 'zod';
 import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal, runGesture } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
-import { reach, reachesAnything } from '../rights/index.js';
+import { readModules } from '../organization/index.js';
+import { reach, reachesAnything, unitsOfPersonAndAbove } from '../rights/index.js';
 import type { Agent } from './agents.record.js';
 import {
   AgentRuleError,
   closeSignalCommand,
   createAgent,
   setAgentAutonomy,
+  shareAgent,
   updateAgentStatus,
 } from './commands.js';
 import {
@@ -25,7 +27,22 @@ import { agentRecord, NoAgentModelError, understandAgent } from './record.js';
 import { wakeAgent } from './wake.js';
 import { knownWatches } from './watches.js';
 import { howOf } from './how.js';
-import { childrenOf, getTask, giveTaskInput, queueTask, stopTask, tasksOf } from './tasks.js';
+import {
+  childrenOf,
+  getTask,
+  giveTaskInput,
+  givenToShared,
+  pauseTask,
+  queueTask,
+  resumeTask,
+  stateOfAgent,
+  stopTask,
+  takeOverTask,
+  tasksOf,
+  writeToTask,
+  type AgentTask,
+  type Steerer,
+} from './tasks.js';
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
 
@@ -67,6 +84,52 @@ async function ownAgent(c: Ctx, db: SqlExecutor, agentId: string): Promise<Agent
   return agent;
 }
 
+/** Whether a shared agent is open to the person: to everyone, or to a unit she is in or under. */
+async function openTo(c: Ctx, db: SqlExecutor, agent: Agent): Promise<boolean> {
+  if (agent.visibility !== 'shared' || agent.status !== 'active') return false;
+  if (agent.sharedWith.length === 0) return true;
+  const units = await unitsOfPersonAndAbove(db, c.get('identity'));
+  return agent.sharedWith.some((unitId) => units.has(unitId));
+}
+
+/** The agent, if the person may give it work: hers, one she manages, or one shared with her. */
+async function callableAgent(c: Ctx, db: SqlExecutor, agentId: string): Promise<Agent> {
+  const agent = await findAgent(db, agentId);
+  if (!agent) throw new GestureRefusal(404, 'not_found', 'No such agent here.');
+  if (await openTo(c, db, agent)) return agent;
+  return ownAgent(c, db, agentId);
+}
+
+/** The task, if the person may follow and steer it: she gave it, or its agent is hers. */
+async function followedTask(c: Ctx, db: SqlExecutor, taskId: string): Promise<AgentTask> {
+  const task = await getTask(db, taskId);
+  if (!task) throw new GestureRefusal(404, 'not_found', 'No such task here.');
+  if (task.givenBy !== c.get('identity').userId) await ownAgent(c, db, task.agentId);
+  return task;
+}
+
+const steerer = (c: Ctx): Steerer => {
+  const { userId, name } = c.get('identity');
+  return { userId, name: name || userId };
+};
+
+/** One gesture on a task she follows; 409 when the task is no longer in a state that takes it. */
+async function steer(
+  c: Ctx,
+  gesture: (db: SqlExecutor, task: AgentTask) => Promise<boolean>,
+): Promise<Response> {
+  if (c.get('viewedBy')) throw new GestureRefusal(403, 'view_as_forbidden', 'Hers to steer.');
+  const { organizationId } = c.get('identity');
+  const task = await transaction(organizationId, async (db) => {
+    const followed = await followedTask(c, db, c.req.param('taskId') ?? '');
+    if (!(await gesture(db, followed))) {
+      throw new GestureRefusal(409, 'task_settled', 'This task no longer takes it.');
+    }
+    return getTask(db, followed.taskId);
+  });
+  return c.json({ task });
+}
+
 /**
  * The agents' routes, under /v1/agents (spec 007). `permissions` is the catalog: an agent's job
  * description lists only permissions that exist.
@@ -80,13 +143,24 @@ export function agentsRoutes(permissions: readonly string[]) {
         const identity = c.get('identity');
         const screen = await transaction(identity.organizationId, async (db) => {
           const all = await manages(c, db);
+          const on = (await readModules(db)).agents;
           const agents = [];
+          // Shared with her by a colleague (D-044): what it is for, never how it is set.
+          const shared = [];
           for (const agent of await listAgents(db)) {
             const actsFor = await personOfAgent(db, agent);
+            if (actsFor !== identity.userId && (await openTo(c, db, agent))) {
+              shared.push({ agentId: agent.agentId, name: agent.name, mission: agent.mission });
+            }
             if (!all && actsFor !== identity.userId) continue;
-            agents.push({ ...agent, actsFor, signals: await openSignals(db, agent.agentId) });
+            agents.push({
+              ...agent,
+              actsFor,
+              signals: await openSignals(db, agent.agentId),
+              state: await stateOfAgent(db, agent, on),
+            });
           }
-          return { agents, watches: knownWatches(), manages: all };
+          return { agents, shared, watches: knownWatches(), manages: all };
         });
         return c.json(screen);
       })
@@ -148,6 +222,16 @@ export function agentsRoutes(permissions: readonly string[]) {
         await transaction(c.get('identity').organizationId, (db) => ownAgent(c, db, agentId));
         return run(c, setAgentAutonomy, { ...((await bodyOf(c)) as object), agentId });
       })
+      // Private or shared (spec 066, D-044): its person alone opens it, and chooses to whom.
+      .post('/:agentId/sharing', async (c) => {
+        const agentId = c.req.param('agentId');
+        const { organizationId, userId } = c.get('identity');
+        await transaction(organizationId, async (db) => {
+          const agent = await ownAgent(c, db, agentId);
+          if ((await personOfAgent(db, agent)) !== userId) throw forbidden();
+        });
+        return run(c, shareAgent, { ...((await bodyOf(c)) as object), agentId });
+      })
       // What it did these last days (spec 052).
       .get('/:agentId/record', async (c) => {
         const days = Math.min(90, Math.max(1, Number(c.req.query('days') ?? 7) || 7));
@@ -173,7 +257,7 @@ export function agentsRoutes(permissions: readonly string[]) {
         if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'An instruction.');
         const identity = c.get('identity');
         const task = await transaction(identity.organizationId, async (db) => {
-          const agent = await ownAgent(c, db, c.req.param('agentId'));
+          const agent = await callableAgent(c, db, c.req.param('agentId'));
           if (agent.status !== 'active') {
             throw new GestureRefusal(409, 'agent_paused', 'This agent is paused.');
           }
@@ -195,14 +279,19 @@ export function agentsRoutes(permissions: readonly string[]) {
           }),
         });
       })
+      // What she asked of colleagues' shared agents (spec 066): hers to follow and steer.
+      .get('/tasks/given', async (c) => {
+        const { organizationId, userId } = c.get('identity');
+        return c.json({
+          tasks: await transaction(organizationId, (db) => givenToShared(db, userId)),
+        });
+      })
       // A task and the tasks it handed on: the whole of a delegated work.
       .get('/tasks/:taskId', async (c) => {
         const { organizationId } = c.get('identity');
         return c.json(
           await transaction(organizationId, async (db) => {
-            const task = await getTask(db, c.req.param('taskId'));
-            if (!task) throw new GestureRefusal(404, 'not_found', 'No such task here.');
-            await ownAgent(c, db, task.agentId);
+            const task = await followedTask(c, db, c.req.param('taskId'));
             return { task, handedOn: await childrenOf(db, task.taskId) };
           }),
         );
@@ -212,9 +301,9 @@ export function agentsRoutes(permissions: readonly string[]) {
         const { organizationId } = c.get('identity');
         return c.json(
           await transaction(organizationId, async (db) => {
-            const task = await getTask(db, c.req.param('taskId'));
-            if (!task) throw new GestureRefusal(404, 'not_found', 'No such task here.');
-            const agent = await ownAgent(c, db, task.agentId);
+            const task = await followedTask(c, db, c.req.param('taskId'));
+            const agent = await findAgent(db, task.agentId);
+            if (!agent) throw new GestureRefusal(404, 'not_found', 'No such agent here.');
             return howOf(db, task, agent, c.get('identity').userId);
           }),
         );
@@ -222,13 +311,28 @@ export function agentsRoutes(permissions: readonly string[]) {
       .post('/tasks/:taskId/stop', async (c) => {
         const { organizationId } = c.get('identity');
         const stopped = await transaction(organizationId, async (db) => {
-          const task = await getTask(db, c.req.param('taskId'));
-          if (!task) throw new GestureRefusal(404, 'not_found', 'No such task here.');
-          await ownAgent(c, db, task.agentId);
-          return stopTask(db, task.taskId);
+          const task = await followedTask(c, db, c.req.param('taskId'));
+          return stopTask(db, task.taskId, steerer(c));
         });
         return c.json({ stopped });
       })
+      // She steers it while it works (spec 066): pause, go on, write to it, take the work over.
+      .post('/tasks/:taskId/pause', (c) =>
+        steer(c, (db, task) => pauseTask(db, task.taskId, steerer(c))),
+      )
+      .post('/tasks/:taskId/resume', (c) => steer(c, (db, task) => resumeTask(db, task.taskId)))
+      .post('/tasks/:taskId/write', async (c) => {
+        const text = ((await bodyOf(c)) as { text?: unknown } | null)?.text;
+        if (typeof text !== 'string' || !text.trim() || text.length > 2000) {
+          throw new GestureRefusal(422, 'invalid_input', 'A few words.');
+        }
+        return steer(c, (db, task) => writeToTask(db, task.taskId, steerer(c), text.trim()));
+      })
+      .post('/tasks/:taskId/take-over', (c) =>
+        steer(c, (db, task) =>
+          takeOverTask(db, c.get('identity').organizationId, task.taskId, steerer(c)),
+        ),
+      )
       // The person the agent acts for resolves its signal.
       .post('/signals/:signalId/close', async (c) => {
         const signalId = c.req.param('signalId');

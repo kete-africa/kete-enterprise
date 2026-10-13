@@ -49,7 +49,7 @@ export interface Meanwhile {
     taskId: string;
     agentName: string;
     instruction: string;
-    status: 'queued' | 'running';
+    status: 'queued' | 'running' | 'paused';
   }[];
   routines: { runId: string; title: string; cause: string; status: 'queued' | 'running' }[];
 }
@@ -199,7 +199,7 @@ export async function todayFor(
               taskId: t.taskId,
               agentName: t.agentName,
               instruction: t.instruction,
-              status: t.status as 'queued' | 'running',
+              status: t.status as 'queued' | 'running' | 'paused',
             })),
             routines: (await listRuns(db, identity.userId, 30))
               .filter((r) => r.status === 'queued' || r.status === 'running')

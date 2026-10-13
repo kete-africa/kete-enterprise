@@ -1,4 +1,4 @@
-import { Button, Panel, Tag, TextField } from '@kete/design';
+import { Button, Panel, Tag, TextField, type TagTone } from '@kete/design';
 import { useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import * as m from '@/paraglide/messages.js';
@@ -9,6 +9,7 @@ import {
   type AgentProposal,
   type AgentRecord,
   type AgentsScreen,
+  type AgentState,
   type AgentTask,
   type AgentView,
 } from './agents';
@@ -59,7 +60,291 @@ const taskLabel = (status: AgentTask['status']) =>
     done: m.agent_task_done,
     failed: m.agent_task_failed,
     stopped: m.agent_task_stopped,
+    paused: m.agent_task_paused,
+    taken_over: m.agent_task_taken_over,
   })[status]();
+
+const moment = (iso: string) =>
+  new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'short' }).format(
+    new Date(iso),
+  );
+
+const stateWords: Record<AgentState['kind'], () => string> = {
+  idle: m.agent_state_idle,
+  working: m.agent_state_working,
+  waiting: m.agent_state_waiting,
+  blocked: m.agent_state_blocked,
+  paused: m.agent_state_paused,
+  stopped: m.agent_state_stopped,
+};
+const stateTone: Record<AgentState['kind'], TagTone> = {
+  idle: 'neutral',
+  working: 'agent',
+  waiting: 'verify',
+  blocked: 'error',
+  paused: 'info',
+  stopped: 'neutral',
+};
+
+/** What a state shows beside its name: one line, the same wherever the agent appears. */
+function stateDetail(state: AgentState): string {
+  switch (state.kind) {
+    case 'idle':
+      return state.since ? m.agent_state_idle_detail({ at: moment(state.since) }) : '';
+    case 'working':
+      return m.agent_state_working_detail({
+        instruction: state.instruction ?? '',
+        steps: String(state.steps ?? 0),
+      });
+    case 'waiting':
+      return m.agent_state_waiting_detail({ count: String(state.drafts ?? 0) });
+    case 'blocked':
+      return m.agent_state_blocked_detail({
+        instruction: state.instruction ?? '',
+        reason: refusal(state.reason ?? null),
+      });
+    case 'paused':
+      return state.by && state.since
+        ? m.agent_state_paused_detail({ name: state.by, at: moment(state.since) })
+        : m.agent_state_paused_agent();
+    case 'stopped':
+      return m.agent_state_stopped_detail();
+  }
+}
+
+/** The agent's state: its name and its line (spec 066). */
+export function AgentStateLine({ state }: { state: AgentState }) {
+  const detail = stateDetail(state);
+  return (
+    <p className="flex flex-wrap items-center gap-2 text-body-sm">
+      <Tag tone={stateTone[state.kind]}>{stateWords[state.kind]()}</Tag>
+      {detail && <span className="text-fg-muted">{detail}</span>}
+    </p>
+  );
+}
+
+const live = (status: AgentTask['status']) =>
+  status === 'queued' || status === 'running' || status === 'paused';
+
+/**
+ * One task (spec 036), steered while it works (spec 066): pause it, go on, write to it, take the
+ * work over, stop it. Its steps show as they happen; what she asked shows until it obeys.
+ */
+function TaskRow({
+  task,
+  agentName,
+  send,
+}: {
+  task: AgentTask;
+  agentName?: string;
+  send: (path: string, body?: object) => void;
+}) {
+  const [words, setWords] = useState('');
+  const last = task.steps.at(-1);
+  const steered = task.steeredBy
+    ? { name: task.steeredBy.name, at: moment(task.steeredBy.at) }
+    : null;
+  return (
+    <li className="grid gap-1 rounded-box border border-line p-3 text-body-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <Tag
+          tone={task.status === 'done' ? 'validated' : task.status === 'failed' ? 'error' : 'info'}
+        >
+          {taskLabel(task.status)}
+        </Tag>
+        {agentName && <Tag tone="agent">{agentName}</Tag>}
+        {task.parentTaskId && <Tag tone="agent">{m.agent_task_delegated()}</Tag>}
+        <span className="font-semibold">{task.instruction}</span>
+      </div>
+      {last && live(task.status) && (
+        <p className="text-fg-muted">
+          {m.agent_task_steps({ count: String(task.steps.length), step: last.tool })}
+        </p>
+      )}
+      {task.notes.map((note, index) => (
+        <p key={index} className="border-s-2 border-line ps-2">
+          {m.agent_task_note({ text: note.text })}
+        </p>
+      ))}
+      {task.control && <p className="text-fg-muted">{m.agent_task_obeying()}</p>}
+      {steered && task.status === 'paused' && (
+        <p className="text-fg-muted">{m.agent_task_steered_paused(steered)}</p>
+      )}
+      {steered && task.status === 'stopped' && (
+        <p className="text-fg-muted">{m.agent_task_steered_stopped(steered)}</p>
+      )}
+      {steered && task.status === 'taken_over' && (
+        <p className="text-fg-muted">
+          {m.agent_task_steered_taken(steered)}{' '}
+          <a href="/a-faire" className="font-semibold text-link underline">
+            {m.agent_task_in_todo()}
+          </a>
+        </p>
+      )}
+      {live(task.status) && (
+        <div className="flex flex-wrap gap-2">
+          {task.status === 'paused' ? (
+            <Button variant="secondary" onClick={() => send(`/tasks/${task.taskId}/resume`)}>
+              {m.agent_task_resume()}
+            </Button>
+          ) : (
+            <Button variant="secondary" onClick={() => send(`/tasks/${task.taskId}/pause`)}>
+              {m.agent_task_pause()}
+            </Button>
+          )}
+          <DialogForm
+            title={m.agent_task_write()}
+            ready={words.trim().length > 0}
+            onSubmit={() => {
+              send(`/tasks/${task.taskId}/write`, { text: words });
+              setWords('');
+            }}
+          >
+            <p className="text-body-sm text-fg-muted">{m.agent_task_write_explain()}</p>
+            <label className="grid gap-1.5 text-body-sm font-semibold">
+              {m.agent_task_write_label()}
+              <textarea
+                className="min-h-24 rounded-control border border-line-control bg-surface-control p-3 font-normal"
+                value={words}
+                maxLength={2000}
+                onChange={(e) => setWords(e.target.value)}
+              />
+            </label>
+          </DialogForm>
+          <Button variant="secondary" onClick={() => send(`/tasks/${task.taskId}/take-over`)}>
+            {m.agent_task_take_over()}
+          </Button>
+          <Button variant="secondary" onClick={() => send(`/tasks/${task.taskId}/stop`)}>
+            {m.agent_task_stop()}
+          </Button>
+        </div>
+      )}
+      {task.answer && <p className="whitespace-pre-line">{task.answer}</p>}
+      {task.status !== 'queued' && (
+        <div>
+          <HowButton taskId={task.taskId} />
+        </div>
+      )}
+      {task.draftIds.length > 0 && (
+        <a href="/a-faire" className="font-semibold text-link underline">
+          {m.agent_task_drafts({ count: task.draftIds.length })}
+        </a>
+      )}
+    </li>
+  );
+}
+
+/** Giving a task: the instruction, in a drawer. */
+function GiveTask({
+  agentId,
+  label,
+  send,
+}: {
+  agentId: string;
+  label?: string;
+  send: (path: string, body?: object) => void;
+}) {
+  const [instruction, setInstruction] = useState('');
+  return (
+    <DialogForm
+      title={m.agent_give_task()}
+      {...(label ? { label } : {})}
+      ready={instruction.trim().length > 0}
+      onSubmit={() => {
+        send(`/${agentId}/tasks`, { instruction });
+        setInstruction('');
+      }}
+    >
+      <p className="text-body-sm text-fg-muted">{m.agent_task_explain()}</p>
+      <label className="grid gap-1.5 text-body-sm font-semibold">
+        {m.agent_task_instruction()}
+        <textarea
+          className="min-h-28 rounded-control border border-line-control bg-surface-control p-3 font-normal"
+          value={instruction}
+          maxLength={4000}
+          onChange={(e) => setInstruction(e.target.value)}
+        />
+      </label>
+    </DialogForm>
+  );
+}
+
+/**
+ * The agents colleagues share with her (spec 066, D-044): she gives them a task, and follows what
+ * she asked. They act with her rights — never with their owner's.
+ */
+function SharedAgents({ screen }: { screen: AgentsScreen }) {
+  const { error, send } = useGesture();
+  if (screen.shared.length === 0 && screen.given.length === 0) return null;
+  return (
+    <Panel title={m.agents_shared_title()}>
+      <div className="grid gap-3">
+        <p className="text-body-sm text-fg-muted">{m.agents_shared_explain()}</p>
+        <ul className="grid gap-2">
+          {screen.shared.map((agent) => (
+            <li key={agent.agentId} className="flex flex-wrap items-center gap-2 text-body-sm">
+              <Tag tone="agent">{agent.name}</Tag>
+              <span className="min-w-0 flex-1">{agent.mission}</span>
+              <GiveTask agentId={agent.agentId} label={m.agent_shared_give()} send={send} />
+            </li>
+          ))}
+        </ul>
+        {screen.given.length > 0 && (
+          <>
+            <h3 className="text-body-sm font-semibold">{m.agents_shared_given()}</h3>
+            <ul className="grid gap-2">
+              {screen.given.map((task) => (
+                <TaskRow key={task.taskId} task={task} agentName={task.agentName} send={send} />
+              ))}
+            </ul>
+          </>
+        )}
+        {error && (
+          <p role="alert" className="text-body-sm text-state-error-fg">
+            {error}
+          </p>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+/** Who may call it (spec 066, D-044): its person alone, everyone, or one unit and those under. */
+function AgentSharing({
+  agent,
+  units,
+  send,
+}: {
+  agent: AgentView;
+  units: { unitId: string; name: string }[];
+  send: (path: string, body?: object) => void;
+}) {
+  const value = agent.visibility === 'private' ? 'private' : (agent.sharedWith[0] ?? 'everyone');
+  return (
+    <div className="grid gap-1 sm:max-w-md">
+      <Select
+        label={m.agent_visibility()}
+        value={value}
+        onChange={(e) =>
+          send(`/${agent.agentId}/sharing`, {
+            visibility: e.target.value === 'private' ? 'private' : 'shared',
+            sharedWith:
+              e.target.value === 'private' || e.target.value === 'everyone' ? [] : [e.target.value],
+          })
+        }
+      >
+        <option value="private">{m.agent_visibility_private()}</option>
+        <option value="everyone">{m.agent_visibility_everyone()}</option>
+        {units.map((unit) => (
+          <option key={unit.unitId} value={unit.unitId}>
+            {m.agent_visibility_unit({ unit: unit.name })}
+          </option>
+        ))}
+      </Select>
+      <p className="text-body-sm text-fg-muted">{m.agent_visibility_explain()}</p>
+    </div>
+  );
+}
 
 /** The tasks given to the agent (spec 036): a new one, the latest with their answers. */
 function AgentTasks({
@@ -69,71 +354,19 @@ function AgentTasks({
   agent: AgentView;
   send: (path: string, body?: object) => void;
 }) {
-  const [instruction, setInstruction] = useState('');
   const tasks = agent.tasks ?? [];
   return (
     <div className="grid gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="text-body-sm font-semibold">{m.agent_tasks()}</h3>
-        {agent.status === 'active' && (
-          <DialogForm
-            title={m.agent_give_task()}
-            ready={instruction.trim().length > 0}
-            onSubmit={() => {
-              send(`/${agent.agentId}/tasks`, { instruction });
-              setInstruction('');
-            }}
-          >
-            <p className="text-body-sm text-fg-muted">{m.agent_task_explain()}</p>
-            <label className="grid gap-1.5 text-body-sm font-semibold">
-              {m.agent_task_instruction()}
-              <textarea
-                className="min-h-28 rounded-control border border-line-control bg-surface-control p-3 font-normal"
-                value={instruction}
-                maxLength={4000}
-                onChange={(e) => setInstruction(e.target.value)}
-              />
-            </label>
-          </DialogForm>
-        )}
+        {agent.status === 'active' && <GiveTask agentId={agent.agentId} send={send} />}
       </div>
       {tasks.length === 0 ? (
         <p className="text-body-sm text-fg-muted">{m.agent_no_task()}</p>
       ) : (
         <ul className="grid gap-2">
-          {tasks.map((t) => (
-            <li
-              key={t.taskId}
-              className="grid gap-1 rounded-box border border-line p-3 text-body-sm"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <Tag
-                  tone={
-                    t.status === 'done' ? 'validated' : t.status === 'failed' ? 'error' : 'info'
-                  }
-                >
-                  {taskLabel(t.status)}
-                </Tag>
-                {t.parentTaskId && <Tag tone="agent">{m.agent_task_delegated()}</Tag>}
-                <span className="font-semibold">{t.instruction}</span>
-                {(t.status === 'queued' || t.status === 'running') && (
-                  <Button variant="secondary" onClick={() => send(`/tasks/${t.taskId}/stop`)}>
-                    {m.agent_task_stop()}
-                  </Button>
-                )}
-              </div>
-              {t.answer && <p className="whitespace-pre-line">{t.answer}</p>}
-              {t.status !== 'queued' && (
-                <div>
-                  <HowButton taskId={t.taskId} />
-                </div>
-              )}
-              {t.draftIds.length > 0 && (
-                <a href="/a-faire" className="font-semibold text-link underline">
-                  {m.agent_task_drafts({ count: t.draftIds.length })}
-                </a>
-              )}
-            </li>
+          {tasks.map((task) => (
+            <TaskRow key={task.taskId} task={task} send={send} />
           ))}
         </ul>
       )}
@@ -357,7 +590,18 @@ function AgentFromSentence({ watchLabelOf }: { watchLabelOf: (w: string) => stri
   );
 }
 
-function AgentCard({ agent, unitName }: { agent: AgentView; unitName: Map<string, string> }) {
+function AgentCard({
+  agent,
+  unitName,
+  units,
+  hers,
+}: {
+  agent: AgentView;
+  unitName: Map<string, string>;
+  units: { unitId: string; name: string }[];
+  /** It acts for the reader: she alone opens it to colleagues. */
+  hers: boolean;
+}) {
   const { error, send } = useGesture();
   const format = new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeStyle: 'short' });
   return (
@@ -365,13 +609,14 @@ function AgentCard({ agent, unitName }: { agent: AgentView; unitName: Map<string
       <div className="grid gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Tag tone="agent">{m.agent_level({ level: String(agent.autonomyMax) })}</Tag>
-          <Tag tone={agent.status === 'active' ? 'validated' : 'neutral'}>
-            {agent.status === 'active' ? m.agent_active() : m.agent_paused()}
+          <Tag tone={agent.visibility === 'shared' ? 'info' : 'neutral'}>
+            {agent.visibility === 'shared' ? m.agent_shared_tag() : m.agent_private_tag()}
           </Tag>
           {agent.watches.map((w) => (
             <Tag key={w}>{watchLabel(w)}</Tag>
           ))}
         </div>
+        <AgentStateLine state={agent.state} />
         <p>{agent.mission}</p>
         <p className="text-body-sm text-fg-muted">
           {[
@@ -402,6 +647,7 @@ function AgentCard({ agent, unitName }: { agent: AgentView; unitName: Map<string
             {agent.status === 'active' ? m.agent_pause() : m.agent_resume()}
           </Button>
         </div>
+        {hers && <AgentSharing agent={agent} units={units} send={send} />}
         <AgentAutonomy agent={agent} send={send} />
         <AgentWeek agent={agent} />
         <AgentTasks agent={agent} send={send} />
@@ -454,9 +700,16 @@ export function AgentsView({ screen }: { screen: AgentsScreen }) {
         <p className="text-fg-muted">{m.agents_none()}</p>
       ) : (
         screen.agents.map((agent) => (
-          <AgentCard key={agent.agentId} agent={agent} unitName={unitName} />
+          <AgentCard
+            key={agent.agentId}
+            agent={agent}
+            unitName={unitName}
+            units={screen.chart.units}
+            hers={agent.actsFor === screen.me}
+          />
         ))
       )}
+      <SharedAgents screen={screen} />
       <GestureForm
         title={m.agent_new()}
         ready={
