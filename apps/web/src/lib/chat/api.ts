@@ -14,6 +14,22 @@ export interface UploadedFile {
   pages: number | null;
 }
 
+/** A file of one of her conversations, as it was read (spec 064); null if not hers. */
+export const fetchAttachment = createServerFn({ method: 'GET' })
+  .validator((input: unknown) => {
+    const id = (input as { attachmentId?: unknown } | null)?.attachmentId;
+    if (typeof id !== 'string' || !/^att_[0-9a-f-]{8,64}$/.test(id)) throw new Error('Unknown.');
+    return { attachmentId: id };
+  })
+  .handler(({ data }) =>
+    callApi<{ attachment: { name: string; kind: 'text' | 'image'; text: string } }>(
+      getRequest(),
+      `/v1/assistant/attachments/${data.attachmentId}`,
+    )
+      .then((answer) => answer.attachment)
+      .catch(() => null),
+  );
+
 /** A file attached in the composer, read by the API now, sent with the next message. */
 export const uploadAttachment = createServerFn({ method: 'POST' })
   .validator((input: unknown) => {

@@ -26,6 +26,7 @@ import { readModules, requireModule } from '../organization/index.js';
 import { isAdministrator } from '../rights/index.js';
 import { readChartAt } from '../structure/index.js';
 import { KNOWLEDGE_DIMENSIONS, knowledgeEmbedder } from './infrastructure/embedder.js';
+import { placesOf, readDocument } from './reading.js';
 
 // The company's library (spec 028), on @kete/knowledge: sources an administrator switches on or
 // off and opens to everyone, to units (with their sub-units) or to administrators; documents read
@@ -128,7 +129,9 @@ function embedderFor(identity: Identity) {
 }
 
 const label = (h: SearchHit) => (h.page ? `${h.title} · p. ${h.page}` : h.title);
-const hrefOf = (h: SearchHit) => h.uri ?? `/bibliotheque?document=${h.documentId}`;
+/** Where a passage opens: the reading of its document at its page, the passage marked (spec 064). */
+const hrefOf = (h: SearchHit, places: Map<SearchHit, string>) =>
+  places.get(h) ?? `/bibliotheque/document/${h.documentId}`;
 
 /** The library, under /v1/knowledge. */
 export const knowledgeRoutes = new Hono<{ Variables: IdentityVariables }>()
@@ -232,17 +235,32 @@ export const knowledgeRoutes = new Hono<{ Variables: IdentityVariables }>()
     if (!removed) throw new GestureRefusal(404, 'not_found', 'No such document.');
     return c.json({ removed });
   })
+  // A document as she reads it: its pages and passages, if her audience opens it (spec 064).
+  .get('/documents/:documentId', async (c) => {
+    const identity = c.get('identity');
+    const manage = isAdministrator(identity) && !c.get('viewedBy');
+    const reading = await transaction(identity.organizationId, async (db) =>
+      readDocument(db, c.req.param('documentId'), manage ? null : await readerKeys(db, identity)),
+    );
+    if (!reading) throw new GestureRefusal(404, 'not_found', 'No such document for her.');
+    return c.json({ document: reading });
+  })
   // A search, in what she may read, each passage with its citation.
   .get('/search', async (c) => {
     const identity = c.get('identity');
     const q = z.string().trim().min(2).max(500).safeParse(c.req.query('q'));
     if (!q.success) throw new GestureRefusal(422, 'invalid_input', 'A question.');
     const embedder = embedderFor(identity);
-    const hits = await transaction(identity.organizationId, async (db) =>
-      search(db, { query: q.data, audience: await readerKeys(db, identity), limit: 10 }, embedder),
-    );
+    const { hits, places } = await transaction(identity.organizationId, async (db) => {
+      const found = await search(
+        db,
+        { query: q.data, audience: await readerKeys(db, identity), limit: 10 },
+        embedder,
+      );
+      return { hits: found, places: await placesOf(db, found) };
+    });
     return c.json({
-      hits: hits.map((h) => ({ ...h, label: label(h), href: hrefOf(h) })),
+      hits: hits.map((h) => ({ ...h, label: label(h), href: hrefOf(h, places) })),
     });
   });
 
@@ -271,19 +289,20 @@ export function knowledgeTool(identity: Identity): CapabilityTool {
       const parsed = toolInput.safeParse(input);
       const embedder = knowledgeEmbedder(identity);
       if (!parsed.success || !embedder) return { status: 'refused', reason: 'invalid_input' };
-      const hits = await transaction(identity.organizationId, async (db) =>
-        search(
+      const { hits, places } = await transaction(identity.organizationId, async (db) => {
+        const found = await search(
           db,
           { query: parsed.data.query, audience: await readerKeys(db, identity), limit: 6 },
           embedder,
-        ),
-      );
+        );
+        return { hits: found, places: await placesOf(db, found) };
+      });
       return {
         status: 'done',
         output: {
           passages: hits.map((h) => ({
             title: label(h),
-            href: hrefOf(h),
+            href: hrefOf(h, places),
             source: h.sourceName,
             text: h.text,
           })),

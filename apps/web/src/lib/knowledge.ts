@@ -49,6 +49,32 @@ const answerOf = <T>(answer: { ok: boolean; data?: T; error?: string | null }) =
     ? { ok: true as const, data: (answer.data ?? null) as T | null, error: null }
     : { ok: false as const, data: null, error: answer.error ?? null };
 
+/** A document of the library as she reads it (spec 064). */
+export interface DocumentReading {
+  documentId: string;
+  title: string;
+  sourceName: string;
+  uri: string | null;
+  pages: { page: number | null; passages: { passage: number; text: string }[] }[];
+  truncated: boolean;
+}
+
+/** Its pages and passages; null when it is not open to her. */
+export const fetchDocumentReading = createServerFn({ method: 'GET' })
+  .validator((input: unknown) => {
+    const id = (input as { documentId?: unknown } | null)?.documentId;
+    if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{4,80}$/.test(id)) throw new Error('Unknown.');
+    return { documentId: id };
+  })
+  .handler(({ data }) =>
+    callApi<{ document: DocumentReading }>(
+      getRequest(),
+      `/v1/knowledge/documents/${data.documentId}`,
+    )
+      .then((answer) => answer.document)
+      .catch(() => null),
+  );
+
 export const fetchSources = createServerFn({ method: 'GET' }).handler(() =>
   callApi<{ manage: boolean; sources: LibrarySource[] }>(getRequest(), '/v1/knowledge/sources'),
 );

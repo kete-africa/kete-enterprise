@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchMentionables } from '@/lib/chat/api';
 import { fetchViewSandbox } from '@/lib/chat/views';
 import { ChatCanvas } from '@/lib/chat/canvas';
+import { ThreadPieces } from '@/lib/chat/pieces';
 import { PayWith, rememberedPayer } from '@/lib/chat/pay-with';
 import { useKeteChat } from '@/lib/chat/runtime';
 import { KeteThread, triggerAdapter } from '@/lib/chat/thread';
@@ -244,7 +245,16 @@ function AssistantPage() {
                               : m.assistant_hint_rules(),
                       })}
                     </span>
-                    <PayWith payers={assistant.payers} value={payer} onChange={setPayer} />
+                    <span className="flex flex-wrap items-center gap-2">
+                      <ThreadPieces
+                        messages={chat.messages}
+                        openCanvas={(document) => {
+                          setClosed(false);
+                          setOpened(document);
+                        }}
+                      />
+                      <PayWith payers={assistant.payers} value={payer} onChange={setPayer} />
+                    </span>
                   </span>
                 }
                 views={{

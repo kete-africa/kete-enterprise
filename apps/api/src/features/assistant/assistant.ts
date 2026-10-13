@@ -54,6 +54,7 @@ import {
 import {
   AttachmentError,
   MAX_ATTACHMENT_BYTES,
+  readAttachment,
   saveAttachment,
   takeAttachments,
 } from './attachments.js';
@@ -499,6 +500,31 @@ export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
   // called and the drafts prepared, then the end. Stopping the request stops the model.
   .post('/chat/stream', (c: Ctx) => streamChat(c))
   // A file attached to the chat (spec 027): read now, sent with her next message.
+  // A file of one of her conversations, opened again: what was read in it (spec 064).
+  .get('/attachments/:attachmentId', async (c: Ctx) => {
+    const identity = c.get('identity');
+    const found = await transaction(identity.organizationId, (db) =>
+      readAttachment(db, identity.userId, c.req.param('attachmentId') ?? ''),
+    );
+    if (!found) throw new GestureRefusal(404, 'not_found', 'No such file of hers.');
+    const { data, ...reading } = found;
+    return c.json({ attachment: { ...reading, hasFile: data !== null } });
+  })
+  // Its bytes, when they were kept (an image): shown in the thread's viewer.
+  .get('/attachments/:attachmentId/file', async (c: Ctx) => {
+    const identity = c.get('identity');
+    const found = await transaction(identity.organizationId, (db) =>
+      readAttachment(db, identity.userId, c.req.param('attachmentId') ?? ''),
+    );
+    if (!found?.data) throw new GestureRefusal(404, 'not_found', 'No such file of hers.');
+    return new Response(new Uint8Array(found.data), {
+      headers: {
+        'content-type': found.contentType,
+        'cache-control': 'private, no-store',
+        'x-content-type-options': 'nosniff',
+      },
+    });
+  })
   .post('/attachments', async (c: Ctx) => {
     const parsed = attachmentInput.safeParse(await bodyOf(c));
     if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'A file is expected.');

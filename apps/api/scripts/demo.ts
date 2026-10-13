@@ -11,6 +11,7 @@ import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import pg from 'pg';
 import { scriptedAnswers } from '../db/demo/answers.js';
 import { seedDay } from '../db/demo/day.js';
+import { seedLibrary } from '../db/demo/library.js';
 import { seedDemo } from '../db/demo/seed.js';
 import { migrations } from '../db/migrations.js';
 import { useModel } from '../src/features/assistant/index.js';
@@ -122,6 +123,10 @@ const token = await tokenFor(ADMINISTRATOR.userId, ADMINISTRATOR.name, 'owner');
 
 // A day in it (step C2): the morning of the head of after-sales, played through the API.
 const app = createApi();
+// A library with one report, indexed without a model (step C4).
+if (await seedLibrary({ api: app, admin: token })) {
+  say('Bibliothèque : un rapport SAV indexé ; cherchez « batteries » dans /bibliotheque.');
+}
 const manager = people.rows.find((person) => person.name === MANAGER);
 const colleague = people.rows.find((person) => person.name === COLLEAGUE);
 if (manager && colleague) {

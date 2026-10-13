@@ -139,3 +139,49 @@ export async function takeAttachments(
     data: r.data,
   }));
 }
+
+/** A file attached to one of her conversations, as she opens it again (spec 064). */
+export interface AttachmentReading {
+  attachmentId: string;
+  name: string;
+  contentType: string;
+  kind: AttachmentKind;
+  pages: number | null;
+  /** What was read in it; an image has none. */
+  text: string;
+  createdAt: string;
+}
+
+/** Her attachment — never another person's — with what was read in it, and its bytes when kept. */
+export async function readAttachment(
+  db: SqlExecutor,
+  userId: string,
+  attachmentId: string,
+): Promise<(AttachmentReading & { data: Buffer | null }) | null> {
+  const { rows } = await db.query<{
+    attachment_id: string;
+    name: string;
+    content_type: string;
+    kind: AttachmentKind;
+    pages: number | null;
+    text: string;
+    data: Buffer | null;
+    created_at: Date;
+  }>(
+    `select attachment_id, name, content_type, kind, pages, text, data, created_at
+       from assistant_attachments where attachment_id = $1 and user_id = $2`,
+    [attachmentId, userId],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    attachmentId: row.attachment_id,
+    name: row.name,
+    contentType: row.content_type,
+    kind: row.kind,
+    pages: row.pages,
+    text: row.text,
+    data: row.data,
+    createdAt: row.created_at.toISOString(),
+  };
+}
