@@ -21,6 +21,7 @@ import { verbLabel, verbOf, verbs, type Verb } from './verbs';
 export const proposedPlaces: Page[] = [
   'home',
   'assistant',
+  'requests',
   'my_agents',
   'routines',
   'dossiers',

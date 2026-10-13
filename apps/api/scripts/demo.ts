@@ -36,6 +36,7 @@ const ADMINISTRATOR = { userId: 'usr_demo_admin', name: 'Administratrice (démo)
 // Whose morning the demo plays, and who asks her for decisions (db/demo/kya.ts).
 const MANAGER = 'Abla Nyuiadzi';
 const COLLEAGUE = 'Délali Tchalla';
+const DIRECTOR = 'Folly Ayité';
 const issuer = 'https://compte.kete.demo';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const say = (line: string) => console.log(`[demo] ${line}`);
@@ -129,6 +130,8 @@ if (await seedLibrary({ api: app, admin: token })) {
 }
 const manager = people.rows.find((person) => person.name === MANAGER);
 const colleague = people.rows.find((person) => person.name === COLLEAGUE);
+// Her own manager, who asks her for a quote (step C5).
+const director = people.rows.find((person) => person.name === DIRECTOR);
 if (manager && colleague) {
   const day = await seedDay({
     api: app,
@@ -139,10 +142,18 @@ if (manager && colleague) {
       personId: manager.person_id,
     },
     colleague: { token: await tokenFor(colleague.account_user_id, colleague.name, 'member') },
+    requester: {
+      token: director
+        ? await tokenFor(director.account_user_id, director.name, 'member')
+        : await tokenFor(colleague.account_user_id, colleague.name, 'member'),
+    },
+    managerName: manager.name,
+    lookup: db.owner,
   });
   say(
     `Journée de ${manager.name} : ${day.decisions} décisions, ${day.reminders} rappel, ` +
-      `${day.agentTasksDone} tâche d’agent faite, ${day.agentTasksWaiting} en attente.`,
+      `${day.agentTasksDone} tâche d’agent faite, ${day.agentTasksWaiting} en attente, ` +
+      `${day.requests} demande d’un collègue à signer.`,
   );
   for (const what of day.skipped) say(`  non joué : ${what}`);
   // No model here: the assistant's answers are written in advance, on the demo's own data.

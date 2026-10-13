@@ -43,6 +43,7 @@ export type Page =
   | 'dashboards'
   | 'routines'
   | 'notebook'
+  | 'requests'
   | 'field'
   | 'admin_templates'
   | 'admin_library'
@@ -123,6 +124,13 @@ export function placesOf(me: Me): Place[] {
       href: '/mes-agents',
       icon: 'agent',
       label: m.nav_my_agents(),
+      group: 'me',
+    },
+    {
+      page: 'requests',
+      href: '/demandes',
+      icon: 'people',
+      label: m.nav_requests(),
       group: 'me',
     },
     {

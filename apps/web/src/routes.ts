@@ -9,6 +9,8 @@ export const routes = rootRoute('__root.tsx', [
   route('/notifications', 'notifications.tsx'),
   route('/recherche', 'search.tsx'),
   route('/assistant', 'assistant.tsx'),
+  route('/demandes', 'requests.tsx'),
+  route('/demandes/$requestId', 'request.tsx'),
   route('/assistant/connexion', 'ai-connection.tsx'),
   route('/assistant/taches', 'schedules.tsx'),
   route('/assistant/memoire', 'memory.tsx'),
