@@ -99,6 +99,18 @@ export async function putTask(
   return rows[0]?.task_id;
 }
 
+/** The open tasks one source put, across people: what it must close when it no longer waits. */
+export async function openTasksFrom(
+  db: SqlExecutor,
+  source: string,
+): Promise<{ userId: string; key: string }[]> {
+  const { rows } = await db.query<{ user_id: string; key: string }>(
+    `select user_id, key from app_tasks where source = $1 and status = 'open'`,
+    [source],
+  );
+  return rows.map((row) => ({ userId: row.user_id, key: row.key }));
+}
+
 /** Closes a task a feature put, when its person undoes what made it (spec 055). */
 export async function closeTask(
   db: SqlExecutor,

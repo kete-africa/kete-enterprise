@@ -20,6 +20,7 @@ export {
   appTasksMigrationSql,
   appTasksRoutes,
   closeTask,
+  openTasksFrom,
   openTasksOf,
   putTask,
   spaceHref,
