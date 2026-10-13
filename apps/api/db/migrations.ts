@@ -12,6 +12,7 @@ import {
 import { datasetsMigrationSql } from '../src/features/datasets/index.js';
 import { exchangesMigrationSql } from '../src/features/exchanges/index.js';
 import { receptionMigrationSql, requestsMigrationSql } from '../src/features/requests/index.js';
+import { rulesMigrationSql } from '../src/features/rules/index.js';
 import { notesAboutMigrationSql, notesMigrationSql } from '../src/features/notes/index.js';
 import { routinesMigrationSql } from '../src/features/routines/index.js';
 import { documentsMigrationSql } from '../src/features/documents/index.js';
@@ -219,4 +220,6 @@ export const migrations: Migration[] = [
   { name: '0052_agents_at_work', sql: (context) => agentsAtWorkMigrationSql(context) },
   // « Mon accueil »: her rules and her absence (spec 067, doctrine D-044).
   { name: '0053_reception', sql: (context) => receptionMigrationSql(context) },
+  // The organization's rules for its agents, and what they refused (spec 068, doctrine D-043).
+  { name: '0054_ai_rules', sql: (context) => rulesMigrationSql(context) },
 ];

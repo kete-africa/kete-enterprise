@@ -4,13 +4,17 @@ import {
   createCapabilityRegistry,
   createMcpHandler,
   protectedResourceMetadata,
+  type CapabilityTool,
+  type InvocationResult,
 } from '@kete/capabilities';
 import { actingPerson, asPerson } from '../../platform/acting.js';
 import { transaction } from '../../platform/db.js';
 import { env } from '../../platform/env.js';
 import { identityOf } from '../../platform/identity.js';
 import { VERSION } from '../../platform/service.js';
+import { notificationWords } from '../notifications/index.js';
 import { reach, reachesAnything } from '../rights/index.js';
+import { ruleAgainst, type Rule } from '../rules/index.js';
 import { GATEWAY_PERMISSION, gatewayCapabilities } from './capabilities.js';
 import { recordCall } from './infrastructure/gateway.tables.js';
 
@@ -36,6 +40,42 @@ const registry = createCapabilityRegistry(gatewayCapabilities, {
   transaction,
 });
 
+/** A capability an organization's rule refused: nothing ran, and the rule is named. */
+export type RuleRefusal = InvocationResult & { rule: { ruleId: string; sentence: string } };
+
+const refusedBy = (rule: Rule): RuleRefusal => ({
+  status: 'refused',
+  reason: 'not_allowed',
+  rule: { ruleId: rule.ruleId, sentence: rule.sentence },
+});
+
+/**
+ * The organization's rules for its agents (spec 068, D-043), at their single point of passage:
+ * every tool an agent is given asks the rules before it runs. An active rule that covers it
+ * refuses — journaled with the rule — and nothing runs; a rule on trial only counts.
+ */
+function ruled(
+  organizationId: string,
+  actor: Actor,
+  tools: readonly CapabilityTool[],
+  permissionOf: ReadonlyMap<string, string>,
+): CapabilityTool[] {
+  return tools.map((tool) => ({
+    ...tool,
+    async execute(input: unknown) {
+      const rule = await transaction(organizationId, (db) =>
+        ruleAgainst(db, organizationId, {
+          actor,
+          tool: tool.name,
+          permission: permissionOf.get(tool.name) ?? '',
+          autonomy: tool.autonomy,
+        }),
+      );
+      return rule ? refusedBy(rule) : tool.execute(input);
+    },
+  }));
+}
+
 /** The drafts an agent may hold open for one person at once: beyond, it waits (D-028). */
 export const DRAFT_BUDGET = 10;
 
@@ -44,15 +84,18 @@ export const DRAFT_BUDGET = 10;
  * the same rights, an agent acting on her behalf. Call it, and the tools, inside `asPerson`.
  */
 export async function toolsForPerson(identity: { organizationId: string; userId: string }) {
-  const tools = await registry.tools({
-    organizationId: identity.organizationId,
-    actor: {
-      kind: 'agent',
-      id: 'agt_assistant',
-      channel: 'chat',
-      onBehalfOf: { kind: 'person', id: identity.userId },
-    },
-  });
+  const actor: Actor = {
+    kind: 'agent',
+    id: 'agt_assistant',
+    channel: 'chat',
+    onBehalfOf: { kind: 'person', id: identity.userId },
+  };
+  const tools = ruled(
+    identity.organizationId,
+    actor,
+    await registry.tools({ organizationId: identity.organizationId, actor }),
+    await toolPermissions(identity.organizationId, actor),
+  );
   // A draft beyond the budget is not prepared: too many validations and people stop reading.
   return tools.map((tool) =>
     tool.autonomy < 3
@@ -109,7 +152,7 @@ export async function toolsForAgent(
       (allowed.has(permission) || permission === GATEWAY_PERMISSION)
     );
   });
-  return tools.map((tool) =>
+  return ruled(person.organizationId, actor, tools, permissionOf).map((tool) =>
     tool.autonomy < 3
       ? tool
       : {
@@ -205,6 +248,61 @@ export function gatewayResourceMetadata(request: Request): Response {
   })();
 }
 
+/**
+ * A copilot's calls through the MCP gateway meet the same rules: when one of the tools it calls
+ * is refused by a rule, none of the calls of the body runs, and each is answered with the rule.
+ */
+async function refusedCalls(
+  identity: { organizationId: string; userId: string },
+  body: string,
+  tools: string[],
+): Promise<Response | null> {
+  const actor: Actor = {
+    kind: 'agent',
+    id: 'agt_gateway',
+    channel: 'mcp',
+    onBehalfOf: { kind: 'person', id: identity.userId },
+  };
+  const offered = new Map(
+    (await registry.tools({ organizationId: identity.organizationId, actor })).map((tool) => [
+      tool.name,
+      tool,
+    ]),
+  );
+  const permissionOf = await toolPermissions(identity.organizationId, actor);
+  let refusing: Rule | null = null;
+  for (const name of tools) {
+    const tool = offered.get(name);
+    if (!tool) continue;
+    const rule = await transaction(identity.organizationId, (db) =>
+      ruleAgainst(db, identity.organizationId, {
+        actor,
+        tool: name,
+        permission: permissionOf.get(name) ?? '',
+        autonomy: tool.autonomy,
+      }),
+    );
+    refusing ??= rule;
+  }
+  if (!refusing) return null;
+  const parsed: unknown = JSON.parse(body);
+  const text = notificationWords().ruleRefused(refusing.sentence);
+  const answers = (Array.isArray(parsed) ? parsed : [parsed])
+    .filter(
+      (message): message is { id: string | number; method: string } =>
+        typeof message === 'object' &&
+        message !== null &&
+        (message as { method?: unknown }).method === 'tools/call' &&
+        (message as { id?: unknown }).id !== undefined,
+    )
+    .map((message) => ({
+      jsonrpc: '2.0',
+      id: message.id,
+      result: { content: [{ type: 'text', text }], isError: true },
+    }));
+  return Response.json(Array.isArray(parsed) ? answers : (answers[0] ?? {}));
+}
+
 /** The tools a JSON-RPC body calls: the gateway traces each one. */
 function toolsCalled(body: string): string[] {
   try {
@@ -267,5 +365,8 @@ export async function handleGateway(request: Request): Promise<Response> {
     body === null
       ? request
       : new Request(request.url, { method: request.method, headers: request.headers, body });
-  return asPerson(identity, () => handler(forwarded));
+  return asPerson(identity, async () => {
+    const refused = body && tools.length > 0 ? await refusedCalls(identity, body, tools) : null;
+    return refused ?? handler(forwarded);
+  });
 }

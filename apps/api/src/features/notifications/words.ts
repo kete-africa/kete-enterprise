@@ -27,6 +27,7 @@ const catalog = {
     requestDeclined: (colleague: string, title: string) => `${colleague} ne fera pas « ${title} »`,
     requestReminded: (asker: string, title: string) => `${asker} vous relance pour « ${title} »`,
     receptionHanded: (agent: string, word: string) => `${agent} — par sa règle « ${word} »`,
+    ruleRefused: (sentence: string) => `Refusé par une règle de l’organisation : « ${sentence} »`,
     receptionAway: (delegate: string, until: string) =>
       `Absence jusqu’au ${until} : cette demande va à ${delegate}.`,
   },
@@ -54,6 +55,7 @@ const catalog = {
     requestDeclined: (colleague: string, title: string) => `${colleague} will not do “${title}”`,
     requestReminded: (asker: string, title: string) => `${asker} reminds you of “${title}”`,
     receptionHanded: (agent: string, word: string) => `${agent} — by their rule “${word}”`,
+    ruleRefused: (sentence: string) => `Refused by a rule of the organization: “${sentence}”`,
     receptionAway: (delegate: string, until: string) =>
       `Away until ${until}: this request goes to ${delegate}.`,
   },

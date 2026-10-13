@@ -94,6 +94,8 @@ export interface TaskStep {
   /** The tool's autonomy level: 1 reads, 2 acts reversibly, 3 prepares a draft. */
   level?: number;
   sources?: Source[];
+  /** The organization's rule that refused it, in its own sentence (spec 068). */
+  rule?: string;
 }
 
 /** What she wrote to it while it worked: it comes before its instruction. */
@@ -689,12 +691,14 @@ export async function runTask(
   const record = async (name: string, result: InvocationResult) => {
     const fact = facts.get(name);
     const sources = sourcesOf(result);
+    const rule = (result as { rule?: { sentence?: unknown } }).rule?.sentence;
     const step: TaskStep = {
       tool: name,
       status: result.status,
       ...(fact?.permission ? { permission: fact.permission } : {}),
       ...(fact ? { level: fact.level } : {}),
       ...(sources.length > 0 ? { sources } : {}),
+      ...(typeof rule === 'string' ? { rule } : {}),
     };
     await transaction(organizationId, (db) =>
       db.query(

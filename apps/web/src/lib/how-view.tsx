@@ -55,6 +55,7 @@ function Step({ step }: { step: HowStep }) {
         </Tag>
       </div>
       {facts.length > 0 && <p className="text-body-sm text-fg-muted">{facts.join(' · ')}</p>}
+      {step.rule && <p className="text-body-sm">{m.how_step_rule({ rule: step.rule })}</p>}
       {step.sources && step.sources.length > 0 && (
         <ul className="flex flex-wrap gap-x-3 gap-y-1 text-body-sm">
           <li className="text-fg-muted">{m.how_step_read()}</li>
