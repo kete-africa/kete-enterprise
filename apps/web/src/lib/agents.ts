@@ -211,6 +211,64 @@ export const fetchAgentRecord = createServerFn({ method: 'GET' })
     callApi<{ record: AgentRecord }>(getRequest(), `/v1/agents/${data.agentId}/record`),
   );
 
+/** What a job description would signal today (spec 067): its dry run, nothing written. */
+export interface DryRunFinding {
+  watch: string;
+  kind: string;
+  subject: string;
+}
+
+const proposalOf = (input: unknown) => {
+  const v = (input ?? {}) as Record<string, unknown>;
+  const list = (value: unknown) =>
+    Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === 'string').slice(0, 50)
+      : [];
+  return {
+    name: typeof v.name === 'string' ? v.name.slice(0, 120) : '',
+    mission: typeof v.mission === 'string' ? v.mission.slice(0, 2000) : '',
+    watches: list(v.watches),
+    permissions: list(v.permissions),
+    autonomyMax: Number(v.autonomyMax) || 1,
+    wakeEveryMinutes: Number(v.wakeEveryMinutes) || 60,
+  };
+};
+
+export const dryRunAgent = createServerFn({ method: 'POST' })
+  .validator(proposalOf)
+  .handler(async ({ data }) => {
+    const answer = await sendGesture<{ findings: DryRunFinding[] }>(
+      getRequest(),
+      '/v1/agents/dry-run',
+      { watches: data.watches, permissions: data.permissions },
+      crypto.randomUUID(),
+    );
+    return answer.ok
+      ? { ok: true as const, findings: answer.data.findings, error: null }
+      : { ok: false as const, findings: [], error: answer.error };
+  });
+
+/** Creates the agent she tried, and runs its first round at once (spec 067). */
+export const createAgentAndRun = createServerFn({ method: 'POST' })
+  .validator(proposalOf)
+  .handler(async ({ data }) => {
+    const request = getRequest();
+    const created = await sendGesture<{ agentId: string }>(
+      request,
+      '/v1/agents',
+      { ...data, kind: 'personal' },
+      crypto.randomUUID(),
+    );
+    if (!created.ok) return { ok: false as const, raised: 0, error: created.error };
+    const round = await sendGesture<{ raised: number }>(
+      request,
+      `/v1/agents/${created.data.agentId}/wake`,
+      {},
+      crypto.randomUUID(),
+    );
+    return { ok: true as const, raised: round.ok ? round.data.raised : 0, error: null };
+  });
+
 /** A personal agent's job description from her sentence, and its plan (spec 052). */
 export interface AgentProposal {
   name: string;

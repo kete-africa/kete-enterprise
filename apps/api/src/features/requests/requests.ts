@@ -6,6 +6,7 @@ import { colleagueCard } from '../directory/index.js';
 import { notificationWords, tell } from '../notifications/index.js';
 import { readChartAt } from '../structure/index.js';
 import { closeTask, putTask, spaceHref } from '../workspace/index.js';
+import { awayTo, ruleFor } from './reception.js';
 
 // A request to a colleague (spec 065, doctrine D-044): work asked of a person — never of her
 // private agents. It has its states — received, taken, waiting for the one who asked, returned —
@@ -236,7 +237,7 @@ const person = (who: Who): RequestEvent['actor'] => ({
 const href = (requestId: string) => `/demandes/${requestId}`;
 
 /** The colleague a name or an account points to, as the directory shows her to the asker. */
-async function colleagueOf(db: SqlExecutor, who: Who, wanted: string) {
+export async function colleagueOf(db: SqlExecutor, who: Who, wanted: string) {
   const chart = await readChartAt(db, new Date().toISOString().slice(0, 10));
   const known = chart.people.filter((p) => p.accountUserId);
   const text = wanted.trim().toLowerCase();
@@ -267,7 +268,11 @@ export async function askColleague(
     dueOn?: string | null | undefined;
   },
 ): Promise<ColleagueRequest> {
-  const to = await colleagueOf(db, who, input.colleague);
+  const asked = await colleagueOf(db, who, input.colleague);
+  // « Mon accueil » (spec 067): away, her requests go to the colleague she named — once, never
+  // back to who asks.
+  const away = await awayTo(db, asked.userId);
+  const to = away && away.delegate.userId !== who.userId ? away.delegate : asked;
   const requestId = newId('rqt');
   const { rows } = await db.query<Row>(
     `insert into colleague_requests (organization_id, request_id, from_user_id, from_name,
@@ -286,6 +291,16 @@ export async function askColleague(
     ],
   );
   await note(db, who.organizationId, requestId, 'asked', person(who), input.detail ?? '');
+  if (to.userId !== asked.userId && away) {
+    await note(
+      db,
+      who.organizationId,
+      requestId,
+      'note',
+      { kind: 'person', id: asked.userId, name: asked.name },
+      notificationWords().receptionAway(to.name, away.endsOn),
+    );
+  }
   const title = notificationWords().requestReceived(who.name || who.userId, input.title);
   await putTask(db, who.organizationId, to.userId, {
     source: 'requests',
@@ -299,6 +314,16 @@ export async function askColleague(
     title,
     href: href(requestId),
   });
+  // A rule of hers hands it to her own agent, which prepares: she still signs what goes back.
+  const rule = await ruleFor(db, to.userId, `${input.title} ${input.detail ?? ''}`);
+  if (rule) {
+    return moveRequest(
+      db,
+      { organizationId: who.organizationId, userId: to.userId, name: to.name, role: null },
+      requestId,
+      { kind: 'hand', agentId: rule.agent.agentId, byRule: rule.word },
+    );
+  }
   return requestOf(db, rows[0] as Row);
 }
 
@@ -370,7 +395,7 @@ export async function readRequest(
 
 type Move =
   | { kind: 'take' }
-  | { kind: 'hand'; agentId: string }
+  | { kind: 'hand'; agentId: string; byRule?: string }
   | { kind: 'wait'; question: string }
   | { kind: 'answer'; text: string }
   | { kind: 'note'; text: string }
@@ -453,7 +478,14 @@ export async function moveRequest(
         agent.agentId,
         task.taskId,
       ]);
-      await note(db, who.organizationId, requestId, 'handed', me, agent.name);
+      await note(
+        db,
+        who.organizationId,
+        requestId,
+        'handed',
+        me,
+        move.byRule ? words.receptionHanded(agent.name, move.byRule) : agent.name,
+      );
       break;
     }
     case 'wait':

@@ -26,6 +26,7 @@ const placed: Partial<Record<Page, Verb>> = {
   documents: 'ask',
   library: 'ask',
   my_agents: 'delegate',
+  reception: 'delegate',
   routines: 'delegate',
   skills: 'delegate',
 };

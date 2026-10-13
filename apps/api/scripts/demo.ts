@@ -9,11 +9,12 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import pg from 'pg';
-import { scriptedAnswers } from '../db/demo/answers.js';
+import { scriptedAnswers, scriptedProposal } from '../db/demo/answers.js';
 import { seedDay } from '../db/demo/day.js';
 import { seedLibrary } from '../db/demo/library.js';
 import { seedDemo } from '../db/demo/seed.js';
 import { migrations } from '../db/migrations.js';
+import { useAgentModel } from '../src/features/agents/index.js';
 import { useModel } from '../src/features/assistant/index.js';
 
 // Kete Enterprise on this machine, to look at its screens: `pnpm demo` from the repository's root.
@@ -157,6 +158,8 @@ if (manager && colleague) {
   );
   for (const what of day.skipped) say(`  non joué : ${what}`);
   // No model here: the assistant's answers are written in advance, on the demo's own data.
+  // « Créer un agent en une phrase » proposes the same job description, to show its dry run.
+  useAgentModel(scriptedProposal());
   if (day.datasetId) {
     useModel(scriptedAnswers(day.datasetId));
     say(

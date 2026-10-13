@@ -48,6 +48,7 @@ export type Page =
   | 'admin_templates'
   | 'admin_library'
   | 'my_agents'
+  | 'reception'
   | 'surveys'
   | 'performance'
   | 'team'
@@ -124,6 +125,13 @@ export function placesOf(me: Me): Place[] {
       href: '/mes-agents',
       icon: 'agent',
       label: m.nav_my_agents(),
+      group: 'me',
+    },
+    {
+      page: 'reception',
+      href: '/mon-accueil',
+      icon: 'people',
+      label: m.nav_reception(),
       group: 'me',
     },
     {

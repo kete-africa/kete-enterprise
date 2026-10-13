@@ -26,6 +26,9 @@ const catalog = {
     requestReturned: (colleague: string, title: string) => `${colleague} vous a rendu « ${title} »`,
     requestDeclined: (colleague: string, title: string) => `${colleague} ne fera pas « ${title} »`,
     requestReminded: (asker: string, title: string) => `${asker} vous relance pour « ${title} »`,
+    receptionHanded: (agent: string, word: string) => `${agent} — par sa règle « ${word} »`,
+    receptionAway: (delegate: string, until: string) =>
+      `Absence jusqu’au ${until} : cette demande va à ${delegate}.`,
   },
   en: {
     decisionWaiting: (title: string) => `Your decision is awaited: ${title}`,
@@ -50,6 +53,9 @@ const catalog = {
       `${colleague} returned “${title}” to you`,
     requestDeclined: (colleague: string, title: string) => `${colleague} will not do “${title}”`,
     requestReminded: (asker: string, title: string) => `${asker} reminds you of “${title}”`,
+    receptionHanded: (agent: string, word: string) => `${agent} — by their rule “${word}”`,
+    receptionAway: (delegate: string, until: string) =>
+      `Away until ${until}: this request goes to ${delegate}.`,
   },
 } as const;
 

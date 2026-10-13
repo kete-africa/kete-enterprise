@@ -214,6 +214,12 @@ export async function seedDay(options: {
       useTaskModel(undefined);
       report.requests += 1;
     }
+    // « Mon accueil »: from now on, what speaks of a quote goes to her agent first (spec 067).
+    const rule = await call(manager.token, 'POST', '/reception/rules', {
+      words: ['devis', 'chiffrage'],
+      agentId,
+    });
+    if (rule.status >= 300) skipped('reception rule', rule.status);
   }
 
   // Her director shares one of his agents with everyone: she may call it, with her own rights
