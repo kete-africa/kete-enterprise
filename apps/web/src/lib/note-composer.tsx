@@ -7,6 +7,48 @@ import { getLocale } from '@/paraglide/runtime.js';
 import { unfileNote, writeNote, type Note } from './notes';
 
 /**
+ * A note just kept (spec 055): said back to her — the reminder it filed in « À faire », undone in
+ * one gesture. Shown under the notebook's field, and in the frame's « Noter » (@kete/shell).
+ */
+export function NoteKept({ note }: { note: Note }) {
+  const router = useRouter();
+  const [kept, setKept] = useState(note);
+  const when = (value: string) =>
+    new Intl.DateTimeFormat(getLocale(), { dateStyle: 'full', timeStyle: 'short' }).format(
+      new Date(value),
+    );
+  return (
+    <div className="grid gap-1 rounded-box border border-line bg-surface-muted p-3">
+      <p className="font-semibold">{m.notebook_kept()}</p>
+      {kept.reminder ? (
+        <div className="flex flex-wrap items-center gap-2 text-body-sm">
+          <span>
+            {m.notebook_reminder_filed({
+              title: kept.reminder.title,
+              at: when(kept.reminder.at),
+            })}
+          </span>
+          <button
+            type="button"
+            className="font-semibold underline underline-offset-4"
+            onClick={() =>
+              void unfileNote({ data: { noteId: kept.noteId } }).then(async () => {
+                setKept({ ...kept, reminder: null });
+                await router.invalidate();
+              })
+            }
+          >
+            {m.notebook_unfile()}
+          </button>
+        </div>
+      ) : (
+        <p className="text-body-sm text-fg-muted">{m.notebook_nothing_filed()}</p>
+      )}
+    </div>
+  );
+}
+
+/**
  * « Noter » (spec 055): she writes as on paper; the note is kept in her notebook, a reminder
  * filed in « À faire » when it names a moment — said back to her, undone in one gesture.
  */
@@ -16,10 +58,6 @@ export function NoteComposer({ onDone }: { onDone?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [kept, setKept] = useState<Note | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const when = (value: string) =>
-    new Intl.DateTimeFormat(getLocale(), { dateStyle: 'full', timeStyle: 'short' }).format(
-      new Date(value),
-    );
   return (
     <div className="grid gap-3">
       <label className="flex flex-col gap-1.5 text-body-sm font-semibold text-fg">
@@ -59,35 +97,8 @@ export function NoteComposer({ onDone }: { onDone?: () => void }) {
         )}
       </div>
       {kept && (
-        <div
-          role="status"
-          className="grid gap-1 rounded-box border border-line bg-surface-muted p-3"
-        >
-          <p className="font-semibold">{m.notebook_kept()}</p>
-          {kept.reminder ? (
-            <div className="flex flex-wrap items-center gap-2 text-body-sm">
-              <span>
-                {m.notebook_reminder_filed({
-                  title: kept.reminder.title,
-                  at: when(kept.reminder.at),
-                })}
-              </span>
-              <button
-                type="button"
-                className="font-semibold underline underline-offset-4"
-                onClick={() =>
-                  void unfileNote({ data: { noteId: kept.noteId } }).then(async () => {
-                    setKept({ ...kept, reminder: null });
-                    await router.invalidate();
-                  })
-                }
-              >
-                {m.notebook_unfile()}
-              </button>
-            </div>
-          ) : (
-            <p className="text-body-sm text-fg-muted">{m.notebook_nothing_filed()}</p>
-          )}
+        <div role="status">
+          <NoteKept key={kept.noteId} note={kept} />
         </div>
       )}
       {error && (

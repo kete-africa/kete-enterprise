@@ -2106,5 +2106,10 @@
   "phone_connect_telegram": "Relier le bot",
   "phone_sender_connected": "Relié.",
   "permission_time_record": "Dire le temps des autres (rendez-vous, congés, tâches)",
-  "permission_time_read": "Voir le temps de toute l’organisation"
+  "permission_time_read": "Voir le temps de toute l’organisation",
+  "nav_my_board": "Mon tableau",
+  "shell_files": "Fichiers",
+  "shell_sync_ok": "À jour",
+  "shell_sync_offline": "Hors ligne · {count} en attente",
+  "shell_sync_sending": "Envoi…"
 }

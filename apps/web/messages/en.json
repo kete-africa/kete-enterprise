@@ -2106,5 +2106,10 @@
   "phone_connect_telegram": "Connect the bot",
   "phone_sender_connected": "Connected.",
   "permission_time_record": "Say the time of others (meetings, leaves, tasks)",
-  "permission_time_read": "See the whole organization’s time"
+  "permission_time_read": "See the whole organization’s time",
+  "nav_my_board": "My board",
+  "shell_files": "Files",
+  "shell_sync_ok": "Up to date",
+  "shell_sync_offline": "Offline · {count} waiting",
+  "shell_sync_sending": "Sending…"
 }
