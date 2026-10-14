@@ -2104,5 +2104,10 @@
   "phone_bot_token": "Jeton du bot (Telegram)",
   "phone_webhook_secret": "Secret du webhook",
   "phone_connect_telegram": "Relier le bot",
-  "phone_sender_connected": "Relié."
+  "phone_sender_connected": "Relié.",
+  "nav_my_board": "Mon tableau",
+  "shell_files": "Fichiers",
+  "shell_sync_ok": "À jour",
+  "shell_sync_offline": "Hors ligne · {count} en attente",
+  "shell_sync_sending": "Envoi…"
 }

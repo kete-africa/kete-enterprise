@@ -1,30 +1,19 @@
+import { Button, type CommandItem, type IconName } from '@kete/design';
 import {
-  applyTheme,
-  Button,
-  CommandPalette,
-  CommandTrigger,
-  CountBadge,
-  Dialog,
-  Icon,
-  Menu,
-  NavItem,
-  NavSection,
-  Shell,
-  TabBar,
-  TabBarItem,
-  ThemeChoice,
-  useCommandShortcut,
-  type CommandGroup,
-  type IconName,
-  type ThemeChoiceValue,
-} from '@kete/design';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+  AppFrame,
+  type Place as ShellPlace,
+  type PlaceSection,
+  type ShellWords,
+} from '@kete/shell';
+import { useCallback, useState, type ReactNode } from 'react';
+import { refusal } from '@/lib/forms';
 import * as m from '@/paraglide/messages.js';
+import { AssistantBeside, useAskBeside, useShownPage } from './chat/panel';
 import { administers, opens, viewAs, type Me } from './me';
-import { AssistantPanel, useAskBeside, useShownPage } from './chat/panel';
+import { NoteKept } from './note-composer';
+import { writeNote } from './notes';
 import { searchEverywhere, type SearchResult } from './notifications';
-import { NoteComposer } from './note-composer';
-import { proposedPlaces, SidebarNav } from './sidebar-nav';
+import { resolveShortcut } from './sidebar-nav';
 
 /** Where a screen sits: the person's space, or the Administration (spec 010). */
 export type Page =
@@ -278,109 +267,6 @@ export function placesOf(me: Me): Place[] {
   return all.filter((p): p is Place => Boolean(p));
 }
 
-/** The space: the places she keeps, her shortcuts, her team's apps, then « Tout » (spec 049). */
-function SpaceNav({ me, current }: { me: Me; current: Page }) {
-  const places = placesOf(me);
-  const inSidebar = proposedPlaces.filter((p) => !me.sidebar.hidden.includes(p));
-  const elsewhere = !inSidebar.includes(current) && !adminPages.includes(current);
-  return <SidebarNav me={me} places={places} current={current} elsewhere={elsewhere} />;
-}
-
-/** The Administration: the frame only — never a survey or a grid (spec 010). */
-function AdminNav({ me, current }: { me: Me; current: Page }) {
-  if (!adminPages.includes(current)) {
-    return (
-      <NavSection label={m.nav_administration()}>
-        <NavItem href="/administration" icon="check">
-          {m.nav_admin_home()}
-        </NavItem>
-      </NavSection>
-    );
-  }
-  return (
-    <NavSection label={m.nav_administration()}>
-      <NavItem href="/administration" icon="apps" current={current === 'admin'}>
-        {m.nav_admin_home()}
-      </NavItem>
-      <NavItem
-        href="/administration/organisation"
-        icon="library"
-        current={current === 'organization'}
-      >
-        {m.nav_structure()}
-      </NavItem>
-      <NavItem href="/administration/personnes" icon="agent" current={current === 'people'}>
-        {m.nav_people()}
-      </NavItem>
-      <NavItem href="/administration/droits" icon="check" current={current === 'rights'}>
-        {m.nav_rights()}
-      </NavItem>
-      {me.administrator && (
-        <NavItem href="/administration/modules" icon="apps" current={current === 'modules'}>
-          {m.nav_modules()}
-        </NavItem>
-      )}
-      {me.administrator && (
-        <NavItem href="/administration/regles" icon="check" current={current === 'rules'}>
-          {m.nav_rules()}
-        </NavItem>
-      )}
-      {me.administrator && (
-        <NavItem href="/administration/connecteurs" icon="apps" current={current === 'connectors'}>
-          {m.nav_connectors()}
-        </NavItem>
-      )}
-      <NavItem href="/administration/circuits" icon="arrow" current={current === 'circuits'}>
-        {m.nav_circuits()}
-      </NavItem>
-      <NavItem href="/administration/registre" icon="library" current={current === 'registry'}>
-        {m.nav_registry()}
-      </NavItem>
-      {me.modules.agents && (
-        <NavItem href="/administration/agents" icon="agent" current={current === 'agents'}>
-          {m.nav_agents()}
-        </NavItem>
-      )}
-      {me.administrator && (
-        <NavItem
-          href="/administration/boite-de-test"
-          icon="download"
-          current={current === 'outbox'}
-        >
-          {m.nav_outbox()}
-        </NavItem>
-      )}
-      {me.administrator && (
-        <NavItem href="/administration/ia" icon="agent" current={current === 'ai'}>
-          {m.nav_ai()}
-        </NavItem>
-      )}
-      {me.administrator && me.modules.knowledge && (
-        <NavItem
-          href="/administration/bibliotheque"
-          icon="library"
-          current={current === 'admin_library'}
-        >
-          {m.nav_admin_library()}
-        </NavItem>
-      )}
-      {me.administrator && me.modules.documents && (
-        <NavItem
-          href="/administration/modeles"
-          icon="download"
-          current={current === 'admin_templates'}
-        >
-          {m.nav_admin_templates()}
-        </NavItem>
-      )}
-      {me.administrator && me.demo && (
-        <NavItem href="/administration/demo" icon="learn" current={current === 'demo'}>
-          {m.nav_demo()}
-        </NavItem>
-      )}
-    </NavSection>
-  );
-}
 
 /** Back to one's own space after viewing a demo person's. */
 function ViewingBanner({ me }: { me: Me }) {
@@ -401,6 +287,178 @@ function ViewingBanner({ me }: { me: Me }) {
   );
 }
 
+
+/** The Administration's places: the frame only — never a survey or a grid (spec 010). */
+function adminPlaces(me: Me): ShellPlace[] {
+  const all: (ShellPlace | false)[] = [
+    { id: 'admin', label: m.nav_admin_home(), href: '/administration', icon: 'apps' },
+    {
+      id: 'organization',
+      label: m.nav_structure(),
+      href: '/administration/organisation',
+      icon: 'library',
+    },
+    { id: 'people', label: m.nav_people(), href: '/administration/personnes', icon: 'agent' },
+    { id: 'rights', label: m.nav_rights(), href: '/administration/droits', icon: 'check' },
+    me.administrator && {
+      id: 'modules',
+      label: m.nav_modules(),
+      href: '/administration/modules',
+      icon: 'apps',
+    },
+    me.administrator && {
+      id: 'rules',
+      label: m.nav_rules(),
+      href: '/administration/regles',
+      icon: 'check',
+    },
+    me.administrator && {
+      id: 'connectors',
+      label: m.nav_connectors(),
+      href: '/administration/connecteurs',
+      icon: 'apps',
+    },
+    {
+      id: 'circuits',
+      label: m.nav_circuits(),
+      href: '/administration/circuits',
+      icon: 'arrow',
+    },
+    {
+      id: 'registry',
+      label: m.nav_registry(),
+      href: '/administration/registre',
+      icon: 'library',
+    },
+    me.modules.agents && {
+      id: 'agents',
+      label: m.nav_agents(),
+      href: '/administration/agents',
+      icon: 'agent',
+    },
+    me.administrator && {
+      id: 'outbox',
+      label: m.nav_outbox(),
+      href: '/administration/boite-de-test',
+      icon: 'download',
+    },
+    me.administrator && { id: 'ai', label: m.nav_ai(), href: '/administration/ia', icon: 'agent' },
+    me.administrator &&
+      me.modules.knowledge && {
+        id: 'admin_library',
+        label: m.nav_admin_library(),
+        href: '/administration/bibliotheque',
+        icon: 'library',
+      },
+    me.administrator &&
+      me.modules.documents && {
+        id: 'admin_templates',
+        label: m.nav_admin_templates(),
+        href: '/administration/modeles',
+        icon: 'download',
+      },
+    me.administrator &&
+      me.demo && { id: 'demo', label: m.nav_demo(), href: '/administration/demo', icon: 'learn' },
+  ];
+  return all.filter((p): p is ShellPlace => Boolean(p));
+}
+
+/** The place of the frame a page belongs to (screens 2026, « Where today's menu goes »). */
+function placeOf(page: Page): string {
+  if (page === 'todo') return 'home';
+  if (page === 'routines' || page === 'skills') return 'my_agents';
+  if (page === 'dossiers') return 'assistant';
+  return page;
+}
+
+/**
+ * The frame's sidebar (doctrine D-042, D-050; step C1): the places — Décider, Demander, Déléguer,
+ * Mon tableau — the projects, what she pinned, the apps and « Tout », the Administration. Every
+ * other place is one Ctrl K away.
+ */
+function sectionsOf(me: Me, current: Page): PlaceSection[] {
+  const places = placesOf(me);
+  const main: (ShellPlace | false)[] = [
+    { id: 'home', label: m.nav_decide(), href: '/', icon: 'check' },
+    { id: 'assistant', label: m.nav_ask(), href: '/assistant', icon: 'sparkle' },
+    me.modules.agents && {
+      id: 'my_agents',
+      label: m.nav_delegate(),
+      href: '/mes-agents',
+      icon: 'agent',
+    },
+    me.modules.dashboards && {
+      id: 'dashboards',
+      label: m.nav_my_board(),
+      href: '/tableaux-de-bord',
+      icon: 'chart',
+    },
+    { id: 'projects', label: m.nav_projects(), href: '/projets', icon: 'folder' },
+  ];
+  const pinned = me.sidebar.sections.flatMap((section, index): PlaceSection[] => {
+    const items = section.items.flatMap((shortcut, at): ShellPlace[] => {
+      const to = resolveShortcut(me, places, shortcut);
+      return to
+        ? [{ id: `pin-${index}-${at}`, label: shortcut.label, href: to.href, icon: to.icon }]
+        : [];
+    });
+    return items.length ? [{ label: section.name ?? m.sidebar_pinned(), places: items }] : [];
+  });
+  const sections: PlaceSection[] = [
+    { places: main.filter((p): p is ShellPlace => Boolean(p)) },
+    ...pinned,
+    {
+      places: [
+        { id: 'apps', label: m.nav_apps(), href: '/apps', icon: 'apps' },
+        { id: 'all', label: m.nav_all(), href: '/tout', icon: 'menu' },
+      ],
+    },
+  ];
+  if (administers(me)) {
+    sections.push({
+      label: m.nav_administration(),
+      places: adminPages.includes(current)
+        ? adminPlaces(me)
+        : [{ id: 'admin', label: m.nav_admin_home(), href: '/administration', icon: 'tool' }],
+    });
+  }
+  return sections;
+}
+
+/** The shell's words, from the app's catalogs. */
+const shellWords = (): ShellWords => ({
+  nav: m.nav_label(),
+  showNav: m.nav_show(),
+  hideNav: m.nav_hide(),
+  search: m.palette_placeholder(),
+  palette: m.palette_label(),
+  palettePlaceholder: m.palette_placeholder(),
+  paletteEmpty: m.palette_empty(),
+  palettePlaces: m.palette_places(),
+  paletteFound: m.palette_results(),
+  paletteAsk: m.palette_ask(),
+  paletteAskItem: (question) => m.palette_ask_item({ question }),
+  ask: m.nav_ask(),
+  files: m.shell_files(),
+  note: m.nav_note(),
+  bell: m.nav_notifications(),
+  tabs: m.nav_tabs(),
+  menu: m.nav_all(),
+  noteTitle: m.nav_note(),
+  noteField: m.notebook_write(),
+  noteHint: m.notebook_placeholder(),
+  noteSave: m.notebook_keep(),
+  close: m.common_close(),
+  theme: m.theme_label(),
+  themes: { dark: m.theme_dark(), light: m.theme_light(), auto: m.theme_auto() },
+  signOut: m.nav_sign_out(),
+  sync: {
+    ok: m.shell_sync_ok(),
+    offline: (pending) => m.shell_sync_offline({ count: String(pending) }),
+    sending: m.shell_sync_sending(),
+  },
+});
+
 const resultIcon: Record<SearchResult['kind'], IconName> = {
   conversation: 'sparkle',
   action: 'check',
@@ -411,38 +469,25 @@ const resultIcon: Record<SearchResult['kind'], IconName> = {
 };
 
 /**
- * Ctrl K (spec 046): one field to go somewhere, find something in Kete with her rights, or ask the
- * assistant — the question opens the assistant, which answers with its sources.
+ * What Ctrl K finds beyond the sidebar (spec 046): every place her modules open, her team's apps,
+ * then what Kete holds for her, under her rights.
  */
-function Palette({
-  me,
-  open,
-  onOpenChange,
-  onAsk,
-}: {
-  me: Me;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAsk: (question: string) => void;
-}) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  useEffect(() => {
-    if (!open || query.trim().length < 2) {
-      setResults([]);
-      return;
-    }
-    const timer = setTimeout(() => {
-      void searchEverywhere({ data: { q: query } })
-        .then((answer) => setResults(answer.results))
-        .catch(() => setResults([]));
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [open, query]);
-  const groups: CommandGroup[] = [
-    {
-      heading: m.palette_results(),
-      items: results.map((r, index) => ({
+function finder(me: Me) {
+  return async (query: string): Promise<CommandItem[]> => {
+    const q = query.trim().toLowerCase();
+    const places: CommandItem[] = [
+      ...placesOf(me).map((p) => ({ id: `place-${p.page}`, label: p.label, icon: p.icon, href: p.href })),
+      ...me.apps.map((a) => ({
+        id: `app-${a.resourceId}`,
+        label: a.name,
+        icon: 'apps' as const,
+        href: a.address,
+      })),
+    ].filter((item) => item.label.toLowerCase().includes(q));
+    const { results } = await searchEverywhere({ data: { q: query } });
+    return [
+      ...places,
+      ...results.map((r, index) => ({
         id: `result-${index}`,
         label: r.title,
         ...(r.detail ? { hint: r.detail } : {}),
@@ -451,90 +496,24 @@ function Palette({
         keywords: [query],
         href: r.href,
       })),
-    },
-    {
-      heading: m.palette_places(),
-      items: [
-        ...placesOf(me).map((p) => ({ id: p.page, label: p.label, icon: p.icon, href: p.href })),
-        ...me.apps.map((a) => ({
-          id: a.resourceId,
-          label: a.name,
-          icon: 'apps' as const,
-          href: a.address,
-        })),
-        ...(administers(me)
-          ? [
-              {
-                id: 'admin',
-                label: m.nav_administration(),
-                icon: 'tool' as const,
-                href: '/administration',
-              },
-            ]
-          : []),
-      ],
-    },
-  ];
-  return (
-    <CommandPalette
-      open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next);
-        if (!next) setQuery('');
-      }}
-      label={m.palette_label()}
-      placeholder={m.palette_placeholder()}
-      emptyLabel={m.palette_empty()}
-      query={query}
-      onQueryChange={setQuery}
-      groups={groups}
-      ask={{
-        heading: m.palette_ask(),
-        label: (q) => m.palette_ask_item({ question: q }),
-        onAsk: (q) => {
-          onOpenChange(false);
-          setQuery('');
-          onAsk(q);
-        },
-      }}
-    />
-  );
+    ];
+  };
 }
 
-/** Two letters for a person's mark: her first and last names'. */
-function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const first = words[0]?.[0] ?? '';
-  const last = words.length > 1 ? (words[words.length - 1]?.[0] ?? '') : '';
-  return (first + last).toUpperCase();
+/** « Noter » from anywhere (spec 055): kept in her notebook; a reminder it filed, with its undo. */
+async function keepNote(text: string): Promise<ReactNode> {
+  const answer = await writeNote({ data: { text } }).catch(() => null);
+  if (!answer?.ok || !answer.note) {
+    return (
+      <p className="text-body-sm text-state-error-fg">
+        {answer ? refusal(answer.error) : m.error_generic()}
+      </p>
+    );
+  }
+  return <NoteKept note={answer.note} />;
 }
 
-/** A round icon link of the toolbar, with a count when something waits there. */
-function ToolbarLink({
-  href,
-  label,
-  icon,
-  count,
-}: {
-  href: string;
-  label: string;
-  icon: IconName;
-  count?: number;
-}) {
-  return (
-    <a
-      href={href}
-      aria-label={count ? `${label} (${count})` : label}
-      title={label}
-      className="relative inline-flex size-(--icon-button-size) items-center justify-center rounded-control text-fg hover:bg-surface-hover"
-    >
-      <Icon name={icon} />
-      {count !== undefined && count > 0 && <CountBadge count={count} floating />}
-    </a>
-  );
-}
-
-/** The frame of every signed-in screen, in the workspace design (doctrine D-035, D-036; spec 046). */
+/** The frame of every signed-in screen, in the workspace design (doctrine D-042; step C1). */
 export function AppShell({
   me,
   current,
@@ -544,156 +523,48 @@ export function AppShell({
   current: Page;
   children: ReactNode;
 }) {
-  // The person's mode: dark, light or the device's own, kept in a cookie (spec 019).
-  const [theme, setTheme] = useState<ThemeChoiceValue>('dark');
-  const [palette, setPalette] = useState(false);
-  // « Noter » from anywhere (spec 055).
-  const [noting, setNoting] = useState(false);
-  const openPalette = useCallback(() => setPalette(true), []);
   // The assistant beside the page (spec 048): what the page shows, a question from Ctrl K.
   const [panel, setPanel] = useState(false);
   const [question, setQuestion] = useState<{ text: string; at: number } | null>(null);
   const page = useShownPage();
   const closePanel = useCallback(() => setPanel(false), []);
   const ask = useCallback(
-    (text: string) => {
+    (text?: string) => {
       // On the assistant's own page, the question goes to its thread.
       if (current === 'assistant') {
-        window.location.href = `/assistant?q=${encodeURIComponent(text)}`;
+        window.location.href = text ? `/assistant?q=${encodeURIComponent(text)}` : '/assistant';
         return;
       }
-      setQuestion({ text, at: Date.now() });
-      setPanel(true);
+      if (text) setQuestion({ text, at: Date.now() });
+      setPanel((open) => (text ? true : !open));
     },
     [current],
   );
-  useCommandShortcut(openPalette);
   useAskBeside(ask);
-  useEffect(() => {
-    const current = document.documentElement.getAttribute('data-theme');
-    if (current === 'dark' || current === 'light' || current === 'auto') setTheme(current);
-  }, []);
+  const find = useCallback((query: string) => finder(me)(query), [me]);
   return (
-    <Shell
+    <AppFrame
       brand={m.app_name()}
-      footer={
-        <div className="grid gap-4">
-          <div className="flex items-center gap-3">
-            <span
-              aria-hidden="true"
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-action text-[13px] font-semibold text-on-action"
-            >
-              {initials(me.name)}
-            </span>
-            <span className="grid min-w-0">
-              <span className="truncate font-semibold">{me.name}</span>
-              <span className="truncate text-body-sm text-fg-muted">{me.email}</span>
-            </span>
-          </div>
-          <ThemeChoice
-            label={m.theme_label()}
-            value={theme}
-            onChange={(choice) => {
-              setTheme(choice);
-              applyTheme(choice);
-            }}
-            labels={{ dark: m.theme_dark(), light: m.theme_light(), auto: m.theme_auto() }}
-          />
-        </div>
-      }
-      navLabel={m.nav_label()}
-      showNavLabel={m.nav_show()}
-      hideNavLabel={m.nav_hide()}
-      search={<CommandTrigger label={m.palette_placeholder()} onOpen={openPalette} />}
-      nav={
-        <>
-          <SpaceNav me={me} current={current} />
-          {administers(me) && <AdminNav me={me} current={current} />}
-        </>
-      }
-      toolbar={
-        <div className="flex items-center gap-2">
-          {!me.viewedBy && (
-            <button
-              type="button"
-              aria-label={m.nav_note()}
-              title={m.nav_note()}
-              onClick={() => setNoting(true)}
-              className="inline-flex h-(--icon-button-size) items-center gap-1.5 rounded-control px-2 text-fg hover:bg-surface-hover"
-            >
-              <Icon name="new" />
-              <span className="hidden text-body-sm font-semibold sm:inline">{m.nav_note()}</span>
-            </button>
-          )}
-          {current === 'assistant' ? (
-            <ToolbarLink href="/assistant" label={m.nav_assistant()} icon="sparkle" />
-          ) : (
-            <button
-              type="button"
-              aria-label={m.nav_assistant()}
-              title={m.nav_assistant()}
-              aria-pressed={panel}
-              onClick={() => setPanel((open) => !open)}
-              className={`inline-flex size-(--icon-button-size) items-center justify-center rounded-control text-fg hover:bg-surface-hover ${
-                panel ? 'bg-surface-selected' : ''
-              }`}
-            >
-              <Icon name="sparkle" />
-            </button>
-          )}
-          <ToolbarLink
-            href="/notifications"
-            label={m.nav_notifications()}
-            icon="bell"
-            count={me.unread}
-          />
-          <Menu label={me.name} items={[{ label: m.nav_sign_out(), href: '/auth/sortie' }]} />
-        </div>
-      }
-      tabBar={
-        <TabBar label={m.nav_tabs()}>
-          <TabBarItem
-            href="/"
-            icon="home"
-            current={current === 'home' || current === 'todo'}
-            count={me.waiting}
-          >
-            {m.nav_decide()}
-          </TabBarItem>
-          <TabBarItem icon="sparkle" primary onClick={openPalette}>
-            {m.nav_ask()}
-          </TabBarItem>
-          <TabBarItem
-            href={me.modules.agents ? '/mes-agents' : '/assistant'}
-            icon="agent"
-            current={
-              me.modules.agents
-                ? current === 'my_agents' || current === 'routines'
-                : current === 'assistant'
-            }
-          >
-            {me.modules.agents ? m.nav_delegate() : m.nav_assistant()}
-          </TabBarItem>
-          <TabBarItem href="/tout" icon="menu" current={current === 'all'}>
-            {m.nav_all()}
-          </TabBarItem>
-        </TabBar>
-      }
+      sections={sectionsOf(me, current)}
+      current={placeOf(current)}
+      counts={{ home: me.waiting }}
+      person={{ name: me.name, detail: me.email }}
+      words={shellWords()}
+      find={find}
+      onAsk={ask}
+      beside={{
+        open: panel && current !== 'assistant',
+        label: m.nav_assistant(),
+        onClose: closePanel,
+        content: <AssistantBeside page={page} question={question} />,
+      }}
+      {...(me.viewedBy ? {} : { onNote: keepNote })}
+      bell={{ href: '/notifications', count: me.unread }}
+      tabs={['home', me.modules.agents ? 'my_agents' : 'projects', 'all']}
+      signOutHref="/auth/sortie"
     >
       {me.viewedBy && <ViewingBanner me={me} />}
       {children}
-      <Palette me={me} open={palette} onOpenChange={setPalette} onAsk={ask} />
-      <Dialog
-        open={noting}
-        onClose={() => setNoting(false)}
-        title={m.nav_note()}
-        closeLabel={m.common_close()}
-      >
-        <NoteComposer onDone={() => setNoting(false)} />
-      </Dialog>
-      {current !== 'assistant' && (
-        <AssistantPanel open={panel} onClose={closePanel} page={page} question={question} />
-      )}
-    </Shell>
+    </AppFrame>
   );
 }
