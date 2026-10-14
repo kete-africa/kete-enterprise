@@ -35,7 +35,7 @@ flowchart LR
   drafts and files — in the shell's drawer; Ctrl J opens it.
 - **« Noter »** (N, or the pen) keeps the note in her notebook and says back the reminder it filed,
   with its undo, in the dialog (spec 055).
-- **The phone's tabs**: Décider, Demander in the middle, Déléguer (or Projets), « Tout ».
+- **The phone's tabs**: Décider, Déléguer, then « Demander » in the middle, then Projets and « Tout ».
 - Her mode (dark, light, automatic) and « Se déconnecter » in the frame's footer; the notifications'
   bell with what is unread.
 

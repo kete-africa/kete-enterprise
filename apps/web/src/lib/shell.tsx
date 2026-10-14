@@ -267,7 +267,6 @@ export function placesOf(me: Me): Place[] {
   return all.filter((p): p is Place => Boolean(p));
 }
 
-
 /** Back to one's own space after viewing a demo person's. */
 function ViewingBanner({ me }: { me: Me }) {
   return (
@@ -286,7 +285,6 @@ function ViewingBanner({ me }: { me: Me }) {
     </div>
   );
 }
-
 
 /** The Administration's places: the frame only — never a survey or a grid (spec 010). */
 function adminPlaces(me: Me): ShellPlace[] {
@@ -476,7 +474,12 @@ function finder(me: Me) {
   return async (query: string): Promise<CommandItem[]> => {
     const q = query.trim().toLowerCase();
     const places: CommandItem[] = [
-      ...placesOf(me).map((p) => ({ id: `place-${p.page}`, label: p.label, icon: p.icon, href: p.href })),
+      ...placesOf(me).map((p) => ({
+        id: `place-${p.page}`,
+        label: p.label,
+        icon: p.icon,
+        href: p.href,
+      })),
       ...me.apps.map((a) => ({
         id: `app-${a.resourceId}`,
         label: a.name,
@@ -560,7 +563,7 @@ export function AppShell({
       }}
       {...(me.viewedBy ? {} : { onNote: keepNote })}
       bell={{ href: '/notifications', count: me.unread }}
-      tabs={['home', me.modules.agents ? 'my_agents' : 'projects', 'all']}
+      tabs={['home', me.modules.agents ? 'my_agents' : 'dashboards', 'projects', 'all']}
       signOutHref="/auth/sortie"
     >
       {me.viewedBy && <ViewingBanner me={me} />}
