@@ -124,6 +124,12 @@ function Today() {
     <AppShell me={me} current="home">
       <p className="mb-2 text-body-sm font-semibold text-fg-muted first-letter:uppercase">{date}</p>
       <PageTitle>{m.home_title({ name: today.name })}</PageTitle>
+      {/* The evening's closure (spec 083): her day said, its gestures proposed. */}
+      <p className="mb-4">
+        <a href="/soir" className={secondaryLink}>
+          {m.today_evening()}
+        </a>
+      </p>
       {error && (
         <p role="alert" className="mb-4 text-state-error-fg">
           {error}

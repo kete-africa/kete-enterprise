@@ -13,11 +13,11 @@
   "dependencies": {
     "@hono/node-server": "^2.1.3",
     "@kete/agents": "npm:@kete-africa/agents@^0.2.0",
-    "@kete/ai": "npm:@kete-africa/ai@^0.3.0",
+    "@kete/ai": "npm:@kete-africa/ai@^0.5.0",
     "@kete/auth": "npm:@kete-africa/auth@^0.3.0",
     "@kete/capabilities": "npm:@kete-africa/capabilities@^0.5.0",
     "@kete/commands": "npm:@kete-africa/commands@^0.2.0",
-    "@kete/drafts": "npm:@kete-africa/drafts@^0.1.1",
+    "@kete/drafts": "npm:@kete-africa/drafts@^0.3.0",
     "@kete/files": "npm:@kete-africa/files@^0.4.0",
     "@kete/jobs": "npm:@kete-africa/jobs@^0.1.0",
     "@kete/knowledge": "npm:@kete-africa/knowledge@^0.1.1",
