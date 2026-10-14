@@ -24,6 +24,7 @@ export type Page =
   | 'apps'
   | 'parties'
   | 'projects'
+  | 'plan'
   | 'notifications'
   | 'search'
   | 'library'
@@ -385,6 +386,8 @@ function sectionsOf(me: Me, current: Page): PlaceSection[] {
       href: '/mes-agents',
       icon: 'agent',
     },
+    // Planifier (doctrine D-050; spec 079): the time of the whole organization.
+    { id: 'plan', label: m.nav_plan(), href: '/planifier', icon: 'calendar' },
     me.modules.dashboards && {
       id: 'dashboards',
       label: m.nav_my_board(),

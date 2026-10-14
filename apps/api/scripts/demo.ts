@@ -13,6 +13,7 @@ import { scriptedAnswers, scriptedProposal } from '../db/demo/answers.js';
 import { seedDay } from '../db/demo/day.js';
 import { seedErp } from '../db/demo/erp.js';
 import { seedMoney, seedParties, seedProject } from '../db/demo/references.js';
+import { seedTime } from '../db/demo/time.js';
 import { demoEmail } from '../db/demo/kya.js';
 import { seedLibrary } from '../db/demo/library.js';
 import { seedDemo } from '../db/demo/seed.js';
@@ -176,6 +177,31 @@ if (manager && colleague) {
       `${day.requests} demande d’un collègue à signer.`,
   );
   for (const what of day.skipped) say(`  non joué : ${what}`);
+  // The week in Planifier, as the apps would have said it (spec 079): the leave and the clash
+  // fall on one of the director's reports, so that her « Mon équipe » shows them.
+  if (director) {
+    const card = await app.request('/v1/directory/me', {
+      headers: {
+        authorization: `Bearer ${await tokenFor(director.account_user_id, director.name, 'member')}`,
+      },
+    });
+    const reports = card.ok
+      ? ((await card.json()) as { reports: { userId: string | null }[] }).reports
+      : [];
+    const absent = reports.find((r) => r.userId && r.userId !== manager.account_user_id)?.userId;
+    const timeSaid = await seedTime({
+      api: app,
+      admin: token,
+      manager: manager.account_user_id,
+      colleague: absent ?? manager.account_user_id,
+    });
+    if (timeSaid > 0) {
+      say(
+        `Planifier : ${timeSaid} faits datés cette semaine, dont un conflit — « Mon équipe » de ` +
+          `${director.name} : http://localhost:${DOOR_PORT}/as/${director.person_id}`,
+      );
+    }
+  }
   // No ERP here either: one is served in memory, its connector left on trial (step C9).
   if (await seedErp({ api: app, admin: token, approver: demoEmail(manager.name) })) {
     say(

@@ -150,9 +150,15 @@ importers:
       '@kete/design':
         specifier: npm:@kete-africa/design@^0.13.0
         version: '@kete-africa/design@0.13.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
+      '@kete/sdk':
+        specifier: npm:@kete-africa/sdk@^0.10.0
+        version: '@kete-africa/sdk@0.10.0'
       '@kete/shell':
         specifier: npm:@kete-africa/shell@^0.2.0
         version: '@kete-africa/shell@0.2.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
+      '@kete/time':
+        specifier: npm:@kete-africa/time@^0.2.0
+        version: '@kete-africa/time@0.2.0'
       '@mcp-ui/client':
         specifier: 7.1.1
         version: 7.1.1(@cfworker/json-schema@4.1.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
