@@ -69,6 +69,7 @@ import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
 import { exchangeRoutes } from './features/exchanges/index.js';
 import { moneyPermissions, moneyRoutes } from './features/money/index.js';
+import { timePermissions, timeRoutes } from './features/time/index.js';
 import { partiesPermissions, partiesRoutes } from './features/parties/index.js';
 import { projectsPermissions, projectsRoutes } from './features/projects/index.js';
 import { receptionRoutes, requestRoutes } from './features/requests/index.js';
@@ -107,6 +108,7 @@ export const permissionCatalog = [
   ...partiesPermissions,
   ...projectsPermissions,
   ...moneyPermissions,
+  ...timePermissions,
   ...compliancePermissions,
   ...surveysPermissions,
   ...performancePermissions,
@@ -249,6 +251,8 @@ export function createApi(): Hono {
   v1.route('/parties', partiesRoutes);
   v1.route('/projects', projectsRoutes);
   v1.route('/money', moneyRoutes);
+  // The time the apps say, and Planifier's days (spec 079, doctrine D-050).
+  v1.route('/time', timeRoutes);
   v1.route('/apps', appsListingRoutes(permissionCatalog));
   v1.route('/organization', organizationRoutes);
   v1.route('/structure', structureRoutes);

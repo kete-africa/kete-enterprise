@@ -81,14 +81,17 @@ importers:
         specifier: npm:@kete-africa/sandbox@^0.3.0
         version: '@kete-africa/sandbox@0.3.0'
       '@kete/sdk':
-        specifier: npm:@kete-africa/sdk@^0.6.0
-        version: '@kete-africa/sdk@0.6.0'
+        specifier: npm:@kete-africa/sdk@^0.10.0
+        version: '@kete-africa/sdk@0.10.0'
       '@kete/skills':
         specifier: npm:@kete-africa/skills@^0.1.0
         version: '@kete-africa/skills@0.1.0(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/tenancy':
         specifier: npm:@kete-africa/tenancy@^0.1.1
         version: '@kete-africa/tenancy@0.1.1(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+      '@kete/time':
+        specifier: npm:@kete-africa/time@^0.2.0
+        version: '@kete-africa/time@0.2.0'
       '@modelcontextprotocol/client':
         specifier: 2.3.0
         version: 2.3.0
@@ -147,9 +150,15 @@ importers:
       '@kete/design':
         specifier: npm:@kete-africa/design@^0.13.0
         version: '@kete-africa/design@0.13.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
+      '@kete/sdk':
+        specifier: npm:@kete-africa/sdk@^0.10.0
+        version: '@kete-africa/sdk@0.10.0'
       '@kete/shell':
         specifier: npm:@kete-africa/shell@^0.2.0
         version: '@kete-africa/shell@0.2.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
+      '@kete/time':
+        specifier: npm:@kete-africa/time@^0.2.0
+        version: '@kete-africa/time@0.2.0'
       '@mcp-ui/client':
         specifier: 7.1.1
         version: 7.1.1(@cfworker/json-schema@4.1.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)
@@ -1191,6 +1200,9 @@ packages:
 
   '@kete-africa/testing@0.1.0':
     resolution: {integrity: sha512-5GMpbYk3GeEcfr3ZeLITvIp1mG7qVByhAw2Uw4T3Xx44YIKYgEftNtSbVf1Yl867V9464MTuQooXKmyWvrn7dQ==, tarball: https://npm.pkg.github.com/download/@kete-africa/testing/0.1.0/926f7004e1a5a223c2fc13002e77c860cb35ae47}
+
+  '@kete-africa/time@0.2.0':
+    resolution: {integrity: sha512-ugoI8cY3gZ0GUl1ka8XKohiH3wyAWG4q/5q8daiuwGXrAhrFZWyKrCyYbALt8rvI53ox8CyvAD5aNk4KMVkDRQ==, tarball: https://npm.pkg.github.com/download/@kete-africa/time/0.2.0/73dd9d9b189294168a870e1c113201b5b3eae5e1}
 
   '@kwsites/file-exists@1.1.1':
     resolution: {integrity: sha512-m9/5YGR18lIwxSFDwfE3oA7bWuq9kdau6ugN4H2rJeyhFQZcG9AgSHkQtSD15a8WvTgfz9aikZMrKPHvbpqFiw==}
@@ -7117,6 +7129,12 @@ snapshots:
       - pg-native
       - react-native-b4a
       - supports-color
+
+  '@kete-africa/time@0.2.0':
+    dependencies:
+      '@kete/sdk': '@kete-africa/sdk@0.10.0'
+    transitivePeerDependencies:
+      - pg-native
 
   '@kwsites/file-exists@1.1.1(supports-color@7.2.0)':
     dependencies:
