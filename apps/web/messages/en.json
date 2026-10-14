@@ -2104,5 +2104,7 @@
   "phone_bot_token": "Bot token (Telegram)",
   "phone_webhook_secret": "Webhook secret",
   "phone_connect_telegram": "Connect the bot",
-  "phone_sender_connected": "Connected."
+  "phone_sender_connected": "Connected.",
+  "permission_time_record": "Say the time of others (meetings, leaves, tasks)",
+  "permission_time_read": "See the whole organization’s time"
 }

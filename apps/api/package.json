@@ -27,6 +27,7 @@
     "@kete/sdk": "npm:@kete-africa/sdk@^0.6.0",
     "@kete/skills": "npm:@kete-africa/skills@^0.1.0",
     "@kete/tenancy": "npm:@kete-africa/tenancy@^0.1.1",
+    "@kete/time": "npm:@kete-africa/time@^0.2.0",
     "@modelcontextprotocol/client": "2.3.0",
     "ai": "^7.0.122",
     "croner": "^10.0.1",

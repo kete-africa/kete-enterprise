@@ -14,6 +14,7 @@ import { exchangesMigrationSql } from '../src/features/exchanges/index.js';
 import { receptionMigrationSql, requestsMigrationSql } from '../src/features/requests/index.js';
 import { connectorsMigrationSql } from '../src/features/connectors/index.js';
 import { moneyMigrationSql } from '../src/features/money/index.js';
+import { timeMigrationSql } from '../src/features/time/index.js';
 import { partiesMigrationSql } from '../src/features/parties/index.js';
 import { projectsMigrationSql } from '../src/features/projects/index.js';
 import { rulesMigrationSql } from '../src/features/rules/index.js';
@@ -242,4 +243,6 @@ export const migrations: Migration[] = [
   { name: '0059_circuits_completed', sql: (context) => circuitsCompletedMigrationSql(context) },
   // WhatsApp and Telegram: senders, phones tied, every message (spec 077).
   { name: '0060_phone', sql: (context) => phoneMigrationSql(context) },
+  // The time the apps say, for Planifier (spec 079, doctrine D-050).
+  { name: '0061_time_facts', sql: (context) => timeMigrationSql(context) },
 ];
