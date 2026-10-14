@@ -42,7 +42,7 @@ import {
 } from '../src/features/decisions/index.js';
 import { gatewayAppendOnlySql, gatewayMigrationSql } from '../src/features/gateway/index.js';
 import { actionsMigrationSql } from '../src/features/actions/index.js';
-import { draftsMigrationSql } from '@kete/drafts';
+import { draftsMigrationSql, proposalSetsMigrationSql } from '@kete/drafts';
 import {
   assistantMigrationSql,
   chatMigrationSql,
@@ -245,4 +245,6 @@ export const migrations: Migration[] = [
   { name: '0060_phone', sql: (context) => phoneMigrationSql(context) },
   // The time the apps say, for Planifier (spec 079, doctrine D-050).
   { name: '0061_time_facts', sql: (context) => timeMigrationSql(context) },
+  // What the assistant proposes at once, decided by one gesture: the evening's closure (spec 083).
+  { name: '0062_proposal_sets', sql: (context) => proposalSetsMigrationSql(context) },
 ];

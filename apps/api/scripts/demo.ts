@@ -9,7 +9,8 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import pg from 'pg';
-import { scriptedAnswers, scriptedProposal } from '../db/demo/answers.js';
+import { scriptedAnswers, scriptedEvening, scriptedProposal } from '../db/demo/answers.js';
+import { useClosureModel } from '../src/features/closure/index.js';
 import { seedDay } from '../db/demo/day.js';
 import { seedErp } from '../db/demo/erp.js';
 import { seedMoney, seedParties, seedProject } from '../db/demo/references.js';
@@ -212,6 +213,8 @@ if (manager && colleague) {
   // No model here: the assistant's answers are written in advance, on the demo's own data.
   // « Créer un agent en une phrase » proposes the same job description, to show its dry run.
   useAgentModel(scriptedProposal());
+  // « Ce soir » (spec 083): gestures proposed on her To do, written in advance.
+  useClosureModel(scriptedEvening());
   if (day.datasetId) {
     useModel(scriptedAnswers(day.datasetId));
     say(

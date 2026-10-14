@@ -95,3 +95,62 @@ export function scriptedProposal() {
     },
   });
 }
+
+/**
+ * The evening's closure in the demo (spec 083): whatever she writes, the first task of her To do
+ * is proposed as done, the second moved to the next day, and a reminder filed for the day after —
+ * read from the objects the closure shows the model, never invented.
+ */
+export function scriptedEvening() {
+  return new MockLanguageModelV4({
+    doGenerate: async (options) => {
+      const system = options.prompt.find((message) => message.role === 'system');
+      const shown = typeof system?.content === 'string' ? system.content : '';
+      const keys = shown.split('\n').flatMap((line) => {
+        const found = /^- (tsk_\S+) \(task\) (.*?)(?:, due .*)?$/.exec(line);
+        return found ? [{ key: found[1] ?? '', title: (found[2] ?? '').trim() }] : [];
+      });
+      const today = /Today is (\d{4}-\d{2}-\d{2})/.exec(shown)?.[1] ?? '2026-10-14';
+      const plus = (days: number) =>
+        new Date(Date.parse(`${today}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+      const [first, second] = keys;
+      const items = [
+        ...(first
+          ? [
+              {
+                gesture: 'close',
+                object: first.key,
+                day: null,
+                label: `Clore « ${first.title} »`,
+                reason: 'C’est fait.',
+              },
+            ]
+          : []),
+        ...(second
+          ? [
+              {
+                gesture: 'postpone',
+                object: second.key,
+                day: plus(1),
+                label: `Reporter « ${second.title} » à demain`,
+                reason: 'Pas eu le temps.',
+              },
+            ]
+          : []),
+        {
+          gesture: 'remind',
+          object: null,
+          day: plus(2),
+          label: 'Appeler Ecobank',
+          reason: 'Rappelle-moi Ecobank.',
+        },
+      ];
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify({ items, unclear: [] }) }],
+        finishReason: { unified: 'stop' as const, raw: 'stop' },
+        usage,
+        warnings: [],
+      };
+    },
+  });
+}

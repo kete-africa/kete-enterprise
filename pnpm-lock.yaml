@@ -48,8 +48,8 @@ importers:
         specifier: npm:@kete-africa/agents@^0.2.0
         version: '@kete-africa/agents@0.2.0(@grpc/grpc-js@1.14.5)(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))'
       '@kete/ai':
-        specifier: npm:@kete-africa/ai@^0.3.0
-        version: '@kete-africa/ai@0.3.0(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+        specifier: npm:@kete-africa/ai@^0.5.0
+        version: '@kete-africa/ai@0.5.0(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/auth':
         specifier: npm:@kete-africa/auth@^0.3.0
         version: '@kete-africa/auth@0.3.0'
@@ -60,8 +60,8 @@ importers:
         specifier: npm:@kete-africa/commands@^0.2.0
         version: '@kete-africa/commands@0.2.0(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/drafts':
-        specifier: npm:@kete-africa/drafts@^0.1.1
-        version: '@kete-africa/drafts@0.1.1(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+        specifier: npm:@kete-africa/drafts@^0.3.0
+        version: '@kete-africa/drafts@0.3.0(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/files':
         specifier: npm:@kete-africa/files@^0.4.0
         version: '@kete-africa/files@0.4.0(@napi-rs/canvas@1.0.10)(@types/node@22.20.4)(supports-color@7.2.0)'
@@ -1133,6 +1133,9 @@ packages:
   '@kete-africa/ai@0.3.0':
     resolution: {integrity: sha512-smn5XVaIbqTbi0eIG5TzWO4pJeq5CvLWdmSn39QNVhB/A/YFGUHdYHgBg7P7zS6KBcaW+wHheD1lEUDNQ7TGug==, tarball: https://npm.pkg.github.com/download/@kete-africa/ai/0.3.0/11a00934751b713af691e29a94e8f3281b54cf4c}
 
+  '@kete-africa/ai@0.5.0':
+    resolution: {integrity: sha512-OiIiLpXJ5kkA30FVrS5vdMWg81izmEtnWiLq7hHpo5HuDa8+Jv23+U/vXxs5ZJzrH01B/zdc2Cgg0Yq6mEBJyA==, tarball: https://npm.pkg.github.com/download/@kete-africa/ai/0.5.0/a352624691563f2e4be702f1da6abe493c4e9030}
+
   '@kete-africa/auth@0.3.0':
     resolution: {integrity: sha512-4nDtorHoxqfAF95efzTHUciHfXge+jlSQ9N+09x9NdaDvQBwI0KAoljMcNYPDedSGU0jW5i7qLVyRxa3E1idng==, tarball: https://npm.pkg.github.com/download/@kete-africa/auth/0.3.0/6ac7dab0f24cbe0c8a7c52df24670ad1eb0bd671}
 
@@ -1152,6 +1155,9 @@ packages:
 
   '@kete-africa/drafts@0.1.1':
     resolution: {integrity: sha512-RhcesoPt5EZYK9cxt4+1n18uEqHEdB6hgPAXzkQEHpIEJKcukh0nfG0madcObGdfw5pRCeWZHolWNJpefMiPIg==, tarball: https://npm.pkg.github.com/download/@kete-africa/drafts/0.1.1/e47337f713c7b11eec08f5cde5dc611ebda20102}
+
+  '@kete-africa/drafts@0.3.0':
+    resolution: {integrity: sha512-MISdFQXIOIARzL8GzTlwxhe5UsOMPF7QfShHY0AC0i4IGllaSUwKoWfhuIASVC1xC+VYkGpafLnWQa1XxXHV/w==, tarball: https://npm.pkg.github.com/download/@kete-africa/drafts/0.3.0/68513f083da0086e59c7eba8a124ab5d1081dcbc}
 
   '@kete-africa/files@0.4.0':
     resolution: {integrity: sha512-uRuQBT6gNe9TFQmHdfe8/G1ouG5uCAiwwhloi89+VkqdYNv8Ueh7X79/oCpiTKYVEAICShKw9z6v0CIPLJT7kw==, tarball: https://npm.pkg.github.com/download/@kete-africa/files/0.4.0/cba64a2b0856ded8d020a31aa7c45505edd728b3}
@@ -6935,6 +6941,28 @@ snapshots:
       - drizzle-orm
       - pg-native
 
+  '@kete-africa/ai@0.5.0(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))':
+    dependencies:
+      '@ai-sdk/anthropic': 4.0.71(zod@4.6.5)
+      '@ai-sdk/deepseek': 3.0.58(zod@4.6.5)
+      '@ai-sdk/mistral': 4.0.56(zod@4.6.5)
+      '@ai-sdk/openai': 4.0.83(zod@4.6.5)
+      '@ai-sdk/openai-compatible': 3.0.62(zod@4.6.5)
+      '@ai-sdk/otel': 1.0.122(zod@4.6.5)
+      '@kete/capabilities': '@kete-africa/capabilities@0.5.0(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+      '@kete/commands': '@kete-africa/commands@0.2.0(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+      '@kete/tenancy': '@kete-africa/tenancy@0.1.1(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+      '@langfuse/otel': 5.11.1(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(@opentelemetry/exporter-trace-otlp-http@0.222.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))
+      '@opentelemetry/api': 1.9.1
+      '@opentelemetry/core': 2.11.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/exporter-trace-otlp-http': 0.222.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/sdk-trace-base': 2.11.0(@opentelemetry/api@1.9.1)
+      ai: 7.0.126(zod@4.6.5)
+      zod: 4.6.5
+    transitivePeerDependencies:
+      - drizzle-orm
+      - pg-native
+
   '@kete-africa/auth@0.3.0':
     dependencies:
       jose: 6.2.12
@@ -6993,6 +7021,17 @@ snapshots:
     dependencies:
       '@kete/commands': '@kete-africa/commands@0.2.0(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/records': '@kete-africa/records@0.1.1'
+      '@kete/tenancy': '@kete-africa/tenancy@0.1.1(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+      zod: 4.6.5
+    transitivePeerDependencies:
+      - drizzle-orm
+      - pg-native
+
+  '@kete-africa/drafts@0.3.0(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))':
+    dependencies:
+      '@kete/commands': '@kete-africa/commands@0.2.0(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
+      '@kete/records': '@kete-africa/records@0.1.1'
+      '@kete/sdk': '@kete-africa/sdk@0.10.0'
       '@kete/tenancy': '@kete-africa/tenancy@0.1.1(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       zod: 4.6.5
     transitivePeerDependencies:
