@@ -1,5 +1,5 @@
 import { AssistantRuntimeProvider } from '@assistant-ui/react';
-import { Icon, IconButton } from '@kete/design';
+import { Icon } from '@kete/design';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { refusal } from '@/lib/forms';
 import { fetchAssistant, type Payer } from '@/lib/workspace';
@@ -146,67 +146,45 @@ function PanelThread({
 }
 
 /**
- * The panel at the right of every screen (spec 048). A new question — from Ctrl K — starts a new
- * conversation; closing it keeps nothing but the conversation, found again in the assistant.
+ * The assistant beside every screen (spec 048), in the drawer of the frame (@kete/shell; step C1).
+ * A new question — from Ctrl K — starts a new conversation; closing the drawer keeps nothing but the
+ * conversation, found again in the assistant.
  */
-export function AssistantPanel({
-  open,
-  onClose,
+export function AssistantBeside({
   page,
   question,
 }: {
-  open: boolean;
-  onClose: () => void;
   page: AssistantPage | null;
   question: { text: string; at: number } | null;
 }) {
   const [state, setState] = useState<{ available: boolean; payers: Payer[] } | null>(null);
   useEffect(() => {
-    if (!open || state) return;
+    if (state) return;
     void fetchAssistant()
       .then((a) => setState({ available: a.available, payers: a.payers }))
       .catch(() => setState({ available: false, payers: [] }));
-  }, [open, state]);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-  if (!open) return null;
+  }, [state]);
   return (
-    <aside
-      aria-label={m.nav_assistant()}
-      className="fixed inset-y-0 right-0 z-20 flex w-[400px] max-w-full flex-col border-l border-line bg-surface px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))] shadow-[-8px_0_24px_#0003] max-[760px]:w-full"
-    >
-      <header className="mb-2 flex items-center justify-between gap-2">
-        <p className="flex items-center gap-2 font-semibold">
-          <Icon name="sparkle" size={18} />
-          {m.nav_assistant()}
-        </p>
-        <div className="flex gap-1">
-          <a
-            href="/assistant"
-            aria-label={m.panel_open_full()}
-            title={m.panel_open_full()}
-            className="inline-flex size-(--icon-button-size) items-center justify-center rounded-control text-fg hover:bg-surface-hover"
-          >
-            <Icon name="external" size={18} />
-          </a>
-          <IconButton label={m.panel_close()} onClick={onClose}>
-            <Icon name="close" size={18} />
-          </IconButton>
-        </div>
-      </header>
-      {page && (
-        <p className="mb-2 flex items-center gap-1.5 text-body-sm text-fg-muted">
-          <Icon name="search" size={14} />
-          {m.panel_seeing_short()}{' '}
-          <span className="truncate font-semibold text-fg">{page.title}</span>
-        </p>
-      )}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        {page ? (
+          <p className="flex min-w-0 items-center gap-1.5 text-body-sm text-fg-muted">
+            <Icon name="search" size={14} />
+            {m.panel_seeing_short()}{' '}
+            <span className="truncate font-semibold text-fg">{page.title}</span>
+          </p>
+        ) : (
+          <span />
+        )}
+        <a
+          href="/assistant"
+          aria-label={m.panel_open_full()}
+          title={m.panel_open_full()}
+          className="inline-flex size-(--icon-button-size) shrink-0 items-center justify-center rounded-control text-fg hover:bg-surface-hover"
+        >
+          <Icon name="external" size={18} />
+        </a>
+      </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {!state ? (
           <p className="text-body-sm text-fg-muted">{m.todo_loading()}</p>
@@ -221,6 +199,6 @@ export function AssistantPanel({
           />
         )}
       </div>
-    </aside>
+    </div>
   );
 }

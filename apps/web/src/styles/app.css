@@ -6,6 +6,7 @@
    the server and client builds would name a different stylesheet. */
 @source not '../../dist';
 @source '../../node_modules/@kete/design/src';
+@source '../../node_modules/@kete/shell/src';
 
 /* The dashboards' grid (spec 050): its placeholder and resize corner in the design's colours. */
 .react-grid-item.react-grid-placeholder {

@@ -2104,5 +2104,10 @@
   "phone_bot_token": "Bot token (Telegram)",
   "phone_webhook_secret": "Webhook secret",
   "phone_connect_telegram": "Connect the bot",
-  "phone_sender_connected": "Connected."
+  "phone_sender_connected": "Connected.",
+  "nav_my_board": "My board",
+  "shell_files": "Files",
+  "shell_sync_ok": "Up to date",
+  "shell_sync_offline": "Offline · {count} waiting",
+  "shell_sync_sending": "Sending…"
 }
