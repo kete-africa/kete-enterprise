@@ -127,9 +127,7 @@ export async function dropTimeFact(db: SqlExecutor, source: string, key: string)
 }
 
 /** A fact as the center keeps it: the contract's shape, with the app that said it. */
-export interface KeptFact extends DatedFact {
-  source: string;
-}
+export type KeptFact = DatedFact & { source: string };
 
 interface Row extends Record<string, unknown> {
   source: string;
@@ -165,11 +163,7 @@ const toFact = (row: Row): KeptFact =>
   }) as KeptFact;
 
 /** The facts that meet the days between `from` and `to`, both included. */
-export async function factsBetween(
-  db: SqlExecutor,
-  from: string,
-  to: string,
-): Promise<KeptFact[]> {
+export async function factsBetween(db: SqlExecutor, from: string, to: string): Promise<KeptFact[]> {
   const { rows } = await db.query<Row>(
     `select source, key, kind, label, to_char(day, 'YYYY-MM-DD') as day,
             to_char(until, 'YYYY-MM-DD') as until, starts_at, ends_at, person_ids, project_id,
@@ -217,7 +211,7 @@ export function visibleTo(facts: readonly KeptFact[], viewer: Viewer): SeenFact[
       (people.length === 0 && fact.project_id === undefined);
     if (!reached) return [];
     const masked = !hers && (fact.visibility === 'busy' || fact.kind === 'absence');
-    return [masked ? { ...fact, label: '', masked: true } : fact];
+    return [masked ? ({ ...fact, label: '', masked: true } as SeenFact) : fact];
   });
 }
 

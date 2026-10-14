@@ -92,7 +92,11 @@ export const timeRoutes = new Hono<{ Variables: IdentityVariables }>()
       await transaction(identity.organizationId, async (db) => {
         const everyone = await holds(db, c, 'time:read');
         if (scope === 'organization' && !everyone) {
-          throw new GestureRefusal(403, 'forbidden', 'The organization’s time is not hers to read.');
+          throw new GestureRefusal(
+            403,
+            'forbidden',
+            'The organization’s time is not hers to read.',
+          );
         }
         const card = await myCard(db, identity);
         const team = (card?.reports ?? []).flatMap((p) => (p.userId ? [p.userId] : []));
@@ -109,9 +113,7 @@ export const timeRoutes = new Hono<{ Variables: IdentityVariables }>()
         // The names of the people her lanes show: herself, her team, or whoever her facts name.
         const chart = await readChartAt(db, from);
         const shown =
-          scope === 'organization'
-            ? new Set(facts.flatMap((f) => f.person_ids ?? []))
-            : people;
+          scope === 'organization' ? new Set(facts.flatMap((f) => f.person_ids ?? [])) : people;
         return {
           from,
           days,
