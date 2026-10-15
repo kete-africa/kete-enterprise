@@ -190,6 +190,39 @@ center's forms and Réunions becomes a thread with several people (D-048): neith
 A real bank statement, real receipts and a real contract read by a real model: the reading on
 which treasury and commitments rest is unproven. A WhatsApp number and a Telegram bot for F5.
 
+## The unification (decided 2026-10-15)
+
+Doctrine D-056 to D-058; decision [0002](decisions/0002-modules-of-the-living-model.md); kete-core
+phase 10. The center's features gather into one living model — the journal, the thread of each
+object, the **holding** (every thing in progress with its holder, never nobody), the gesture and
+the **policy** — and the screen opens on **« Pour moi »**, with the conversation in the middle and
+the state beside it. The places of the canvas 3.1 (Décider, Demander) become « Pour moi » and the
+thread « Kete ». This replaces the order of « The method, time and memory » below: its screens are
+redone after the model, from a validated v5 canvas.
+
+```mermaid
+flowchart LR
+  Z[085 finished] --> SIM[simulation, validated by the author]
+  SIM --> W[work · holdings, relay, « Pour moi »]
+  W --> G[governance · one policy engine]
+  G --> M[messages · threads, channels, router]
+  M --> S[screens from the v5 canvas]
+  S --> F[finish · the whole journey in the demo · real accounts]
+  F --> T[the author, then KYA, test]
+```
+
+| Step | Spec                       | Delivers                                                                                                                                                 | Proof                                                                                   |
+| ---- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 0    | `085-canvas-frame`         | The frame and Kete Intelligence (drawer, page « Demander ») on kete-core's packages; the old chat thread removed, none of its gestures lost              | Side by side with the canvas, computer and phone, light and dark                        |
+| SIM  | —                          | A complete simulation of the system (HTML, CSS, JS), validated by the author before any code below                                                       | The author walks the whole flow and says it holds                                       |
+| W    | `087-holdings`             | `work`: holdings from requests, to do, meeting actions, circuit steps, drafts, agent tasks; the relay with deputies and absences; « Pour moi »           | No holding without a holder; an absence moves its holdings the same day                 |
+| G    | `088-policies`             | `governance`: one policy engine at the gesture; circuits and agents' rules melt into it; compliance points to it; the six missing policies               | The same gesture by a person and by an agent goes through the same policy, journaled    |
+| M    | `089-threads-and-channels` | `messages`: a thread per object, the thread « Kete », exchanges and meetings as threads; WhatsApp and IMAP inbound; the router; cards on WhatsApp        | A client's message lands in its project's thread with a holder; a card settled anywhere |
+| S    | `090-screens-v5`           | « Pour moi », the thread with its state, Planifier, Mon tableau, an agent's settings, the phone — each compared with the validated v5 canvas             | Screenshots beside the canvas                                                           |
+| F    | `091-whole-journey`        | The whole journey as an end-to-end test in the demo, the fluidity figures computed, the real accounts plugged (WhatsApp Business, IMAP, the model's key) | The test passes on the demo; production answers                                         |
+
+At the end, the author, then a person at KYA, use it.
+
 ## The method, time and memory (decided 2026-10-13, evening)
 
 Doctrine D-050 to D-054. The center gains a fourth place, **Planifier**; Décider carries the rhythm
