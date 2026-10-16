@@ -7,19 +7,25 @@ import { ThreadsScreen } from '@/lib/threads-view';
 
 interface Search {
   fil?: string;
+  /** On a phone: the list alone. */
+  liste?: boolean;
 }
 
 export const Route = createFileRoute('/fils')({
-  validateSearch: (search: Record<string, unknown>): Search =>
-    typeof search.fil === 'string' && /^thr_[0-9A-Za-z_-]{8,70}$/.test(search.fil)
+  validateSearch: (search: Record<string, unknown>): Search => ({
+    ...(typeof search.fil === 'string' && /^thr_[0-9A-Za-z_-]{8,70}$/.test(search.fil)
       ? { fil: search.fil }
-      : {},
+      : {}),
+    ...(search.liste ? { liste: true } : {}),
+  }),
   beforeLoad: ({ location }) => requirePerson(location.href),
-  loaderDeps: ({ search }) => ({ fil: search.fil }),
+  loaderDeps: ({ search }) => ({ fil: search.fil, liste: search.liste }),
   loader: async ({ deps }) => {
     const threads = await fetchThreads();
     // Without a thread named, the most recent of her objects' threads opens.
-    const chosen = deps.fil ?? threads.find((t) => t.kind !== 'kete')?.id;
+    const chosen = deps.liste
+      ? undefined
+      : (deps.fil ?? threads.find((t) => t.kind !== 'kete')?.id);
     const view = chosen ? await fetchThread({ data: { threadId: chosen } }) : null;
     const object = view?.thread.object;
     const money =

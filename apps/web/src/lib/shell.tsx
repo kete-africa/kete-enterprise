@@ -516,7 +516,7 @@ const shellWords = (): ShellWords => ({
   paletteFound: m.palette_results(),
   paletteAsk: m.palette_ask(),
   paletteAskItem: (question) => m.palette_ask_item({ question }),
-  ask: m.nav_ask(),
+  ask: m.nav_kete(),
   files: m.shell_files(),
   note: m.nav_note(),
   bell: m.nav_notifications(),

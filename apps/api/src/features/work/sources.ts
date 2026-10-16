@@ -22,7 +22,9 @@ export interface Said extends SaidHolding {
   source: { app: typeof APP; kind: SourceKind; ref: string };
 }
 
-const day = (value: Date | string) => new Date(value).toISOString().slice(0, 10);
+/** A day: a DATE is read as its text (`YYYY-MM-DD`), never through a Date at local midnight. */
+const day = (value: Date | string) =>
+  typeof value === 'string' ? value.slice(0, 10) : value.toISOString().slice(0, 10);
 const iso = (value: Date | string) => new Date(value).toISOString();
 const person = (id: string) => ({ kind: 'person' as const, id });
 const cut = (text: string) => (text.length > 300 ? `${text.slice(0, 299)}…` : text);
@@ -51,7 +53,8 @@ async function requests(db: SqlExecutor): Promise<Said[]> {
     status: 'received' | 'taken' | 'waiting';
     created_at: Date;
   }>(
-    `select request_id, from_user_id, to_user_id, title, due_on, status, created_at
+    `select request_id, from_user_id, to_user_id, title, to_char(due_on, 'YYYY-MM-DD') as due_on,
+            status, created_at
        from colleague_requests where status in ('received', 'taken', 'waiting')`,
   );
   return rows.map((r) =>
@@ -99,7 +102,7 @@ async function actions(db: SqlExecutor): Promise<Said[]> {
     created_at: Date;
     holder: string;
   }>(
-    `select a.action_id, a.title, a.due_on, a.created_at,
+    `select a.action_id, a.title, to_char(a.due_on, 'YYYY-MM-DD') as due_on, a.created_at,
             coalesce(p.account_user_id, a.responsible_person_id) as holder
        from actions a join people p on p.person_id = a.responsible_person_id
       where a.status = 'open'`,

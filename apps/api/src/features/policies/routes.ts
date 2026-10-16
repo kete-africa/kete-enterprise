@@ -58,6 +58,21 @@ export const policiesRoutes = new Hono<{ Variables: IdentityVariables }>()
       }),
     );
   })
+  // What bounds the agents (spec 090): every member reads the policies an agent meets — in force or
+  // on trial — in their sentences; the rules themselves stay with the administrators.
+  .get('/agents', async (c: Ctx) => {
+    const { organizationId } = c.get('identity');
+    const policies = await transaction(organizationId, (db) => currentPolicies(db));
+    return c.json({
+      policies: policies
+        .filter(
+          (p) =>
+            p.status !== 'off' &&
+            (p.rule.includes('Kete::Agent') || p.rule.includes('capability.use')),
+        )
+        .map((p) => ({ id: p.id, sentence: p.sentence, status: p.status, version: p.version })),
+    });
+  })
   // The journal of decisions, the latest first; by policy when one is named.
   .get('/journal', async (c: Ctx) => {
     administrator(c);

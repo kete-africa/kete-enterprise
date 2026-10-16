@@ -98,3 +98,15 @@ export const fetchPlaces = createServerFn({ method: 'GET' }).handler(async () =>
     parties: parties.parties.map((p) => ({ id: p.partyId, name: p.name })),
   };
 });
+
+/** The organization's fluidity (spec 087, FR-004): for its administrators, else nothing. */
+export interface Fluidity {
+  open: number;
+  waiting: number;
+  oldestWait: { holding: Holding; hours: number } | null;
+  over48h: { waitingOn: { kind: string; id: string }; count: number; oldestHours: number }[];
+}
+
+export const fetchFluidity = createServerFn({ method: 'GET' }).handler(() =>
+  callApi<Fluidity>(getRequest(), '/v1/work/figures').catch(() => null),
+);

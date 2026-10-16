@@ -2353,5 +2353,18 @@
   "mailboxes_password_hint": "Scellé dès qu’il arrive ; il n’est jamais réaffiché.",
   "mailboxes_connect_button": "Relier la boîte",
   "mailboxes_host_hint": "mail.votre-domaine.tg",
-  "policy_id_hint": "achats.au-dela-limite"
+  "policy_id_hint": "achats.au-dela-limite",
+  "agents_bounds": "Ce qui borne vos agents",
+  "agents_bounds_none": "Aucune politique ne vise les agents pour l’instant.",
+  "agents_bounds_same": "Un seul moteur pour une personne et son agent : un agent ne fait jamais plus que ce que sa personne peut faire, et ces politiques passent avant ses réglages.",
+  "fluidity_title": "La fluidité",
+  "fluidity_open": "Choses en cours",
+  "fluidity_waiting": "En attente de quelqu’un",
+  "fluidity_over48": "Attentes de plus de 48 h",
+  "fluidity_oldest": "La plus vieille attente",
+  "fluidity_hours": "{count} h",
+  "fluidity_oldest_what": "La plus vieille : « {what} ».",
+  "fluidity_open_it": "L’ouvrir",
+  "fluidity_source": "Compté par Kete sur les tenues, jamais par un modèle ; personne ne reste sans responsable : le relais y veille.",
+  "threads_back": "Tous les fils"
 }
