@@ -17,6 +17,7 @@ import { seedMoney, seedParties, seedProject } from '../db/demo/references.js';
 import { seedTime } from '../db/demo/time.js';
 import { demoEmail } from '../db/demo/kya.js';
 import { seedLibrary } from '../db/demo/library.js';
+import { seedThreads } from '../db/demo/threads.js';
 import { seedDemo } from '../db/demo/seed.js';
 import { migrations } from '../db/migrations.js';
 import { useAgentModel } from '../src/features/agents/index.js';
@@ -178,6 +179,15 @@ if (manager && colleague) {
       `${day.requests} demande d’un collègue à signer.`,
   );
   for (const what of day.skipped) say(`  non joué : ${what}`);
+  // Her threads (spec 090): Garage Bè on WhatsApp, a colleague's ask, a mail « à classer ».
+  const threads = await seedThreads({
+    app: db.app,
+    organizationId: ORGANIZATION,
+    colleague: colleague.account_user_id,
+  });
+  say(
+    `Fils : Garage Bè a écrit sur WhatsApp dans le fil du projet${threads.triage ? ', un mail attend « à classer » chez la direction' : ''} ; voir /fils.`,
+  );
   // Her holdings, gathered from the six sources (spec 087): what « Pour moi » shows her.
   const pourMoi = (await (
     await app.request('/v1/pour-moi', {

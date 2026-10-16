@@ -8,6 +8,7 @@ import { CenterIntelligence } from '@/lib/intelligence';
 import { keepConversationAsSkill } from '@/lib/skills';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
+import { fetchKeteThread, fetchThread } from '@/lib/threads';
 import { fetchAssistant, fetchConversation, fetchConversations, type Payer } from '@/lib/workspace';
 import { PinToSidebar } from '@/lib/sidebar-nav';
 import * as m from '@/paraglide/messages.js';
@@ -27,12 +28,16 @@ export const Route = createFileRoute('/assistant')({
   beforeLoad: ({ location }) => requirePerson(location.href),
   loaderDeps: ({ search }) => ({ c: search.c }),
   loader: async ({ deps }) => {
-    const [assistant, list, current] = await Promise.all([
+    const [assistant, list, current, kete] = await Promise.all([
       fetchAssistant(),
       fetchConversations(),
       deps.c ? fetchConversation({ data: { conversationId: deps.c } }) : Promise.resolve(null),
+      // Her thread « Kete » (D-057): what she told Kete from WhatsApp or Telegram.
+      fetchKeteThread()
+        .then((thread) => fetchThread({ data: { threadId: thread.id } }))
+        .catch(() => null),
     ]);
-    return { assistant, conversations: list.conversations, current };
+    return { assistant, conversations: list.conversations, current, kete };
   },
   component: AssistantPage,
 });
@@ -58,13 +63,15 @@ const footClass =
   'block rounded-[5px] px-2.5 py-1.5 text-left text-[13px] text-fg-soft no-underline hover:bg-surface-hover hover:text-fg';
 
 /**
- * « Demander » (spec 085; the validated canvas v3.1): her threads on the left, Kete Intelligence in
- * the middle — the same as beside every page — and the document it wrote beside it. It acts with
- * her rights and prepares; she decides.
+ * Her thread « Kete » (doctrine D-057, spec 090; was « Demander », spec 085): her conversations
+ * and what she told Kete from her phone on the left, Kete Intelligence in the middle — the same as
+ * beside every page — and the document it wrote beside it. It acts with her rights and prepares;
+ * she decides.
  */
 function AssistantPage() {
   const { me } = Route.useRouteContext();
-  const { assistant, conversations, current } = Route.useLoaderData();
+  const { assistant, conversations, current, kete } = Route.useLoaderData();
+  const fromPhone = (kete?.messages ?? []).slice(-3).reverse();
   const [document, setDocument] = useState<{ title: string; content: string } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [payer, setPayer] = useState<Payer | null>(assistant.payers[0] ?? null);
@@ -103,6 +110,25 @@ function AssistantPage() {
             <CanvasIcon name="plus" size={16} />
             {m.intelligence_new_thread()}
           </a>
+          {fromPhone.length > 0 && (
+            <section aria-label={m.kete_from_phone()} className="mt-4 grid gap-1.5">
+              <p className="m-0 px-1.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-fg-muted">
+                {m.kete_from_phone()}
+              </p>
+              {fromPhone.map((said) => (
+                <p
+                  key={said.first}
+                  className="m-0 rounded-[5px] bg-surface-selected px-2.5 py-2 text-[13px]"
+                >
+                  <span className="line-clamp-3">{said.text}</span>
+                  <small className="mt-0.5 block text-[12px] text-fg-muted">
+                    {said.via === 'telegram' ? m.threads_via_telegram() : m.threads_via_whatsapp()}{' '}
+                    · {movedAt(said.at)}
+                  </small>
+                </p>
+              ))}
+            </section>
+          )}
           {conversations.length > 0 && (
             <>
               <p className="m-0 px-1.5 pt-5 pb-2 text-[12px] font-semibold uppercase tracking-[0.04em] text-fg-muted">
@@ -185,7 +211,7 @@ function AssistantPage() {
           ) : (
             <CenterIntelligence
               key={current?.conversationId ?? 'new'}
-              page={{ kind: 'place', title: m.nav_ask(), href: '/assistant' }}
+              page={{ kind: 'place', title: m.nav_kete(), href: '/assistant' }}
               question={question}
               name={firstName}
               conversationId={current?.conversationId ?? null}

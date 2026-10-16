@@ -20,6 +20,7 @@ import { z } from 'zod';
 import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
+import { phoneKey } from '../parties/index.js';
 import { isAdministrator } from '../rights/index.js';
 import { centerRouter, keteThreadOf } from './center.js';
 import {
@@ -56,6 +57,62 @@ function refuse(error: unknown): never {
 }
 
 const me = (identity: Identity) => ({ kind: 'person' as const, id: identity.userId });
+
+/** The open holdings of an object: who holds what on it, and since when. */
+async function holdingsOn(db: SqlExecutor, object: { kind: string; id: string }) {
+  const { rows } = await db.query<{
+    holding_id: string;
+    what: string;
+    holder_kind: 'person' | 'agent';
+    holder_id: string;
+    state: string;
+    since: Date;
+    waiting_since: Date | null;
+    due: string | null;
+  }>(
+    `select holding_id, what, holder_kind, holder_id, state, since, waiting_since,
+            to_char(due, 'YYYY-MM-DD') as due
+       from kete_holdings
+      where object_kind = $1 and object_id = $2 and state <> 'done'
+      order by coalesce(waiting_since, since)`,
+    [object.kind, object.id],
+  );
+  return rows.map((r) => ({
+    holdingId: r.holding_id,
+    what: r.what,
+    holder: { kind: r.holder_kind, id: r.holder_id },
+    state: r.state,
+    since: (r.waiting_since ?? r.since).toISOString(),
+    due: r.due,
+  }));
+}
+
+/** The names a thread shows: people by their account, agents by theirs; a contact by its key. */
+async function namesOf(db: SqlExecutor, ids: string[]): Promise<Record<string, string>> {
+  const unique = [...new Set(ids)];
+  const { rows } = await db.query<{ id: string; name: string }>(
+    `select account_user_id as id, name from people where account_user_id = any($1)
+     union
+     select agent_id as id, name from agents where agent_id = any($1)`,
+    [unique],
+  );
+  const names: Record<string, string> = Object.fromEntries(rows.map((r) => [r.id, r.name]));
+  for (const id of unique) {
+    if (names[id]) continue;
+    // A contact through its channel: the third party the center knows by it, else its address.
+    const at = id.indexOf(':');
+    const key = at > 0 ? id.slice(at + 1) : id;
+    const { rows: party } = await db.query<{ name: string }>(
+      `select name from parties
+        where status = 'active'
+          and (($1::text is not null and phone_key = $1) or lower(email) = lower($2))
+        order by party_id limit 1`,
+      [id.startsWith('mail:') ? null : phoneKey(key), key],
+    );
+    names[id] = party[0]?.name ?? key;
+  }
+  return names;
+}
 
 /** A thread is read by its members now, and by the administrators. */
 async function readable(db: SqlExecutor, identity: Identity, threadId: string) {
@@ -198,7 +255,15 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
       await transaction(identity.organizationId, async (db) => {
         const thread = await readable(db, identity, threadId);
         await markRead(db, identity.organizationId, { threadId, reader: me(identity) });
-        return { thread, messages: await messagesOf(db, threadId) };
+        const messages = await messagesOf(db, threadId);
+        // The state beside the thread (D-057): what is in progress on its object, and its names.
+        const holdings = thread.object ? await holdingsOn(db, thread.object) : [];
+        const ids = [
+          ...(thread.members ?? []).map((m) => m.id),
+          ...messages.flatMap((m) => [m.author.id, ...m.readBy.map((r) => r.id)]),
+          ...holdings.map((h) => h.holder.id),
+        ];
+        return { thread, messages, holdings, names: await namesOf(db, ids) };
       }),
     );
   })

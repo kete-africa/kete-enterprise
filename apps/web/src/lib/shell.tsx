@@ -20,6 +20,9 @@ import { resolveShortcut } from './sidebar-nav';
 /** Where a screen sits: the person's space, or the Administration (spec 010). */
 export type Page =
   | 'home'
+  | 'threads'
+  | 'policies'
+  | 'mailboxes'
   | 'todo'
   | 'assistant'
   | 'resources'
@@ -72,6 +75,8 @@ const adminPages: Page[] = [
   'rights',
   'modules',
   'rules',
+  'policies',
+  'mailboxes',
   'connectors',
   'circuits',
   'registry',
@@ -307,6 +312,20 @@ function adminPlaces(me: Me): ShellPlace[] {
       href: '/administration/modules',
       icon: 'apps',
     },
+    // One policy engine at the gesture (D-058, spec 088): the agents' rules and circuits are policies.
+    me.administrator && {
+      id: 'policies',
+      label: m.nav_policies(),
+      href: '/administration/politiques',
+      icon: 'shield',
+    },
+    // The mailboxes the center reads, bridged into the threads (spec 089).
+    me.administrator && {
+      id: 'mailboxes',
+      label: m.nav_mailboxes(),
+      href: '/administration/boites-mail',
+      icon: 'file',
+    },
     me.administrator && {
       id: 'rules',
       label: m.nav_rules(),
@@ -373,8 +392,8 @@ function placeOf(page: Page): string {
 }
 
 /**
- * The frame's places, as the validated canvas draws them (doctrine D-042, D-050; spec 085): the
- * four main places with what waits in each — Décider, Demander, Déléguer, Planifier — her open
+ * The frame's places (doctrine D-042, D-050, D-057; specs 085, 090): « Pour moi » with what waits,
+ * her thread « Kete », the threads, Déléguer, Planifier — her open
  * projects and « Tiers », what she pinned under « Épinglés », the Administration when she opens it.
  * Every other place is one Ctrl K away.
  */
@@ -383,12 +402,15 @@ function sectionsOf(me: Me, current: Page): PlaceSection[] {
   const main: (ShellPlace | false)[] = [
     {
       id: 'home',
-      label: m.nav_decide(),
+      label: m.nav_for_me(),
       href: '/',
-      icon: 'decide',
+      icon: 'inbox',
       ...(me.waiting ? { extra: { kind: 'count', value: me.waiting, hot: true } } : {}),
     },
-    { id: 'assistant', label: m.nav_ask(), href: '/assistant', icon: 'spark' },
+    // Her thread with Kete (D-057): the page « Demander » became the thread « Kete ».
+    { id: 'assistant', label: m.nav_kete(), href: '/assistant', icon: 'spark' },
+    // The threads of her objects, her groups, her direct threads (spec 089).
+    { id: 'threads', label: m.nav_threads(), href: '/fils', icon: 'chat' },
     me.modules.agents && {
       id: 'my_agents',
       label: m.nav_delegate(),
@@ -677,7 +699,7 @@ export function AppShell({
       }}
       sync={sync}
       bell={{ href: '/notifications', count: me.unread }}
-      tabs={['home', 'plan', me.modules.agents ? 'my_agents' : 'projects']}
+      tabs={['home', 'threads', 'plan']}
       signOutHref="/auth/sortie"
     >
       {me.viewedBy && <ViewingBanner me={me} />}
