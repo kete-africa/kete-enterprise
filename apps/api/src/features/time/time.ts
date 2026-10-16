@@ -219,3 +219,23 @@ export function visibleTo(facts: readonly KeptFact[], viewer: Viewer): SeenFact[
 export function clashesOf(facts: readonly SeenFact[], offsetMinutes = 0): Conflict[] {
   return conflicts(facts, offsetMinutes);
 }
+
+/**
+ * How many clashes she sees in the seven days from today — « 1 conflit » beside Planifier in the
+ * frame (spec 085).
+ */
+export async function clashesThisWeek(
+  db: SqlExecutor,
+  userId: string,
+  projects: ReadonlySet<string>,
+): Promise<number> {
+  const from = new Date().toISOString().slice(0, 10);
+  const to = new Date(Date.parse(`${from}T00:00:00Z`) + 6 * 86_400_000).toISOString().slice(0, 10);
+  const seen = visibleTo(await factsBetween(db, from, to), {
+    userId,
+    people: new Set([userId]),
+    projects,
+    everyone: false,
+  });
+  return clashesOf(seen).length;
+}

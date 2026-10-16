@@ -1,4 +1,4 @@
-import { Button, VerificationCard } from '@kete/design';
+import { Button, FrameSpark, VerificationCard } from '@kete/design';
 import { useState } from 'react';
 import * as m from '@/paraglide/messages.js';
 import { refusal } from './forms';
@@ -33,9 +33,12 @@ function draftTitle(draft: DraftReview): string {
 export function DraftCard({
   draft,
   onDecided,
+  inChat = false,
 }: {
   draft: DraftReview;
   onDecided?: (status: 'validated' | 'refused') => void;
+  /** In Kete Intelligence's thread: its spark, « Brouillon · … », who decides (spec 085). */
+  inChat?: boolean;
 }) {
   const [status, setStatus] = useState(draft.status);
   const [busy, setBusy] = useState(false);
@@ -67,7 +70,10 @@ export function DraftCard({
   return (
     <div className="grid gap-2">
       <VerificationCard
-        title={draftTitle(draft)}
+        title={
+          inChat ? m.intelligence_draft_title({ title: draftTitle(draft) }) : draftTitle(draft)
+        }
+        {...(inChat ? { mark: <FrameSpark />, badge: m.intelligence_one_person() } : {})}
         state={
           status === 'prepared'
             ? { name: 'prepared', label: m.draft_prepared() }
@@ -79,14 +85,14 @@ export function DraftCard({
         {...(status === 'prepared'
           ? {
               actions: (
-                <div className="flex flex-wrap gap-2">
+                <>
                   <Button disabled={busy} onClick={() => decide('validate')}>
                     {m.draft_validate()}
                   </Button>
-                  <Button variant="secondary" disabled={busy} onClick={() => decide('refuse')}>
+                  <Button variant="ghost" disabled={busy} onClick={() => decide('refuse')}>
                     {m.draft_refuse()}
                   </Button>
-                </div>
+                </>
               ),
             }
           : {})}

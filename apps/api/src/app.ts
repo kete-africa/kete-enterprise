@@ -1,12 +1,13 @@
 import { unreadCount } from '@kete/notify';
 import { healthHandler, manifestHandler } from '@kete/sdk';
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
-import { agentsPermissions, agentsRoutes } from './features/agents/index.js';
+import { agentsPermissions, agentsRoutes, ongoingFor } from './features/agents/index.js';
 import { aiRoutes } from './features/ai/index.js';
 import {
   assistantRoutes,
   feedbackRoutes,
   memoryRoutes,
+  organizationName,
   scheduleRoutes,
 } from './features/assistant/index.js';
 import { dashboardRoutes } from './features/dashboards/index.js';
@@ -69,10 +70,10 @@ import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
 import { exchangeRoutes } from './features/exchanges/index.js';
 import { moneyPermissions, moneyRoutes } from './features/money/index.js';
-import { timePermissions, timeRoutes } from './features/time/index.js';
+import { clashesThisWeek, timePermissions, timeRoutes } from './features/time/index.js';
 import { closureRoutes } from './features/closure/index.js';
 import { partiesPermissions, partiesRoutes } from './features/parties/index.js';
-import { projectsPermissions, projectsRoutes } from './features/projects/index.js';
+import { projectsFor, projectsPermissions, projectsRoutes } from './features/projects/index.js';
 import { receptionRoutes, requestRoutes } from './features/requests/index.js';
 import { connectorRoutes } from './features/connectors/index.js';
 import { rulesRoutes } from './features/rules/index.js';
@@ -178,6 +179,7 @@ async function me(c: Ctx) {
   }
   return transaction(organizationId, async (db) => {
     const person = await personOfAccount(db, userId);
+    const projects = await projectsFor(db, userId, { all: false });
     const held: string[] = [];
     for (const permission of permissionCatalog) {
       if (reachesAnything(await reach(db, identity, permission))) held.push(permission);
@@ -204,6 +206,15 @@ async function me(c: Ctx) {
       unread: await unreadCount(db, userId),
       // The sidebar she arranged (spec 049).
       sidebar: await sidebarOf(db, userId),
+      // The frame of the canvas (spec 085): her organization, her open projects, whether an agent
+      // works for her now, the clashes of her week.
+      organization: await organizationName(db),
+      projects: projects
+        .filter((p) => p.status === 'open')
+        .slice(0, 6)
+        .map((p) => ({ projectId: p.projectId, name: p.name })),
+      working: (await ongoingFor(db, userId)).some((task) => task.status === 'running'),
+      clashes: await clashesThisWeek(db, userId, new Set(projects.map((p) => p.projectId))),
     };
   });
 }

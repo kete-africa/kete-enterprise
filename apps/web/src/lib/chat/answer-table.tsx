@@ -1,4 +1,3 @@
-import { useAui } from '@assistant-ui/react';
 import { Button, CopyButton, DataTable, Icon, type Column } from '@kete/design';
 import {
   columnFilteringFeature,
@@ -83,8 +82,14 @@ const asSentence = (columns: Shown[], line: Line) =>
     .map((column) => `${labelOf(column)} : ${sayCell(line[column.key], column.kind)}`)
     .join(' ; ');
 
-export function AnswerTable({ table: answer }: { table: AnswerTableData }) {
-  const aui = useAui();
+export function AnswerTable({
+  table: answer,
+  onSpeak,
+}: {
+  table: AnswerTableData;
+  /** Puts words in Kete Intelligence's field, for her to finish. */
+  onSpeak?: (text: string) => void;
+}) {
   const columns = useMemo(
     () =>
       answer.columns.map((column): ColumnDef<typeof features, Line> => ({
@@ -109,13 +114,11 @@ export function AnswerTable({ table: answer }: { table: AnswerTableData }) {
 
   /** Puts rows in the composer: she adds what she wants done with them. */
   const speakOf = (lines: Line[]) => {
-    const composer = aui.thread().composer();
     const said = m.table_about_rows({
       title: answer.title,
       rows: lines.map((line) => `- ${asSentence(answer.columns, line)}`).join('\n'),
     });
-    composer.setText(`${said}\n`);
-    document.querySelector<HTMLTextAreaElement>('textarea[data-kete-composer]')?.focus();
+    onSpeak?.(`${said}\n`);
   };
 
   const shown: Column<Row<typeof features, Line>>[] = [
