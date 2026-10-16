@@ -33,6 +33,15 @@ const catalog = {
     ruleRefused: (sentence: string) => `Refusé par une règle de l’organisation : « ${sentence} »`,
     receptionAway: (delegate: string, until: string) =>
       `Absence jusqu’au ${until} : cette demande va à ${delegate}.`,
+    holdingTakenOver: (absent: string, what: string) =>
+      `Vous tenez « ${what} » pendant l’absence de ${absent}`,
+    holdingReclaimed: (what: string) => `« ${what} » n’avait plus personne : vous le tenez`,
+    holdingHandedBack: (colleague: string, what: string, reason: string) =>
+      `${colleague} vous rend « ${what} » : ${reason}`,
+    holdingStuck: (what: string) => `Personne ne peut tenir « ${what} » : à confier`,
+    holdingNudge: (what: string) => `On attend votre réponse : « ${what} »`,
+    holdingNudgeParty: (what: string) => `À relancer : « ${what} »`,
+    draftToCheck: (what: string) => `Brouillon à valider : ${what}`,
   },
   en: {
     decisionWaiting: (title: string) => `Your decision is awaited: ${title}`,
@@ -64,6 +73,15 @@ const catalog = {
     ruleRefused: (sentence: string) => `Refused by a rule of the organization: “${sentence}”`,
     receptionAway: (delegate: string, until: string) =>
       `Away until ${until}: this request goes to ${delegate}.`,
+    holdingTakenOver: (absent: string, what: string) =>
+      `You hold “${what}” while ${absent} is away`,
+    holdingReclaimed: (what: string) => `“${what}” had nobody left: you hold it`,
+    holdingHandedBack: (colleague: string, what: string, reason: string) =>
+      `${colleague} hands “${what}” back to you: ${reason}`,
+    holdingStuck: (what: string) => `Nobody can hold “${what}”: to entrust`,
+    holdingNudge: (what: string) => `Your answer is awaited: “${what}”`,
+    holdingNudgeParty: (what: string) => `To follow up: “${what}”`,
+    draftToCheck: (what: string) => `Draft to check: ${what}`,
   },
 } as const;
 

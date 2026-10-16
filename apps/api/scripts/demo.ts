@@ -178,6 +178,19 @@ if (manager && colleague) {
       `${day.requests} demande d’un collègue à signer.`,
   );
   for (const what of day.skipped) say(`  non joué : ${what}`);
+  // Her holdings, gathered from the six sources (spec 087): what « Pour moi » shows her.
+  const pourMoi = (await (
+    await app.request('/v1/pour-moi', {
+      headers: {
+        authorization: `Bearer ${await tokenFor(manager.account_user_id, manager.name, 'member')}`,
+      },
+    })
+  ).json()) as { toAnswer: { source: { kind: string } }[]; held: { source: { kind: string } }[] };
+  const kinds = [...new Set(pourMoi.held.map((h) => h.source.kind))].join(', ');
+  say(
+    `Pour moi de ${manager.name} : ${pourMoi.toAnswer.length} à répondre, ` +
+      `${pourMoi.held.length} tenue(s) (${kinds}).`,
+  );
   // The week in Planifier, as the apps would have said it (spec 079): the leave and the clash
   // fall on one of the director's reports, so that her « Mon équipe » shows them.
   if (director) {
