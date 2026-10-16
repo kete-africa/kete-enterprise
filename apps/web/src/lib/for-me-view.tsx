@@ -3,6 +3,7 @@ import { useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { refusal } from '@/lib/forms';
 import { handBackHolding, receivedOf, settleTriage, type ForMe, type Holding } from '@/lib/for-me';
+import { readAllNotifications, type NotificationItem } from '@/lib/notifications';
 import * as m from '@/paraglide/messages.js';
 import { getLocale } from '@/paraglide/runtime.js';
 
@@ -238,16 +239,71 @@ function TriageCard({
   );
 }
 
+/** What she was told (spec 030), the unread first; read all in one gesture. */
+function Told({ items, readOnly }: { items: NotificationItem[]; readOnly: boolean }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const shown = [...items].sort((a, b) => Number(a.read) - Number(b.read)).slice(0, 12);
+  return (
+    <div className="border-t border-line">
+      <ul className="divide-y divide-line">
+        {shown.map((n) => (
+          <li key={n.notificationId} className="grid gap-0.5 px-4 py-2.5">
+            <span className="flex flex-wrap items-baseline gap-2">
+              {!n.read && <span className="size-2 rounded-full bg-action" aria-hidden="true" />}
+              {n.href ? (
+                <a
+                  href={n.href}
+                  className={`hover:underline ${n.read ? 'text-fg-soft' : 'font-semibold text-fg'}`}
+                >
+                  {n.title}
+                </a>
+              ) : (
+                <span className={n.read ? 'text-fg-soft' : 'font-semibold'}>{n.title}</span>
+              )}
+              <span className="ml-auto font-mono text-body-sm text-fg-muted">
+                {ageOf(n.createdAt)}
+              </span>
+            </span>
+            {n.body && <span className="text-body-sm text-fg-muted">{n.body}</span>}
+          </li>
+        ))}
+      </ul>
+      {!readOnly && items.some((n) => !n.read) && (
+        <p className="border-t border-line px-4 py-2.5">
+          <button
+            type="button"
+            disabled={busy}
+            className="text-body-sm font-semibold text-link"
+            onClick={() => {
+              setBusy(true);
+              void readAllNotifications()
+                .then(() => router.invalidate())
+                .finally(() => setBusy(false));
+            }}
+          >
+            {m.for_me_read_all()}
+          </button>
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** The sections of « Pour moi » after the pile: answer, place, hold, be told. */
 export function ForMeSections({
   forMe,
   places,
   readOnly,
+  told = [],
 }: {
   forMe: ForMe;
   places: PlaceChoices;
   readOnly: boolean;
+  /** Her notifications (spec 030): « Pour moi » replaces the bell (D-057). */
+  told?: NotificationItem[];
 }) {
+  const unread = told.filter((n) => !n.read).length;
   const triage = forMe.held.filter((h) => receivedOf(h));
   const held = forMe.held.filter((h) => !receivedOf(h) && !inThePile.has(sourceOf(h)));
   return (
@@ -273,13 +329,18 @@ export function ForMeSections({
           <Lines holdings={held} canHandBack={!readOnly} />
         )}
       </PageSection>
-      {forMe.information.length > 0 && (
-        <PageSection title={m.for_me_information({ count: String(forMe.information.length) })}>
-          <details className="rounded-box border border-line bg-surface">
+      {(forMe.information.length > 0 || told.length > 0) && (
+        <PageSection
+          title={m.for_me_information({ count: String(unread + forMe.information.length) })}
+        >
+          <details open={unread > 0} className="rounded-box border border-line bg-surface">
             <summary className="cursor-pointer px-4 py-3 font-semibold">
               {m.for_me_information_open()}
             </summary>
-            <Lines holdings={forMe.information} canHandBack={false} />
+            {told.length > 0 && <Told items={told} readOnly={readOnly} />}
+            {forMe.information.length > 0 && (
+              <Lines holdings={forMe.information} canHandBack={false} />
+            )}
           </details>
         </PageSection>
       )}

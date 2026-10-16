@@ -71,7 +71,13 @@ const footClass =
 function AssistantPage() {
   const { me } = Route.useRouteContext();
   const { assistant, conversations, current, kete } = Route.useLoaderData();
-  const fromPhone = (kete?.messages ?? []).slice(-3).reverse();
+  const said = kete?.messages ?? [];
+  // Her thread « Kete » (D-057): today's morning point, and what she told Kete from her phone.
+  const morning = [...said].reverse().find((m) => m.author.id === 'agt_briefing') ?? null;
+  const fromPhone = said
+    .filter((m) => m.via === 'whatsapp' || m.via === 'telegram')
+    .slice(-3)
+    .reverse();
   const [document, setDocument] = useState<{ title: string; content: string } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [payer, setPayer] = useState<Payer | null>(assistant.payers[0] ?? null);
@@ -110,6 +116,22 @@ function AssistantPage() {
             <CanvasIcon name="plus" size={16} />
             {m.intelligence_new_thread()}
           </a>
+          {morning && (
+            <section aria-label={m.kete_morning()} className="mt-4 grid gap-1.5">
+              <p className="m-0 px-1.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-fg-muted">
+                {m.kete_morning()}
+              </p>
+              <details className="rounded-[5px] bg-surface-selected px-2.5 py-2 text-[13px]">
+                <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                  <span className="line-clamp-3 whitespace-pre-line">{morning.text}</span>
+                  <small className="mt-0.5 block text-[12px] text-fg-muted">
+                    {movedAt(morning.at)}
+                  </small>
+                </summary>
+                <p className="m-0 mt-2 whitespace-pre-line">{morning.text}</p>
+              </details>
+            </section>
+          )}
           {fromPhone.length > 0 && (
             <section aria-label={m.kete_from_phone()} className="mt-4 grid gap-1.5">
               <p className="m-0 px-1.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-fg-muted">

@@ -2366,5 +2366,7 @@
   "fluidity_oldest_what": "La plus vieille : « {what} ».",
   "fluidity_open_it": "L’ouvrir",
   "fluidity_source": "Compté par Kete sur les tenues, jamais par un modèle ; personne ne reste sans responsable : le relais y veille.",
-  "threads_back": "Tous les fils"
+  "threads_back": "Tous les fils",
+  "for_me_read_all": "Tout marquer comme lu",
+  "kete_morning": "Le point du matin"
 }

@@ -338,6 +338,12 @@ export async function writeBriefing(identity: IdentityVariables['identity'], for
         [organizationId, person.personId, today, text, generatedBy],
       ),
     );
+    // The morning point is a message of her thread « Kete » too (D-057, spec 090), once a day.
+    // Loaded when needed: the threads read the structure, whose features load the assistant.
+    const { writeToKete } = await import('../messages/index.js');
+    await transaction(organizationId, (db) =>
+      writeToKete(db, organizationId, identity.userId, text),
+    ).catch((error: unknown) => console.error('[briefing]', (error as Error).message));
   }
   return { text, generatedBy, at: new Date(), facts };
 }

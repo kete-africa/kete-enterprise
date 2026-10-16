@@ -1,7 +1,7 @@
 import { extract } from '@kete/ai';
 import type { Reading, Received, RouterOptions } from '@kete/channels';
 import type { SqlExecutor } from '@kete/tenancy';
-import { openThread, threadsOf, type Holder } from '@kete/threads';
+import { openThread, postMessage, threadsOf, type Holder } from '@kete/threads';
 import type { LanguageModel } from 'ai';
 import { z } from 'zod';
 import { organizationLanguageModel } from '../../platform/models.js';
@@ -144,4 +144,38 @@ export async function keteThreadOf(db: SqlExecutor, organizationId: string, user
     mine ??
     openThread(db, organizationId, { kind: 'kete', title: messageWords().keteThread, holder: me })
   );
+}
+
+/**
+ * Kete writes in her thread « Kete » (D-057): the morning point, once a day — what was already said
+ * today is not said again.
+ */
+export async function writeToKete(
+  db: SqlExecutor,
+  organizationId: string,
+  userId: string,
+  text: string,
+  now = new Date(),
+): Promise<boolean> {
+  const thread = await keteThreadOf(db, organizationId, userId);
+  const { rows } = await db.query(
+    `select 1 from kete_messages
+      where thread_id = $1 and author_kind = 'agent' and author_id = 'agt_briefing'
+        and at >= date_trunc('day', $2::timestamptz)`,
+    [thread.id, now],
+  );
+  if (rows.length > 0) return false;
+  await postMessage(
+    db,
+    organizationId,
+    {
+      thread: thread.id,
+      author: { kind: 'agent', id: 'agt_briefing' },
+      text: text.slice(0, 20000),
+      for: 'information',
+      via: 'kete',
+    },
+    now,
+  );
+  return true;
 }

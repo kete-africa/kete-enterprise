@@ -249,6 +249,21 @@ describe('a person of the center on the number', () => {
   });
 });
 
+describe('the morning point (spec 090)', () => {
+  it('is written in her thread « Kete », once a day, by Kete', async () => {
+    expect((await get(t.yao, '/assistant/briefing')).status).toBe(200);
+    expect((await post(t.yao, '/assistant/briefing')).status).toBe(201);
+    const kete = (await get(t.yao, '/threads/kete')).body.thread as Thread;
+    const read = (await get(t.yao, `/threads/${kete.id}`)).body as {
+      messages: Shown[];
+      names: Record<string, string>;
+    };
+    const points = read.messages.filter((m) => m.author.id === 'agt_briefing');
+    expect(points).toHaveLength(1);
+    expect(read.names.agt_briefing).toBe('Kete');
+  });
+});
+
 describe('the mail bridged', () => {
   it('reads her mailbox, answers from her box in the conversation, and the reply comes back', async () => {
     const box = {

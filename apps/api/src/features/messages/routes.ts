@@ -99,6 +99,11 @@ async function namesOf(db: SqlExecutor, ids: string[]): Promise<Record<string, s
   const names: Record<string, string> = Object.fromEntries(rows.map((r) => [r.id, r.name]));
   for (const id of unique) {
     if (names[id]) continue;
+    // Kete's own agents — the assistant, the briefing, a copilot — are « Kete ».
+    if (id.startsWith('agt_')) {
+      names[id] = 'Kete';
+      continue;
+    }
     // A contact through its channel: the third party the center knows by it, else its address.
     const at = id.indexOf(':');
     const key = at > 0 ? id.slice(at + 1) : id;
