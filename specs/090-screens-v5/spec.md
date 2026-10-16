@@ -54,6 +54,15 @@ flowchart LR
   trial would have done).
 - **FR-006 — Boîtes mail** (administrators): the boxes read, and a person's box connected (IMAP,
   SMTP, login, password sealed and never shown again).
+- **FR-007 — Planifier** shows every holding due on a day as a task of its holder's week (apps'
+  own tasks stay theirs, said as dated facts).
+- **FR-008 — Mon tableau** shows the organization's fluidity to its administrators: what is in
+  progress, what waits on someone, the waits over 48 hours, the oldest one with its link.
+- **FR-009 — The agents' page** lists the policies that bound them, in their sentences, in force or
+  on trial, read by every member (`GET /v1/policies/agents`); the rules stay with administrators.
+- **FR-010 — The threads on a phone**: the list is its own screen; a thread has its way back; its
+  state folds behind « L'état » and closes. The Kete Intelligence button and the phone's middle tab
+  say « Kete ».
 - **The demo** writes Garage Bè's WhatsApp message into its project's thread, a colleague's ask for
   action, a mail « à classer » with the head, and the direction's group.
 - Every word from the catalogs, French and English.
@@ -68,7 +77,6 @@ flowchart LR
 
 ## Next, in this spec
 
-The phone's native screens on the threads (the pile, the thread with its state folded); « Mon
-tableau » with the fluidity of the holdings; Planifier with the holdings' due days; an agent's
-settings with the policies that bound it; the bell folded into « Pour moi »; the morning point
-written into the thread « Kete »; screenshots side by side, computer and phone, light and dark.
+The bell folded into « Pour moi »; the morning point written into the thread « Kete »; Planifier's
+proposed blocks for the holdings without a slot; screenshots side by side, computer and phone,
+light and dark, once the v5 canvas is validated.

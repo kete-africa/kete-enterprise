@@ -61,6 +61,7 @@ function Avatar({ name, kind }: { name: string; kind: string }) {
 
 /** Her threads: the object's first, then groups, direct ones, hers with Kete. */
 function ThreadList({ threads, current }: { threads: Thread[]; current: string | null }) {
+  // On a phone, the list is its own screen: it hides while a thread is open.
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +73,7 @@ function ThreadList({ threads, current }: { threads: Thread[]; current: string |
   return (
     <nav
       aria-label={m.nav_threads()}
-      className="grid content-start gap-1 overflow-auto border-r border-line bg-surface p-2 max-[1000px]:hidden"
+      className={`grid content-start gap-1 overflow-auto border-r border-line bg-surface p-2 ${current ? 'max-[1000px]:hidden' : ''}`}
     >
       {groups.map((group) => (
         <div key={group.label} className="grid gap-0.5">
@@ -344,14 +345,37 @@ function StateBlock({ title, children }: { title: string; children: ReactNode })
 }
 
 /** The state of the thread's object, beside it: money, who holds what, members, proof. */
-function ThreadState({ view, money }: { view: ThreadView; money: ProjectMoney | null }) {
+function ThreadState({
+  view,
+  money,
+  shown,
+  onClose,
+}: {
+  view: ThreadView;
+  money: ProjectMoney | null;
+  /** Below 1200 px the state folds; she opens it from the thread's head. */
+  shown: boolean;
+  onClose: () => void;
+}) {
   const [proof, setProof] = useState<string | null>(null);
   const members = view.thread.members ?? [];
   return (
     <aside
       aria-label={m.threads_state()}
-      className="grid content-start gap-5 overflow-auto border-l border-line bg-surface p-4 max-[1200px]:hidden"
+      className={`grid content-start gap-5 overflow-auto border-l border-line bg-surface p-4 ${
+        shown
+          ? 'max-[1200px]:fixed max-[1200px]:inset-y-0 max-[1200px]:right-0 max-[1200px]:z-30 max-[1200px]:w-[min(340px,100%)] max-[1200px]:shadow-xl'
+          : 'max-[1200px]:hidden'
+      }`}
     >
+      <button
+        type="button"
+        onClick={onClose}
+        className="hidden items-center justify-self-end gap-1 text-body-sm font-semibold text-link max-[1200px]:inline-flex"
+      >
+        <CanvasIcon name="x" size={14} />
+        {m.common_close()}
+      </button>
       {money && (
         <StateBlock title={m.threads_money()}>
           <dl className="grid grid-cols-2 gap-2 text-body-sm">
@@ -449,13 +473,21 @@ export function ThreadsScreen({
   me: string;
 }) {
   let lastDay = '';
+  const [stateShown, setStateShown] = useState(false);
   return (
     <div className="grid h-full min-h-[560px] grid-cols-[240px_minmax(0,1fr)_320px] max-[1200px]:grid-cols-[240px_minmax(0,1fr)] max-[1000px]:grid-cols-1">
       <ThreadList threads={threads} current={view?.thread.id ?? null} />
       {view ? (
         <section aria-label={view.thread.title} className="flex min-h-0 min-w-0 flex-col bg-bg">
           <header className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-4 py-3">
-            <div className="min-w-0">
+            <a
+              href="/fils?liste=1"
+              aria-label={m.threads_back()}
+              className="hidden size-8 items-center justify-center rounded-control text-fg-muted hover:bg-surface-hover max-[1000px]:inline-flex"
+            >
+              <CanvasIcon name="left" size={16} />
+            </a>
+            <div className="min-w-0 flex-1">
               <h1 className="text-[17px] font-semibold">{view.thread.title}</h1>
               <p className="text-body-sm text-fg-muted">
                 {m.threads_held_by({
@@ -464,6 +496,15 @@ export function ThreadsScreen({
                 {view.thread.state === 'closed' && ` · ${m.threads_closed()}`}
               </p>
             </div>
+            <button
+              type="button"
+              aria-pressed={stateShown}
+              onClick={() => setStateShown((open) => !open)}
+              className="hidden h-(--control-height) items-center gap-1.5 rounded-control border border-line-control px-2.5 text-body-sm font-semibold max-[1200px]:inline-flex"
+            >
+              <CanvasIcon name="layers" size={14} />
+              {m.threads_state()}
+            </button>
           </header>
           <ol className="flex flex-1 flex-col gap-4 overflow-auto p-4" aria-live="polite">
             {view.messages.length === 0 && <li className="text-fg-muted">{m.threads_empty()}</li>}
@@ -496,7 +537,14 @@ export function ThreadsScreen({
           <p>{threads.length === 0 ? m.threads_none_yet() : m.threads_pick()}</p>
         </section>
       )}
-      {view && <ThreadState view={view} money={money} />}
+      {view && (
+        <ThreadState
+          view={view}
+          money={money}
+          shown={stateShown}
+          onClose={() => setStateShown(false)}
+        />
+      )}
     </div>
   );
 }
