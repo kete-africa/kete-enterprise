@@ -1,0 +1,86 @@
+import { fromChat, fromMail, route } from '@kete/channels';
+import { inOrganization } from '@kete/tenancy';
+import { openThread, postMessage } from '@kete/threads';
+import type pg from 'pg';
+import { centerRouter } from '../../src/features/messages/index.js';
+import { centerStructure } from '../../src/features/work/index.js';
+
+/**
+ * The demo's threads (spec 090): Garage Bè writes on WhatsApp and lands in its project's thread,
+ * held by its lead; a colleague asks her something there for action; a mail nobody knows waits
+ * « à classer » with the organization's head; the direction has its group. As the router would
+ * have done it, through the center's own router.
+ */
+export async function seedThreads(options: {
+  app: pg.Pool;
+  organizationId: string;
+  colleague: string;
+}): Promise<{ thread: string | null; triage: boolean }> {
+  return inOrganization(options.app, options.organizationId, async (db) => {
+    const router = await centerRouter(db, options.organizationId);
+    const { head } = await centerStructure(db);
+    const client = await route(
+      db,
+      options.organizationId,
+      fromChat(
+        {
+          channel: 'whatsapp',
+          providerMessageId: 'wamid.demo-garage-1',
+          sender: {
+            id: '22890004112',
+            phone: '22890004112',
+            address: '22890004112',
+            username: null,
+            displayName: 'Garage Bè',
+          },
+          kind: 'text',
+          text: 'Bonjour, l’onduleur du garage s’est encore arrêté ce matin. Vous passez quand ?',
+        },
+        new Date(Date.now() - 2 * 3_600_000),
+      ),
+      router,
+    );
+    if (client.thread) {
+      await postMessage(db, options.organizationId, {
+        thread: client.thread,
+        author: { kind: 'person', id: options.colleague },
+        text: 'Je peux y aller demain 9 h si tu valides le déplacement.',
+        for: 'action',
+        via: 'kete',
+      });
+    }
+    const unknown = await route(
+      db,
+      options.organizationId,
+      await fromMail(
+        [
+          'From: Hôtel Oti <contact@hotel-oti.tg>',
+          'To: sav@kya.tg',
+          'Subject: Demande de devis — kit solaire 3 kW, Sokodé',
+          'Message-ID: <demo-oti-1@hotel-oti.tg>',
+          `Date: ${new Date(Date.now() - 50 * 60_000).toUTCString()}`,
+          'Content-Type: text/plain; charset=utf-8',
+          '',
+          'Bonjour, nous voulons équiper notre hôtel de 24 chambres. Pouvez-vous nous faire un devis ?',
+        ].join('\r\n'),
+      ),
+      router,
+    );
+    if (head) {
+      const direction = await openThread(db, options.organizationId, {
+        kind: 'group',
+        title: 'Comité de direction',
+        holder: { kind: 'person', id: head },
+        members: [{ kind: 'person', id: options.colleague }],
+      });
+      await postMessage(db, options.organizationId, {
+        thread: direction.id,
+        author: { kind: 'person', id: head },
+        text: 'Ordre du jour de jeudi : trésorerie, chantier Garage Bè, recrutement SAV.',
+        for: 'information',
+        via: 'kete',
+      });
+    }
+    return { thread: client.thread ?? null, triage: Boolean(unknown.asked) };
+  });
+}

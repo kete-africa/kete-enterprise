@@ -2,6 +2,8 @@ import { Button, Icon, Markdown, PageSection, PageTitle, Tag } from '@kete/desig
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { CardView } from '@/lib/dashboard-card';
+import { fetchForMe, fetchPlaces } from '@/lib/for-me';
+import { ForMeSections } from '@/lib/for-me-view';
 import { kindIcon, why } from '@/lib/day';
 import { pinDashboard } from '@/lib/dashboards';
 import { refusal } from '@/lib/forms';
@@ -17,8 +19,13 @@ import { getLocale } from '@/paraglide/runtime.js';
 export const Route = createFileRoute('/')({
   beforeLoad: ({ location }) => requirePerson(location.href),
   loader: async () => {
-    const [today, briefing] = await Promise.all([fetchToday(), fetchBriefing().catch(() => null)]);
-    return { today, briefing };
+    const [today, briefing, forMe, places] = await Promise.all([
+      fetchToday(),
+      fetchBriefing().catch(() => null),
+      fetchForMe(),
+      fetchPlaces(),
+    ]);
+    return { today, briefing, forMe, places };
   },
   component: Today,
 });
@@ -59,12 +66,13 @@ function DayLine({ item, actions }: { item: DayItem; actions: ReactNode }) {
 }
 
 /**
- * « Aujourd'hui » (spec 046): the briefing become things to do, each with its gesture; the views
- * she pinned, up to date; what her agents did for her since yesterday. Read with her rights.
+ * « Pour moi » (doctrine D-057, spec 090; was « Aujourd'hui », spec 046): what needs her, the most
+ * pressing first — the decisions one at a time, then what she must answer, the cards « à classer »,
+ * what she holds, what she is told; then what her agents do, the views she pinned, the briefing.
  */
 function Today() {
   const { me } = Route.useRouteContext();
-  const { today, briefing } = Route.useLoaderData();
+  const { today, briefing, forMe, places } = Route.useLoaderData();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,8 +130,10 @@ function Today() {
 
   return (
     <AppShell me={me} current="home">
-      <p className="mb-2 text-body-sm font-semibold text-fg-muted first-letter:uppercase">{date}</p>
-      <PageTitle>{m.home_title({ name: today.name })}</PageTitle>
+      <PageTitle>{m.for_me_title()}</PageTitle>
+      <p className="-mt-2 mb-4 text-body-sm text-fg-muted first-letter:uppercase">
+        {m.for_me_subtitle({ date })}
+      </p>
       {/* The evening's closure (spec 083): her day said, its gestures proposed. */}
       <p className="mb-4">
         <a href="/soir" className={secondaryLink}>
@@ -136,7 +146,7 @@ function Today() {
         </p>
       )}
 
-      <PageSection first title={m.today_day()}>
+      <PageSection first title={m.for_me_decide()}>
         {session.started ? (
           <SessionCard
             item={current}
@@ -201,6 +211,8 @@ function Today() {
           </div>
         )}
       </PageSection>
+
+      <ForMeSections forMe={forMe} places={places} readOnly={Boolean(me.viewedBy)} />
 
       {(working || session.started) && !me.viewedBy && (
         <PageSection title={m.meanwhile_title()}>
