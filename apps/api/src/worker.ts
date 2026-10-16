@@ -9,6 +9,7 @@ import {
   listenForRoutines,
   runQueuedRoutines,
 } from './features/routines/index.js';
+import { relayRound, syncHoldings, workOrganizations } from './features/work/index.js';
 import { getPool, transaction } from './platform/db.js';
 import { env } from './platform/env.js';
 
@@ -101,6 +102,38 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const sent = await sendQueuedMail();
           if (sent > 0) console.log(`[worker] ${sent} e-mail(s) sent`);
+        },
+      }),
+      // Holdings (spec 087): the six sources said as holdings each minute.
+      defineJob({
+        name: 'sync-holdings',
+        schedule: '* * * * *',
+        retryLimit: 0,
+        async handle() {
+          for (const organizationId of await workOrganizations(getPool())) {
+            await transaction(organizationId, (db) => syncHoldings(db, organizationId)).catch(
+              (error: unknown) => console.error(`[worker] holdings of ${organizationId}`, error),
+            );
+          }
+        },
+      }),
+      // The relay (spec 087): each hour, who is away, who left, what waits too long.
+      defineJob({
+        name: 'relay-holdings',
+        schedule: '5 * * * *',
+        retryLimit: 0,
+        async handle() {
+          for (const organizationId of await workOrganizations(getPool())) {
+            const report = await transaction(organizationId, (db) =>
+              relayRound(db, organizationId),
+            ).catch((error: unknown) => {
+              console.error(`[worker] relay of ${organizationId}`, error);
+              return null;
+            });
+            if (report && report.moved + report.nudged + report.stuck > 0) {
+              console.log(`[worker] relay ${organizationId}: ${JSON.stringify(report)}`);
+            }
+          }
         },
       }),
     ],

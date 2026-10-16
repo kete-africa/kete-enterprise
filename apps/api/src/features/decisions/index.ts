@@ -1,9 +1,10 @@
 // The decisions feature's only door: what the rest of the API may use (spec 005).
 export { decideRequest, DecisionRuleError } from './commands.js';
-export type { Circuit, DecisionRequest } from './decisions.record.js';
+export { currentStep, type Circuit, type DecisionRequest } from './decisions.record.js';
 export {
   advance,
   announceDecided,
+  approversNow,
   knownSubjects,
   onDecided,
   onTold,
@@ -16,6 +17,7 @@ export {
 } from './engine.js';
 export {
   findRequest,
+  pendingRequestIds,
   resubmitRequest as resubmitReturned,
 } from './infrastructure/decisions.tables.js';
 export {

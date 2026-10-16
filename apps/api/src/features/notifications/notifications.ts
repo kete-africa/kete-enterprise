@@ -58,7 +58,11 @@ export interface Tell {
     | 'request.answered'
     | 'request.returned'
     | 'request.declined'
-    | 'request.reminded';
+    | 'request.reminded'
+    | 'holding.taken_over'
+    | 'holding.handed_back'
+    | 'holding.stuck'
+    | 'holding.nudged';
   title: string;
   body?: string;
   href?: string;

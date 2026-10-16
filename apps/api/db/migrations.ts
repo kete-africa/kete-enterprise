@@ -79,6 +79,7 @@ import {
 } from '../src/features/workspace/index.js';
 import { appRequestsMigrationSql } from '../src/features/app-requests/index.js';
 import { phoneMigrationSql } from '../src/features/phone/index.js';
+import { holdingsMigrationSql } from '../src/features/work/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -247,4 +248,6 @@ export const migrations: Migration[] = [
   { name: '0061_time_facts', sql: (context) => timeMigrationSql(context) },
   // What the assistant proposes at once, decided by one gesture: the evening's closure (spec 083).
   { name: '0062_proposal_sets', sql: (context) => proposalSetsMigrationSql(context) },
+  // Holdings: every thing in progress with its holder, the relay, « Pour moi » (spec 087, D-056).
+  { name: '0063_holdings', sql: (context) => holdingsMigrationSql(context) },
 ];
