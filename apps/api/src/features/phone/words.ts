@@ -10,8 +10,6 @@ const catalog = {
     refused: (title: string) => `Refusé : ${title}. C’est noté dans Kete Enterprise.`,
     notYours:
       'Cette décision n’est plus la vôtre : elle a été prise, ou elle attend quelqu’un d’autre.',
-    unknown:
-      'Je n’ai pas compris. Répondez avec les boutons, ou ouvrez votre Inbox dans Kete Enterprise.',
     linked:
       'Votre téléphone est relié à Kete Enterprise : ce qui attend votre décision arrivera ici.',
   },
@@ -22,8 +20,6 @@ const catalog = {
     approved: (title: string) => `Approved: ${title}. Recorded in Kete Enterprise.`,
     refused: (title: string) => `Refused: ${title}. Recorded in Kete Enterprise.`,
     notYours: 'This decision is no longer yours: it was taken, or it waits for someone else.',
-    unknown:
-      'I did not understand. Answer with the buttons, or open your Inbox in Kete Enterprise.',
     linked: 'Your phone is tied to Kete Enterprise: what waits for your decision will arrive here.',
   },
 };

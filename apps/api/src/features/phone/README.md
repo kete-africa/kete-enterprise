@@ -11,3 +11,5 @@ The center on WhatsApp and Telegram (spec 077), on `@kete/notify`'s chat outbox.
 - `phoneRoutes` — `/v1/phone`: her phone tied or untied by her; `/v1/phone/senders`: the
   organization's number and bot, by an administrator.
 - `deliverPhones` — the worker's job `send-phones`, every minute.
+- Words without a button (spec 089): from someone outside, routed into its object's thread and
+  acknowledged; from a person of the center, kept in her thread « Kete » (`features/messages`).
