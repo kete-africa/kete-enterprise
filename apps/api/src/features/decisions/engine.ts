@@ -1,3 +1,4 @@
+import { CommandError } from '@kete/commands';
 import type { SqlExecutor } from '@kete/tenancy';
 import { currentStep, type DecisionRequest } from './decisions.record.js';
 import {
@@ -213,9 +214,10 @@ export async function settle(
 }
 
 /**
- * Opens a request of a subject in the caller's transaction, if a circuit is active for it; null
- * otherwise (the feature keeps its own review). A request whose every step falls under its
- * threshold needs nobody: it is approved at once.
+ * Opens a request of a subject in the caller's transaction when the policies ask an approval for
+ * it (spec 088): a circuit's policy names the active circuit, which then decides. Null otherwise —
+ * the feature keeps its own review; a policy that refuses it stops it. A request whose every step
+ * falls under its threshold needs nobody: it is approved at once.
  */
 export async function openRequest(
   db: SqlExecutor,
@@ -231,7 +233,21 @@ export async function openRequest(
     projectId?: string | null;
   },
 ): Promise<string | null> {
-  const circuit = await activeCircuit(db, input.subject);
+  // Loaded when asked: the policies read the center's structure, whose features declare subjects
+  // here when they load.
+  const { decideFor } = await import('../policies/index.js');
+  const decision = await decideFor(db, organizationId, {
+    actor: { kind: 'person', id: input.requesterUserId },
+    kind: 'request.open',
+    object: { kind: 'subject', id: input.subject },
+    ...(input.measure !== null ? { context: { measure: Math.round(input.measure) } } : {}),
+    at: new Date().toISOString(),
+  });
+  if (decision.effect === 'refuse') {
+    const reason = decision.policies[0]?.reason ?? 'Refused by a policy.';
+    throw new CommandError('refused_by_policy', reason, undefined, decision);
+  }
+  const circuit = decision.effect === 'approve' ? await activeCircuit(db, input.subject) : null;
   if (!circuit) return null;
   const requestId = await insertRequest(db, organizationId, { circuit, ...input });
   await advance(db, organizationId, requestId, 'circuit');

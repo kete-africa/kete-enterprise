@@ -41,6 +41,7 @@ describe('the KYA demo', () => {
       meetingTypes: 5,
       controls: 5,
       resources: 11,
+      policies: 17,
     });
     const again = await seed();
     expect(again).toMatchObject({
@@ -53,6 +54,7 @@ describe('the KYA demo', () => {
       meetingTypes: 0,
       controls: 0,
       resources: 0,
+      policies: 0,
     });
     // A remote test database answers each of the seed's hundreds of gestures in turn.
   }, 600_000);
@@ -76,5 +78,34 @@ describe('the KYA demo', () => {
     ).json()) as Record<string, unknown>;
     expect(me).toMatchObject({ name: 'Abla Nyuiadzi', demo: true, administrator: false });
     expect(me.modules).toMatchObject({ surveys: true, performance: true, meetings: true });
+  });
+
+  it('holds KYA’s six policies: a contact who wrote STOP receives nothing, even from the head', async () => {
+    const admin = await tokenFor('usr_operator', { role: 'admin', org: 'org_demo' });
+    const listed = (await (
+      await api.request('/v1/policies', { headers: { authorization: `Bearer ${admin}` } })
+    ).json()) as { policies: { id: string; status: string }[] };
+    expect(listed.policies.filter((p) => p.status === 'trial').map((p) => p.id)).toEqual([
+      'clients.hours',
+    ]);
+    const decided = (await (
+      await api.request('/v1/policies/decide', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${admin}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          gesture: {
+            actor: { kind: 'person', id: 'usr_operator' },
+            kind: 'message.client',
+            object: { kind: 'party', id: 'pty_hotel_golfe' },
+            channel: 'whatsapp',
+            context: { hour: 10, optedOut: true },
+          },
+        }),
+      })
+    ).json()) as { decision: { effect: string; policies: { id: string }[] } };
+    expect(decided.decision).toMatchObject({
+      effect: 'refuse',
+      policies: [{ id: 'consent.stop' }],
+    });
   });
 });

@@ -60,7 +60,13 @@ export async function runCommand<Input extends z.ZodType, Output>(
     return result.output;
   } catch (error) {
     if (error instanceof CommandError) {
-      const status = error.code === 'idempotency_conflict' ? 409 : 422;
+      // A policy refused (spec 088): forbidden; one asks an approval first: a conflict to settle.
+      const status =
+        error.code === 'refused_by_policy'
+          ? 403
+          : error.code === 'idempotency_conflict' || error.code === 'approval_required'
+            ? 409
+            : 422;
       throw new GestureRefusal(status, error.code, error.message);
     }
     throw error;

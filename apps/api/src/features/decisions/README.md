@@ -59,3 +59,12 @@ directly (spec 004).
   `resubmit-request` — who asked only — puts it back to `pending`: decided steps are kept unless
   the measure went up (`resubmitRequest` in the tables).
 - `rule: project_lead` reads `decision_requests.project_id`.
+
+## A circuit is a policy (spec 088)
+
+Defining a circuit also writes its approval policy, `circuit.<subject>` (approver `circuit`), in
+the one engine (`features/policies`, doctrine D-058). `openRequest` asks the engine
+(`request.open`): an approval opens the active circuit, whose steps find their approvers as above;
+an allowance — the circuit's policy switched off — leaves the feature its own review; a policy that
+refuses stops it with `refused_by_policy`. The circuits defined before were carried into policies
+(migration 0064).

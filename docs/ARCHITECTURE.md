@@ -42,7 +42,9 @@ Features (in order, `docs/ROADMAP.md`): `structure`, `rights`, `registry`, `deci
 kete-core's building blocks do the common work (D-030): `@kete/tenancy` (organization transactions),
 `@kete/commands` (named gestures, journal, chain of agents), `@kete/drafts` and
 `@kete/capabilities` (the AI prepares, a person decides), `@kete/sdk` (manifest, health, outbox),
-`@kete/auth` (tokens), `@kete/jobs` (the worker), `@kete/design` (screens).
+`@kete/auth` (tokens), `@kete/jobs` (the worker), `@kete/design` (screens), `@kete/work` (holdings
+and the relay, spec 087), `@kete/policies` (one policy engine at the gesture, on Cedar — the
+agents' rules and the circuits are its policies, spec 088).
 
 ## Where it runs
 

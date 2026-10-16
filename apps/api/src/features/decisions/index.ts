@@ -16,6 +16,7 @@ export {
   type SubjectHandler,
 } from './engine.js';
 export {
+  approversOf,
   findRequest,
   pendingRequestIds,
   resubmitRequest as resubmitReturned,
