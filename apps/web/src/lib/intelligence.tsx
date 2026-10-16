@@ -20,6 +20,7 @@ import { fetchMentionables, sendFeedback, uploadAttachment, type Mentionables } 
 import type { AssistantPage } from './chat/panel';
 import { rememberedPayer } from './chat/pay-with';
 import { DraftCard } from './draft-card';
+import { FilesPane } from './files-pane';
 import { encode, fromStored, noExtras, translator, type Extras } from './intelligence-stream';
 import { toolLabel } from './tool-words';
 
@@ -325,6 +326,8 @@ export function CenterIntelligence({
   onCanvas,
   apps = [],
   payer,
+  tab = 'ask',
+  onTab,
 }: {
   page: AssistantPage | null;
   /** A question from Ctrl K or a page: asked as soon as it comes. */
@@ -343,6 +346,9 @@ export function CenterIntelligence({
   apps?: readonly { resourceId: string; name: string }[];
   /** Who pays for the answers, when she chose (spec 026b). */
   payer?: Payer | null;
+  /** In the drawer: « Demander » or « Fichiers ». */
+  tab?: 'ask' | 'files';
+  onTab?: (tab: 'ask' | 'files') => void;
 }) {
   const [people, setPeople] = useState<Mentionables['people']>([]);
   const [sandboxUrl, setSandboxUrl] = useState<string | null>(null);
@@ -461,7 +467,8 @@ export function CenterIntelligence({
         ? {
             head: {
               ...head,
-              tab: 'ask' as const,
+              tab,
+              ...(onTab ? { onTab } : {}),
               onNew: () => {
                 center.restart();
                 head.onNew?.();
@@ -472,11 +479,29 @@ export function CenterIntelligence({
       {...(page && withPage
         ? { context: { label: page.title, onRemove: () => setWithPage(false) } }
         : {})}
+      files={
+        <FilesPane
+          accept={accepted}
+          onFiles={(files) => {
+            join(files);
+            onTab?.('ask');
+          }}
+        />
+      }
+      scope={{
+        value: 'everywhere',
+        label: m.intelligence_scope(),
+        options: [{ value: 'everywhere', label: m.intelligence_scope_everywhere() }],
+        onChange: () => undefined,
+      }}
       intro={intro}
       suggestions={
         state?.available
           ? [
-              ...(shown ? [m.panel_explain_page(), m.panel_next_step()] : []),
+              // On the page « Demander » itself, there is no other page to explain.
+              ...(shown && shown.href !== '/assistant'
+                ? [m.panel_explain_page(), m.panel_next_step()]
+                : []),
               m.intelligence_suggest_week(),
             ]
           : []

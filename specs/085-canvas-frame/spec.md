@@ -32,8 +32,8 @@ flowchart LR
 ## Requirements
 
 - **FR-001 — The frame** (`lib/shell.tsx`):
-  - the top bar: Kete, her organization, the search, « Noter », « Demander », the bell, her avatar
-    with her mode and « Se déconnecter »;
+  - the top bar: Kete, her organization, the search, « À jour » (or offline), « Noter »,
+    « Demander », « Fichiers », the bell, her avatar with her mode and « Se déconnecter »;
   - the places:
     - Décider with what waits for her, in bold;
     - Demander;
@@ -43,13 +43,17 @@ flowchart LR
   - « Épinglés »: Mon tableau and her shortcuts;
   - the foot: her organization's apps under « Apps », folded, then « Toutes les apps » and
     « Administration »;
-  - the phone's tabs: Décider, Planifier, « Demander » (the page), Déléguer, Menu.
+  - the phone's tabs: Décider, Planifier, « Demander » (the page), Déléguer, Menu;
+  - each page in the frame's measure (`FramePage`, wide for Planifier and the boards); the page
+    « Demander » fills the frame itself.
   - `/v1/me` adds her organization's name, her open projects, whether an agent works for her now,
     and the clashes of her week.
 - **FR-002 — Kete Intelligence beside every page** (`CenterIntelligence` in the frame's drawer).
   It is the canvas's drawer:
-  - its head (Demander, the threads, a new thread, wider, close);
-  - the page she looks at as a context she may remove;
+  - its head (Demander, Fichiers, the threads, a new thread, wider, close);
+  - the page she looks at as a context she may remove — the place she stands in when the page
+    said nothing — and how far it looks (« Dans tout Kete »);
+  - « Fichiers »: a file dropped or chosen joins her next question; her recent documents;
   - the greeting, kept at the top;
   - each answer with its seconds and what it does now;
   - each capability with its level and what it was called with;
@@ -76,7 +80,8 @@ flowchart LR
 
 ## Proof
 
-- `pnpm typecheck`, lint, format, i18n and the tests of api and web.
+- `pnpm typecheck`, lint, format, i18n and the tests of api and web (`apps/web/tests`: the
+  center's stream told as `intelligence-event.v1`, the directives, a thread opened again).
 - In the demo, side by side with the canvas (desktop 1440 px and phone 390 px, light and dark):
   - the frame, with its places and what waits in them;
   - the drawer opened on Décider, after a question;
@@ -85,4 +90,5 @@ flowchart LR
 ## What stays for later
 
 The canvas's own pages: Décider (Matin, Soir, Semaine), Planifier, Mon tableau, Déléguer and the
-project. The « Fichiers » tab of the drawer, with what was received. Long research in the threads.
+project. In « Fichiers », what was received by WhatsApp or mail, to read; « Dans cette app » once
+the center's apps answer in the drawer. Threads grouped by project. Long research in the threads.

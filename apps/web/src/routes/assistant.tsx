@@ -84,7 +84,7 @@ function AssistantPage() {
   }, [q, current]);
   const firstName = me.name.split(' ')[0] ?? me.name;
   return (
-    <AppShell me={me} current="assistant">
+    <AppShell me={me} current="assistant" bleed>
       <div
         className={`grid h-full min-h-0 ${
           document
@@ -185,7 +185,7 @@ function AssistantPage() {
           ) : (
             <CenterIntelligence
               key={current?.conversationId ?? 'new'}
-              page={null}
+              page={{ kind: 'place', title: m.nav_ask(), href: '/assistant' }}
               question={question}
               name={firstName}
               conversationId={current?.conversationId ?? null}

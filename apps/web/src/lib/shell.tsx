@@ -1,11 +1,12 @@
-import { Button, type CommandItem, type IconName } from '@kete/design';
+import { Button, FramePage, type CommandItem, type IconName } from '@kete/design';
 import {
   AppFrame,
   type Place as ShellPlace,
   type PlaceSection,
   type ShellWords,
+  type SyncState,
 } from '@kete/shell';
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { refusal } from '@/lib/forms';
 import * as m from '@/paraglide/messages.js';
 import { useAskBeside, useShownPage } from './chat/panel';
@@ -498,7 +499,7 @@ const shellWords = (): ShellWords => ({
   note: m.nav_note(),
   bell: m.nav_notifications(),
   tabs: m.nav_tabs(),
-  menu: m.nav_all(),
+  menu: m.shell_menu(),
   noteTitle: m.nav_note(),
   noteField: m.notebook_write(),
   noteHint: m.notebook_placeholder(),
@@ -574,21 +575,49 @@ async function keepNote(text: string): Promise<ReactNode> {
   return <NoteKept note={answer.note} />;
 }
 
+/** Whether the screens reach the center: « À jour » beside the search, or offline. */
+function useReach(): SyncState {
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const seen = () => setOnline(navigator.onLine);
+    seen();
+    window.addEventListener('online', seen);
+    window.addEventListener('offline', seen);
+    return () => {
+      window.removeEventListener('online', seen);
+      window.removeEventListener('offline', seen);
+    };
+  }, []);
+  return online ? { state: 'ok' } : { state: 'offline', pending: 0 };
+}
+
+/** The screens that take the frame's wide measure: a week, a board. */
+const wideScreens: readonly Page[] = ['plan', 'dashboards'];
+
 /** The frame of every signed-in screen: the validated canvas (doctrine D-042; spec 085). */
 export function AppShell({
   me,
   current,
+  bleed = false,
   children,
 }: {
   me: Me;
   current: Page;
+  /** The screen fills the frame itself: the page « Demander », its threads and its canvas. */
+  bleed?: boolean;
   children: ReactNode;
 }) {
   // Kete Intelligence beside the page (spec 085): what the page shows, a question from Ctrl K.
   const [panel, setPanel] = useState(false);
+  const [tab, setTab] = useState<'ask' | 'files'>('ask');
+  const sync = useReach();
   const [wide, setWide] = useState(false);
   const [question, setQuestion] = useState<{ text: string; at: number } | null>(null);
-  const page = useShownPage();
+  const shown = useShownPage();
+  const sections = sectionsOf(me, current);
+  // What she asks from: the page, when it said what it shows; else the place she stands in.
+  const here = sections.flatMap((section) => section.places).find((p) => p.id === placeOf(current));
+  const page = shown ?? (here ? { kind: 'place', title: here.label, href: here.href } : null);
   const ask = useCallback(
     (text?: string) => {
       // On the page « Demander », the question goes to its thread.
@@ -597,9 +626,11 @@ export function AppShell({
         return;
       }
       if (text) setQuestion({ text, at: Date.now() });
-      setPanel((open) => (text ? true : !open));
+      // The button closes the drawer only when it already shows « Demander ».
+      setPanel((open) => Boolean(text) || !(open && tab === 'ask'));
+      setTab('ask');
     },
-    [current],
+    [current, tab],
   );
   useAskBeside(ask);
   const find = useCallback((query: string) => finder(me)(query), [me]);
@@ -608,7 +639,7 @@ export function AppShell({
     <AppFrame
       brand={{ name: m.brand_kete() }}
       org={{ name: me.organization }}
-      sections={sectionsOf(me, current)}
+      sections={sections}
       foot={footOf(me)}
       current={placeOf(current)}
       person={{ name: me.name, detail: me.email }}
@@ -626,6 +657,8 @@ export function AppShell({
             question={question}
             name={firstName}
             apps={me.apps}
+            tab={tab}
+            onTab={setTab}
             head={{
               onHistory: () => {
                 window.location.href = '/assistant';
@@ -638,12 +671,17 @@ export function AppShell({
         ),
       }}
       {...(me.viewedBy ? {} : { onNote: keepNote })}
+      onFiles={() => {
+        setPanel((open) => !(open && tab === 'files'));
+        setTab('files');
+      }}
+      sync={sync}
       bell={{ href: '/notifications', count: me.unread }}
       tabs={['home', 'plan', me.modules.agents ? 'my_agents' : 'projects']}
       signOutHref="/auth/sortie"
     >
       {me.viewedBy && <ViewingBanner me={me} />}
-      {children}
+      {bleed ? children : <FramePage wide={wideScreens.includes(current)}>{children}</FramePage>}
     </AppFrame>
   );
 }
