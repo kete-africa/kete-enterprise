@@ -12,9 +12,17 @@ import { syncHoldings } from './sync.js';
 
 // « Pour moi », handing back, the figures (spec 087, FR-003 to FR-005).
 
+/** Where the holdings of the threads and the router lead (spec 089): the object's thread, the card. */
+const threadsHref: Record<string, (holding: Holding) => string> = {
+  'threads:message': (h) => `/fils/${h.object.kind}/${encodeURIComponent(h.object.id)}`,
+  'channels:triage': (h) => `/fils/a-classer/${encodeURIComponent(h.source.ref)}`,
+};
+
 const shown = (holding: Holding) => ({
   ...holding,
-  href: (sourceKinds[holding.source.kind as SourceKind] ?? (() => '/'))(holding.source.ref),
+  href:
+    threadsHref[`${holding.source.app}:${holding.source.kind}`]?.(holding) ??
+    (sourceKinds[holding.source.kind as SourceKind] ?? (() => '/'))(holding.source.ref),
 });
 
 const isHolding = z.string().regex(/^hld_[0-9A-Za-z_-]{4,70}$/);

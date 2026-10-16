@@ -31,6 +31,7 @@ import {
   findRequest,
   onWaiting,
 } from '../decisions/index.js';
+import { hearFromOutside } from '../messages/index.js';
 import { phoneWords } from './words.js';
 
 // The center on a phone (spec 077): a person ties her WhatsApp or her Telegram to Kete Enterprise;
@@ -86,10 +87,11 @@ async function decideByReply(heard: ChatHeardMessage): Promise<void> {
       queueChatReply(db, heard.organizationId, { to: heard.messageId, text }),
     );
   if (heard.intent === 'link') return reply(words.linked).then(() => undefined);
-  if (heard.intent !== 'message' || !heard.reference) return;
+  if (heard.intent !== 'message') return;
   const tapped = buttonPattern.exec(heard.message.action ?? '');
-  if (!tapped) {
-    await reply(words.unknown);
+  // Words, not a button: into its object's thread, or her thread « Kete » (spec 089).
+  if (!tapped || !heard.reference) {
+    await hearFromOutside(heard);
     return;
   }
   const [, decision, requestId] = tapped as unknown as [string, 'approve' | 'refuse', string];

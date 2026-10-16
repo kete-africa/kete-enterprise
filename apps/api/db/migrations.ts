@@ -81,6 +81,7 @@ import { appRequestsMigrationSql } from '../src/features/app-requests/index.js';
 import { phoneMigrationSql } from '../src/features/phone/index.js';
 import { holdingsMigrationSql } from '../src/features/work/index.js';
 import { centerPoliciesMigrationSql } from '../src/features/policies/index.js';
+import { messagesMigrationSql } from '../src/features/messages/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -253,4 +254,6 @@ export const migrations: Migration[] = [
   { name: '0063_holdings', sql: (context) => holdingsMigrationSql(context) },
   // One policy engine at the gesture: agents' rules and circuits melt into it (spec 088, D-058).
   { name: '0064_policies', sql: (context) => centerPoliciesMigrationSql(context) },
+  // Threads, channels and the router; the mailboxes the center reads (spec 089, D-056, D-057).
+  { name: '0065_threads', sql: (context) => messagesMigrationSql(context) },
 ];

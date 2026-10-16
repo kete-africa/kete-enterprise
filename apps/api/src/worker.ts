@@ -10,6 +10,7 @@ import {
   runQueuedRoutines,
 } from './features/routines/index.js';
 import { relayRound, syncHoldings, workOrganizations } from './features/work/index.js';
+import { readMailboxes } from './features/messages/index.js';
 import { getPool, transaction } from './platform/db.js';
 import { env } from './platform/env.js';
 
@@ -92,6 +93,16 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const sent = await deliverPhones();
           if (sent > 0) console.log(`[worker] ${sent} message(s) to phones`);
+        },
+      }),
+      // The mailboxes the center reads (spec 089): each mail routed into its object's thread.
+      defineJob({
+        name: 'read-mailboxes',
+        schedule: '* * * * *',
+        retryLimit: 0,
+        async handle() {
+          const routed = await readMailboxes();
+          if (routed > 0) console.log(`[worker] ${routed} mail(s) routed`);
         },
       }),
       // E-mails queued by gestures leave every minute; in capture mode none is ever queued.
