@@ -130,10 +130,10 @@ function Today() {
 
   return (
     <AppShell me={me} current="home">
-      <PageTitle>{m.for_me_title()}</PageTitle>
-      <p className="-mt-2 mb-4 text-body-sm text-fg-muted first-letter:uppercase">
+      <p className="mb-2 text-body-sm font-semibold text-fg-muted first-letter:uppercase">
         {m.for_me_subtitle({ date })}
       </p>
+      <PageTitle>{m.for_me_title()}</PageTitle>
       {/* The evening's closure (spec 083): her day said, its gestures proposed. */}
       <p className="mb-4">
         <a href="/soir" className={secondaryLink}>
