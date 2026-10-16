@@ -49,6 +49,10 @@ describe('the API', () => {
       role: 'owner',
       administrator: true,
       personId: null,
+      // The frame of the canvas (spec 085): nothing open yet, no agent at work, no clash.
+      projects: [],
+      working: false,
+      clashes: 0,
     });
   });
 

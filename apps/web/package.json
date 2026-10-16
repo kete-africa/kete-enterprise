@@ -7,14 +7,15 @@
     "dev": "vite dev --port 3500",
     "build": "vite build",
     "start": "srvx serve --entry dist/server/server.js --static dist/client --prod --host 0.0.0.0 --port 3000",
-    "typecheck": "vite build && tsc --noEmit"
+    "typecheck": "vite build && tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@assistant-ui/react": "0.15.23",
     "@kete/auth": "npm:@kete-africa/auth@^0.3.0",
-    "@kete/design": "npm:@kete-africa/design@^0.13.0",
+    "@kete/design": "npm:@kete-africa/design@^0.14.0",
+    "@kete/intelligence": "npm:@kete-africa/intelligence@^0.3.0",
     "@kete/sdk": "npm:@kete-africa/sdk@^0.10.0",
-    "@kete/shell": "npm:@kete-africa/shell@^0.2.0",
+    "@kete/shell": "npm:@kete-africa/shell@^0.3.0",
     "@kete/time": "npm:@kete-africa/time@^0.2.0",
     "@mcp-ui/client": "7.1.1",
     "@tanstack/react-router": "^1.170.44",

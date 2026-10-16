@@ -827,6 +827,15 @@ async function streamChat(c: Ctx): Promise<Response> {
             .catch(() => undefined);
         } else {
           await asPerson(identity, async () => {
+            const capabilities = await toolsForPerson(identity);
+            // Each capability's autonomy level, said with its call (spec 085): the drawer shows it.
+            const levelOf = new Map(capabilities.map((tool) => [tool.name, tool.autonomy]));
+            const called = (part: Record<string, unknown>) => ({
+              id: String(part['toolCallId'] ?? part['toolName']),
+              name: String(part['toolName']),
+              level: levelOf.get(String(part['toolName'])) ?? 1,
+              input: inputOf(part['input']),
+            });
             const result = await askStream({
               model: answerer.model,
               system:
@@ -841,7 +850,7 @@ ${skills.prompt}`
                   : ''),
               messages: [...history, { role: 'user', content }],
               tools: [
-                ...(await toolsForPerson(identity)),
+                ...capabilities,
                 canvasTool,
                 ...(c.get('viewedBy')
                   ? []
@@ -877,7 +886,7 @@ ${skills.prompt}`
                 text += delta;
                 send({ type: 'text', delta });
               } else if (part['type'] === 'tool-call') {
-                send({ type: 'tool', name: part['toolName'], state: 'running' });
+                send({ type: 'tool', ...called(part), state: 'running' });
               } else if (part['type'] === 'tool-result') {
                 const output = part['output'] as { status?: string } | null;
                 const state = output?.status === 'refused' ? 'refused' : 'done';
@@ -889,7 +898,7 @@ ${skills.prompt}`
                     )
                   : null;
                 if (draft) drafts.push(draft);
-                send({ type: 'tool', name: part['toolName'], state, ...(draft ? { draft } : {}) });
+                send({ type: 'tool', ...called(part), state, ...(draft ? { draft } : {}) });
                 const result = (output as { output?: unknown } | null)?.output;
                 // An app's tool that names a view (MCP Apps): the chat shows it with its result.
                 const view = apps?.viewOf(String(part['toolName']));
@@ -962,4 +971,12 @@ ${skills.prompt}`
   return new Response(body, {
     headers: { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store' },
   });
+}
+
+/** What a capability was called with, short enough for the drawer's line « → … » (spec 085). */
+function inputOf(input: unknown): string | undefined {
+  if (input === undefined || input === null) return undefined;
+  const said = JSON.stringify(input);
+  if (!said || said === '{}') return undefined;
+  return said.length > 240 ? `${said.slice(0, 239)}…` : said;
 }

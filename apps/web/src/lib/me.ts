@@ -40,6 +40,14 @@ export interface Me {
   unread: number;
   /** The sidebar she arranged (spec 049). */
   sidebar: SidebarLayout;
+  /** Her organization's name, in the top bar (spec 085). */
+  organization: string;
+  /** Her open projects, in the places (spec 085). */
+  projects: { projectId: string; name: string }[];
+  /** Whether an agent works for her now: its spinner beside « Déléguer ». */
+  working: boolean;
+  /** The clashes of her week: « 1 conflit » beside « Planifier ». */
+  clashes: number;
 }
 
 /** The signed-in person and her organization, as the API sees them; null without a session. */

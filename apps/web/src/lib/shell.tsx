@@ -1,14 +1,16 @@
-import { Button, type CommandItem, type IconName } from '@kete/design';
+import { Button, FramePage, type CommandItem, type IconName } from '@kete/design';
 import {
   AppFrame,
   type Place as ShellPlace,
   type PlaceSection,
   type ShellWords,
+  type SyncState,
 } from '@kete/shell';
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { refusal } from '@/lib/forms';
 import * as m from '@/paraglide/messages.js';
-import { AssistantBeside, useAskBeside, useShownPage } from './chat/panel';
+import { useAskBeside, useShownPage } from './chat/panel';
+import { CenterIntelligence } from './intelligence';
 import { administers, opens, viewAs, type Me } from './me';
 import { NoteKept } from './note-composer';
 import { writeNote } from './notes';
@@ -371,59 +373,112 @@ function placeOf(page: Page): string {
 }
 
 /**
- * The frame's sidebar (doctrine D-042, D-050; step C1): the places — Décider, Demander, Déléguer,
- * Mon tableau — the projects, what she pinned, the apps and « Tout », the Administration. Every
- * other place is one Ctrl K away.
+ * The frame's places, as the validated canvas draws them (doctrine D-042, D-050; spec 085): the
+ * four main places with what waits in each — Décider, Demander, Déléguer, Planifier — her open
+ * projects and « Tiers », what she pinned under « Épinglés », the Administration when she opens it.
+ * Every other place is one Ctrl K away.
  */
 function sectionsOf(me: Me, current: Page): PlaceSection[] {
   const places = placesOf(me);
   const main: (ShellPlace | false)[] = [
-    { id: 'home', label: m.nav_decide(), href: '/', icon: 'check' },
-    { id: 'assistant', label: m.nav_ask(), href: '/assistant', icon: 'sparkle' },
+    {
+      id: 'home',
+      label: m.nav_decide(),
+      href: '/',
+      icon: 'decide',
+      ...(me.waiting ? { extra: { kind: 'count', value: me.waiting, hot: true } } : {}),
+    },
+    { id: 'assistant', label: m.nav_ask(), href: '/assistant', icon: 'spark' },
     me.modules.agents && {
       id: 'my_agents',
       label: m.nav_delegate(),
       href: '/mes-agents',
-      icon: 'agent',
+      icon: 'bot',
+      ...(me.working ? { extra: { kind: 'working' } } : {}),
     },
     // Planifier (doctrine D-050; spec 079): the time of the whole organization.
-    { id: 'plan', label: m.nav_plan(), href: '/planifier', icon: 'calendar' },
-    me.modules.dashboards && {
-      id: 'dashboards',
-      label: m.nav_my_board(),
-      href: '/tableaux-de-bord',
-      icon: 'chart',
+    {
+      id: 'plan',
+      label: m.nav_plan(),
+      href: '/planifier',
+      icon: 'cal',
+      ...(me.clashes
+        ? {
+            extra: {
+              kind: 'word',
+              value:
+                me.clashes === 1
+                  ? m.nav_clash_one()
+                  : m.nav_clash_many({ count: String(me.clashes) }),
+              hot: true,
+            },
+          }
+        : {}),
     },
-    { id: 'projects', label: m.nav_projects(), href: '/projets', icon: 'folder' },
   ];
-  const pinned = me.sidebar.sections.flatMap((section, index): PlaceSection[] => {
-    const items = section.items.flatMap((shortcut, at): ShellPlace[] => {
-      const to = resolveShortcut(me, places, shortcut);
-      return to
-        ? [{ id: `pin-${index}-${at}`, label: shortcut.label, href: to.href, icon: to.icon }]
-        : [];
-    });
-    return items.length ? [{ label: section.name ?? m.sidebar_pinned(), places: items }] : [];
-  });
+  // Her open projects, then who the organization works with (doctrine D-047).
+  const projects: (ShellPlace | false)[] = [
+    ...me.projects.map((project): ShellPlace => ({
+      id: `project-${project.projectId}`,
+      label: project.name,
+      href: `/projets/${project.projectId}`,
+      dot: true,
+    })),
+    { id: 'projects', label: m.nav_all_projects(), href: '/projets', icon: 'folder' },
+    places.some((p) => p.page === 'parties') && {
+      id: 'parties',
+      label: m.nav_parties(),
+      href: '/tiers',
+      icon: 'people',
+    },
+  ];
+  // What she pinned (spec 049), after her board.
+  const pinned: ShellPlace[] = [
+    ...(me.modules.dashboards
+      ? [{ id: 'dashboards', label: m.nav_my_board(), href: '/tableaux-de-bord', icon: 'board' }]
+      : []),
+    ...me.sidebar.sections.flatMap((section, index) =>
+      section.items.flatMap((shortcut, at): ShellPlace[] => {
+        const to = resolveShortcut(me, places, shortcut);
+        return to
+          ? [{ id: `pin-${index}-${at}`, label: shortcut.label, href: to.href, icon: to.icon }]
+          : [];
+      }),
+    ),
+  ];
   const sections: PlaceSection[] = [
     { places: main.filter((p): p is ShellPlace => Boolean(p)) },
-    ...pinned,
-    {
-      places: [
-        { id: 'apps', label: m.nav_apps(), href: '/apps', icon: 'apps' },
-        { id: 'all', label: m.nav_all(), href: '/tout', icon: 'menu' },
-      ],
-    },
+    { label: m.nav_projects(), places: projects.filter((p): p is ShellPlace => Boolean(p)) },
+    ...(pinned.length ? [{ label: m.sidebar_pinned(), places: pinned }] : []),
   ];
-  if (administers(me)) {
-    sections.push({
-      label: m.nav_administration(),
-      places: adminPages.includes(current)
-        ? adminPlaces(me)
-        : [{ id: 'admin', label: m.nav_admin_home(), href: '/administration', icon: 'tool' }],
-    });
+  if (administers(me) && adminPages.includes(current)) {
+    sections.push({ label: m.nav_administration(), places: adminPlaces(me) });
   }
   return sections;
+}
+
+/** The bottom of the places: her organization's apps, folded; all the apps; the Administration. */
+function footOf(me: Me) {
+  return {
+    ...(me.apps.length
+      ? {
+          apps: {
+            label: m.shell_apps(),
+            items: me.apps.map((app) => ({
+              id: `app-${app.resourceId}`,
+              label: app.name,
+              href: app.address,
+            })),
+          },
+        }
+      : {}),
+    places: [
+      { id: 'apps', label: m.shell_all_apps(), href: '/apps', icon: 'grid' },
+      ...(administers(me)
+        ? [{ id: 'admin', label: m.nav_administration(), href: '/administration', icon: 'shield' }]
+        : []),
+    ],
+  };
 }
 
 /** The shell's words, from the app's catalogs. */
@@ -444,7 +499,7 @@ const shellWords = (): ShellWords => ({
   note: m.nav_note(),
   bell: m.nav_notifications(),
   tabs: m.nav_tabs(),
-  menu: m.nav_all(),
+  menu: m.shell_menu(),
   noteTitle: m.nav_note(),
   noteField: m.notebook_write(),
   noteHint: m.notebook_placeholder(),
@@ -453,6 +508,7 @@ const shellWords = (): ShellWords => ({
   theme: m.theme_label(),
   themes: { dark: m.theme_dark(), light: m.theme_light(), auto: m.theme_auto() },
   signOut: m.nav_sign_out(),
+  profile: m.shell_profile(),
   sync: {
     ok: m.shell_sync_ok(),
     offline: (pending) => m.shell_sync_offline({ count: String(pending) }),
@@ -519,58 +575,113 @@ async function keepNote(text: string): Promise<ReactNode> {
   return <NoteKept note={answer.note} />;
 }
 
-/** The frame of every signed-in screen, in the workspace design (doctrine D-042; step C1). */
+/** Whether the screens reach the center: « À jour » beside the search, or offline. */
+function useReach(): SyncState {
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const seen = () => setOnline(navigator.onLine);
+    seen();
+    window.addEventListener('online', seen);
+    window.addEventListener('offline', seen);
+    return () => {
+      window.removeEventListener('online', seen);
+      window.removeEventListener('offline', seen);
+    };
+  }, []);
+  return online ? { state: 'ok' } : { state: 'offline', pending: 0 };
+}
+
+/** The screens that take the frame's wide measure: a week, a board. */
+const wideScreens: readonly Page[] = ['plan', 'dashboards'];
+
+/** The frame of every signed-in screen: the validated canvas (doctrine D-042; spec 085). */
 export function AppShell({
   me,
   current,
+  bleed = false,
   children,
 }: {
   me: Me;
   current: Page;
+  /** The screen fills the frame itself: the page « Demander », its threads and its canvas. */
+  bleed?: boolean;
   children: ReactNode;
 }) {
-  // The assistant beside the page (spec 048): what the page shows, a question from Ctrl K.
+  // Kete Intelligence beside the page (spec 085): what the page shows, a question from Ctrl K.
   const [panel, setPanel] = useState(false);
+  const [tab, setTab] = useState<'ask' | 'files'>('ask');
+  const sync = useReach();
+  const [wide, setWide] = useState(false);
   const [question, setQuestion] = useState<{ text: string; at: number } | null>(null);
-  const page = useShownPage();
-  const closePanel = useCallback(() => setPanel(false), []);
+  const shown = useShownPage();
+  const sections = sectionsOf(me, current);
+  // What she asks from: the page, when it said what it shows; else the place she stands in.
+  const here = sections.flatMap((section) => section.places).find((p) => p.id === placeOf(current));
+  const page = shown ?? (here ? { kind: 'place', title: here.label, href: here.href } : null);
   const ask = useCallback(
     (text?: string) => {
-      // On the assistant's own page, the question goes to its thread.
+      // On the page « Demander », the question goes to its thread.
       if (current === 'assistant') {
         window.location.href = text ? `/assistant?q=${encodeURIComponent(text)}` : '/assistant';
         return;
       }
       if (text) setQuestion({ text, at: Date.now() });
-      setPanel((open) => (text ? true : !open));
+      // The button closes the drawer only when it already shows « Demander ».
+      setPanel((open) => Boolean(text) || !(open && tab === 'ask'));
+      setTab('ask');
     },
-    [current],
+    [current, tab],
   );
   useAskBeside(ask);
   const find = useCallback((query: string) => finder(me)(query), [me]);
+  const firstName = me.name.split(' ')[0] ?? me.name;
   return (
     <AppFrame
-      brand={m.app_name()}
-      sections={sectionsOf(me, current)}
+      brand={{ name: m.brand_kete() }}
+      org={{ name: me.organization }}
+      sections={sections}
+      foot={footOf(me)}
       current={placeOf(current)}
-      counts={{ home: me.waiting }}
       person={{ name: me.name, detail: me.email }}
       words={shellWords()}
       find={find}
       onAsk={ask}
+      askHref="/assistant"
       beside={{
         open: panel && current !== 'assistant',
-        label: m.nav_assistant(),
-        onClose: closePanel,
-        content: <AssistantBeside page={page} question={question} />,
+        wide,
+        label: m.intelligence_name(),
+        content: (
+          <CenterIntelligence
+            page={page}
+            question={question}
+            name={firstName}
+            apps={me.apps}
+            tab={tab}
+            onTab={setTab}
+            head={{
+              onHistory: () => {
+                window.location.href = '/assistant';
+              },
+              wide,
+              onWide: () => setWide((value) => !value),
+              onClose: () => setPanel(false),
+            }}
+          />
+        ),
       }}
       {...(me.viewedBy ? {} : { onNote: keepNote })}
+      onFiles={() => {
+        setPanel((open) => !(open && tab === 'files'));
+        setTab('files');
+      }}
+      sync={sync}
       bell={{ href: '/notifications', count: me.unread }}
-      tabs={['home', me.modules.agents ? 'my_agents' : 'dashboards', 'projects', 'all']}
+      tabs={['home', 'plan', me.modules.agents ? 'my_agents' : 'projects']}
       signOutHref="/auth/sortie"
     >
       {me.viewedBy && <ViewingBanner me={me} />}
-      {children}
+      {bleed ? children : <FramePage wide={wideScreens.includes(current)}>{children}</FramePage>}
     </AppFrame>
   );
 }
