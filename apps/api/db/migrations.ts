@@ -80,6 +80,7 @@ import {
 import { appRequestsMigrationSql } from '../src/features/app-requests/index.js';
 import { phoneMigrationSql } from '../src/features/phone/index.js';
 import { holdingsMigrationSql } from '../src/features/work/index.js';
+import { centerPoliciesMigrationSql } from '../src/features/policies/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -250,4 +251,6 @@ export const migrations: Migration[] = [
   { name: '0062_proposal_sets', sql: (context) => proposalSetsMigrationSql(context) },
   // Holdings: every thing in progress with its holder, the relay, « Pour moi » (spec 087, D-056).
   { name: '0063_holdings', sql: (context) => holdingsMigrationSql(context) },
+  // One policy engine at the gesture: agents' rules and circuits melt into it (spec 088, D-058).
+  { name: '0064_policies', sql: (context) => centerPoliciesMigrationSql(context) },
 ];

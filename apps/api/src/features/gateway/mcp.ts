@@ -14,7 +14,7 @@ import { identityOf } from '../../platform/identity.js';
 import { VERSION } from '../../platform/service.js';
 import { notificationWords } from '../notifications/index.js';
 import { reach, reachesAnything } from '../rights/index.js';
-import { ruleAgainst, type Rule } from '../rules/index.js';
+import { ruleAgainst, type Refusing } from '../rules/index.js';
 import { GATEWAY_PERMISSION, gatewayCapabilities } from './capabilities.js';
 import { recordCall } from './infrastructure/gateway.tables.js';
 
@@ -43,16 +43,16 @@ const registry = createCapabilityRegistry(gatewayCapabilities, {
 /** A capability an organization's rule refused: nothing ran, and the rule is named. */
 export type RuleRefusal = InvocationResult & { rule: { ruleId: string; sentence: string } };
 
-const refusedBy = (rule: Rule): RuleRefusal => ({
+const refusedBy = (rule: Refusing): RuleRefusal => ({
   status: 'refused',
   reason: 'not_allowed',
   rule: { ruleId: rule.ruleId, sentence: rule.sentence },
 });
 
 /**
- * The organization's rules for its agents (spec 068, D-043), at their single point of passage:
- * every tool an agent is given asks the rules before it runs. An active rule that covers it
- * refuses — journaled with the rule — and nothing runs; a rule on trial only counts.
+ * The organization's policies at their point of passage for agents (specs 068 and 088, D-058):
+ * every tool an agent is given asks the engine before it runs. An active policy that refuses it —
+ * a rule among them — is named and journaled, and nothing runs; a policy on trial only counts.
  */
 function ruled(
   organizationId: string,
@@ -270,7 +270,7 @@ async function refusedCalls(
     ]),
   );
   const permissionOf = await toolPermissions(identity.organizationId, actor);
-  let refusing: Rule | null = null;
+  let refusing: Refusing | null = null;
   for (const name of tools) {
     const tool = offered.get(name);
     if (!tool) continue;

@@ -4,7 +4,8 @@ import { MockLanguageModelV4 } from 'ai/test';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApi } from '../src/app.js';
 import { runTask, useTaskModel } from '../src/features/agents/index.js';
-import { covers } from '../src/features/rules/index.js';
+import { engine } from '../src/features/policies/index.js';
+import { ruleText } from '../src/features/rules/index.js';
 import { startApi, tokenFor } from './support.js';
 
 // Spec 068 (doctrine D-043): an organization's rule for its agents is a sentence applied at one
@@ -280,11 +281,32 @@ describe('a rule refuses a gesture and the journal names it', () => {
   });
 
   it('covers acting alone only, for a rule on autonomy', () => {
-    const everywhere = { effect: 'person' as const, permissions: [] };
-    expect(covers(everywhere, { permission: 'meetings:manage', autonomy: 1 })).toBe(false);
-    expect(covers(everywhere, { permission: 'meetings:manage', autonomy: 2 })).toBe(true);
-    expect(covers(everywhere, { permission: 'meetings:manage', autonomy: 3 })).toBe(false);
-    const narrow = { effect: 'person' as const, permissions: ['registry:read'] };
-    expect(covers(narrow, { permission: 'meetings:manage', autonomy: 2 })).toBe(false);
+    // The rule's policy, decided by the engine as the gateway asks it.
+    const refuses = (permissions: string[], permission: string, autonomy: number) =>
+      engine.decide({
+        policies: [
+          {
+            id: 'rul_00000000-test',
+            version: 1,
+            sentence: 'Personne seule',
+            rule: ruleText({ effect: 'person', permissions }),
+            set: 'authority',
+            owner: 'usr_ama',
+            status: 'active',
+          },
+        ],
+        gesture: {
+          actor: { kind: 'agent', id: 'agt_x', on_behalf_of: 'usr_awa' },
+          kind: 'capability.use',
+          object: { kind: 'capability', id: 'actions_propose' },
+          context: { permission, autonomy },
+          at: '2026-10-16T10:00:00Z',
+        },
+        entities: [],
+      }).effect === 'refuse';
+    expect(refuses([], 'meetings:manage', 1)).toBe(false);
+    expect(refuses([], 'meetings:manage', 2)).toBe(true);
+    expect(refuses([], 'meetings:manage', 3)).toBe(false);
+    expect(refuses(['registry:read'], 'meetings:manage', 2)).toBe(false);
   });
 });

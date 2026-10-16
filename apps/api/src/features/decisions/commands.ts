@@ -37,12 +37,20 @@ export const defineCircuit = defineCommand({
   name: 'define-circuit',
   input: defineCircuitInput,
   reversibility: { reversible: false },
-  async handler(input, { db, organizationId }) {
+  async handler(input, { db, organizationId, actor }) {
     if (!(await subjectsOf(db)).some((s) => s.subject === input.subject)) {
       throw new DecisionRuleError('unknown_subject', `No feature handles ${input.subject}.`);
     }
     try {
-      return await insertCircuit(db, organizationId, input);
+      const circuit = await insertCircuit(db, organizationId, input);
+      // The circuit is a policy of the one engine (spec 088): opening a request asks it.
+      const { saveCircuitPolicy } = await import('../policies/index.js');
+      await saveCircuitPolicy(db, organizationId, {
+        subject: input.subject,
+        name: input.name,
+        definedBy: actor.id,
+      });
+      return circuit;
     } catch (error) {
       if ((error as { code?: string }).code === '23503') {
         throw new DecisionRuleError('not_found', 'A role, position or person does not exist here.');

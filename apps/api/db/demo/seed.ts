@@ -1,4 +1,5 @@
 import { executeCommand, type Actor, type CommandDefinition } from '@kete/commands';
+import { savePolicy } from '@kete/policies';
 import { inOrganization, type SqlExecutor } from '@kete/tenancy';
 import { readFileSync } from 'node:fs';
 import type pg from 'pg';
@@ -12,6 +13,7 @@ import {
 import { defineMeetingType } from '../../src/features/meetings/index.js';
 import { registerResource } from '../../src/features/registry/index.js';
 import { moduleKeys, setModule } from '../../src/features/organization/index.js';
+import { engine } from '../../src/features/policies/index.js';
 import { createQuarter, importReferential } from '../../src/features/performance/index.js';
 import {
   createRole,
@@ -29,6 +31,7 @@ import {
 import { saveQuestionnaire } from '../../src/features/surveys/index.js';
 import { iso9001, meetingTypes, resources } from './kya-governance.js';
 import * as kya from './kya.js';
+import { kyaPolicies } from './kya-policies.js';
 import { questionnaires } from './kya-surveys.js';
 
 const actor: Actor = { kind: 'service', id: 'demo-seed', channel: 'script' };
@@ -47,6 +50,7 @@ export interface SeedReport {
   meetingTypes: number;
   controls: number;
   resources: number;
+  policies: number;
 }
 
 /**
@@ -96,6 +100,7 @@ export async function seedDemo(options: {
       meetingTypes: 0,
       controls: 0,
       resources: 0,
+      policies: 0,
     };
     const { rows } = await db.query<{ count: string }>(`select count(*) from units`);
     const positionIds = new Map<string, string>();
@@ -308,6 +313,26 @@ export async function seedDemo(options: {
           [created.resourceId, resource.address ?? null],
         );
         report.resources += 1;
+      }
+    }
+
+    // KYA's six policies, once (spec 088): on its committee and its Directeur Général.
+    const { rows: policyRows } = await db.query<{ count: string }>(
+      `select count(*) from kete_policies`,
+    );
+    const committee = (await listRoles(db)).find((r) => r.name === 'Comité de direction');
+    const { rows: directorRows } = await db.query<{ position_id: string }>(
+      `select position_id from positions where title = 'Directeur Général'`,
+    );
+    const director = directorRows[0]?.position_id;
+    if (Number(policyRows[0]?.count ?? 0) === 0 && committee && director) {
+      for (const policy of kyaPolicies({ committee: committee.roleId, director })) {
+        await savePolicy(db, organizationId, engine, {
+          ...policy,
+          owner: actor.id,
+          writtenBy: actor.id,
+        });
+        report.policies += 1;
       }
     }
     return report;

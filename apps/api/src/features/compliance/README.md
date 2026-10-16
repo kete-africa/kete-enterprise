@@ -26,7 +26,9 @@ erDiagram
   append-only: a newer one supersedes it.
 - **Automatic checks** read the company's own records, in its organization's transaction:
   `registry.apps_have_card`, `decisions.no_overdue`, `agents.act_for_someone`,
-  `structure.positions_filled`, `compliance.actions_on_time`. An **attestation** comes from the
+  `structure.positions_filled`, `compliance.actions_on_time`, `policies.in_force` (spec 088: no
+  policy left on trial over thirty days without its owner deciding, none applied whose rule no longer
+  fits the schema — a policy held becomes evidence, D-058). An **attestation** comes from the
   holder of the control's owner position, or a compliance manager.
 - **Status** of a control, today: `passing`, `failing`, `expired`, `missing`. A framework shows its
   requirements with their controls and statuses — never a percentage.

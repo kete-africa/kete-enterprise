@@ -82,6 +82,7 @@ import { noteRoutes } from './features/notes/index.js';
 import { listenForRoutines, routineRoutes } from './features/routines/index.js';
 import { todoRoutes } from './features/todo/index.js';
 import { forMeRoutes, workRoutes } from './features/work/index.js';
+import { policiesRoutes } from './features/policies/index.js';
 import {
   appTasksRoutes,
   factsFor,
@@ -263,6 +264,8 @@ export function createApi(): Hono {
   v1.route('/work', workRoutes);
   v1.route('/reception', receptionRoutes);
   v1.route('/rules', rulesRoutes(permissionCatalog));
+  // One policy engine at the gesture (spec 088): written by administrators, asked by everyone.
+  v1.route('/policies', policiesRoutes);
   v1.route('/connectors', connectorRoutes);
   v1.route('/parties', partiesRoutes);
   v1.route('/projects', projectsRoutes);

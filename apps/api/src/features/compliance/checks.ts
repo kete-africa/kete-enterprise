@@ -1,4 +1,5 @@
 import type { SqlExecutor } from '@kete/tenancy';
+import { engine as policyEngine } from '../policies/index.js';
 
 /** What an automatic check found: the evidence's outcome and the items behind it. */
 export interface CheckResult {
@@ -121,6 +122,20 @@ const checks: Record<string, Check> = {
             and published_at > now() - interval '6 months') as heard`,
     );
     return result(rows[0]?.heard ? [] : ['customer satisfaction']);
+  },
+  // The policies hold (spec 088, D-058): none left on trial over thirty days without its owner
+  // deciding, none applied whose rule no longer fits the center's schema.
+  'policies.in_force': async (db) => {
+    const { rows } = await db.query<{ sentence: string; rule: string; stale: boolean }>(
+      `select sentence, rule, status = 'trial' and created_at < now() - interval '30 days' as stale
+         from (select distinct on (policy_id) sentence, rule, status, created_at
+                 from kete_policies order by policy_id, version desc) current
+        where status <> 'off'
+        order by sentence`,
+    );
+    return result(
+      rows.filter((r) => r.stale || !policyEngine.check(r.rule).ok).map((r) => r.sentence),
+    );
   },
 };
 
