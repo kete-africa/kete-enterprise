@@ -2353,5 +2353,17 @@
   "mailboxes_password_hint": "Sealed as it arrives; never shown again.",
   "mailboxes_connect_button": "Connect the box",
   "mailboxes_host_hint": "mail.your-domain.com",
-  "policy_id_hint": "purchases.over-limit"
+  "policy_id_hint": "purchases.over-limit",
+  "agents_bounds": "What bounds your agents",
+  "agents_bounds_none": "No policy addresses agents for now.",
+  "agents_bounds_same": "One engine for a person and her agent: an agent never does more than its person may, and these policies come before its settings.",
+  "fluidity_title": "The fluidity",
+  "fluidity_open": "Things in progress",
+  "fluidity_waiting": "Waiting on someone",
+  "fluidity_over48": "Waits over 48 h",
+  "fluidity_oldest": "The oldest wait",
+  "fluidity_hours": "{count} h",
+  "fluidity_oldest_what": "The oldest: “{what}”.",
+  "fluidity_open_it": "Open it",
+  "fluidity_source": "Counted by Kete on the holdings, never by a model; nothing stays without a holder: the relay sees to it."
 }

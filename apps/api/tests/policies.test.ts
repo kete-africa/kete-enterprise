@@ -278,6 +278,28 @@ describe('a gesture asked by a person and by her agent', () => {
   });
 });
 
+describe('what bounds the agents (spec 090)', () => {
+  it('is read by every member, in sentences, without the rules', async () => {
+    await post(t.admin, '/policies', {
+      id: 'clients.hours',
+      sentence: 'Un agent n’écrit pas aux clients avant 8 h ni après 19 h',
+      rule: `forbid (principal is Kete::Agent, action == Kete::Action::"message.client", resource)
+        when { context.hour < 8 || context.hour >= 19 };`,
+      set: 'authority',
+    });
+    const read = (await get(t.kossi, '/policies/agents')).body.policies as {
+      id: string;
+      status: string;
+      rule?: string;
+    }[];
+    expect(read).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'clients.hours', status: 'trial' })]),
+    );
+    expect(read.some((p) => p.id === 'consent.stop')).toBe(false);
+    expect(read.every((p) => p.rule === undefined)).toBe(true);
+  });
+});
+
 describe('circuits and compliance', () => {
   it('writes a circuit as its approval policy', async () => {
     const circuit = await post(t.admin, '/decisions/circuits', {

@@ -101,3 +101,12 @@ export const setPolicyStatus = createServerFn({ method: 'POST' })
       crypto.randomUUID(),
     ),
   );
+
+/** What bounds her agents: the policies they meet, in their sentences (every member reads them). */
+export const fetchAgentBounds = createServerFn({ method: 'GET' }).handler(() =>
+  callApi<{
+    policies: { id: string; sentence: string; status: 'active' | 'trial'; version: number }[];
+  }>(getRequest(), '/v1/policies/agents')
+    .then((a) => a.policies)
+    .catch(() => []),
+);

@@ -164,15 +164,33 @@ const toFact = (row: Row): KeptFact =>
 
 /** The facts that meet the days between `from` and `to`, both included. */
 export async function factsBetween(db: SqlExecutor, from: string, to: string): Promise<KeptFact[]> {
+  // The facts the apps said, and the holdings due on a day (spec 090): every thing in progress
+  // with a due day is a task of its holder's week.
   const { rows } = await db.query<Row>(
-    `select source, key, kind, label, to_char(day, 'YYYY-MM-DD') as day,
-            to_char(until, 'YYYY-MM-DD') as until, starts_at, ends_at, person_ids, project_id,
-            party_id, visibility, href
-       from time_facts
-      where (day is not null and day <= $2::date and coalesce(until, day) >= $1::date)
-         or (starts_at is not null and starts_at < ($2::date + 1) and coalesce(ends_at, starts_at) >= $1::date)
-      order by coalesce(day::timestamptz, starts_at)
-      limit 2000`,
+    `select * from (
+       select source, key, kind, label, to_char(day, 'YYYY-MM-DD') as day,
+              to_char(until, 'YYYY-MM-DD') as until, starts_at, ends_at, person_ids, project_id,
+              party_id, visibility, href, coalesce(day::timestamptz, starts_at) as at
+         from time_facts
+        where (day is not null and day <= $2::date and coalesce(until, day) >= $1::date)
+           or (starts_at is not null and starts_at < ($2::date + 1) and coalesce(ends_at, starts_at) >= $1::date)
+       union all
+       select 'work' as source, holding_id as key, 'task' as kind, what as label,
+              to_char(due, 'YYYY-MM-DD') as day, null as until, null as starts_at, null as ends_at,
+              case when holder_kind = 'person' then array[holder_id] else '{}'::text[] end as person_ids,
+              case when object_kind = 'project' then object_id end as project_id,
+              case when object_kind = 'party' then object_id end as party_id,
+              'shared' as visibility,
+              case when source_app = 'threads' then '/fils/' || object_kind || '/' || object_id
+                   when source_app = 'enterprise' and source_kind = 'request' then '/demandes/' || source_ref
+                   else '/' end as href,
+              due::timestamptz as at
+         from kete_holdings
+        where state <> 'done' and due between $1::date and $2::date
+          and not (source_app = 'enterprise' and source_kind = 'app_task')
+     ) facts
+     order by at
+     limit 2000`,
     [from, to],
   );
   return rows.map(toFact);

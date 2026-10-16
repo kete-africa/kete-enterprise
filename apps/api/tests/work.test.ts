@@ -191,3 +191,19 @@ describe('the relay', () => {
     expect(figures).toMatchObject({ status: 200, body: { open: 2 } });
   });
 });
+
+describe('the holdings in Planifier (spec 090)', () => {
+  it('shows each holding due on a day as a task of its holder’s week', async () => {
+    await post(t.kofi, '/requests', {
+      colleague: 'Awa Mensah',
+      title: 'Préparer la visite du Garage Bè',
+      dueOn: today,
+    });
+    await pourMoi(t.awa);
+    const week = (await get(t.awa, `/time/days?from=${today}&days=1&scope=me`)).body as {
+      facts: { kind: string; label: string; source?: string; href?: string }[];
+    };
+    const tasks = week.facts.filter((f) => f.kind === 'task').map((f) => f.label);
+    expect(tasks).toContain('Préparer la visite du Garage Bè');
+  });
+});
