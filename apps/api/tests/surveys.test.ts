@@ -13,6 +13,9 @@ const api = createApi();
 const t = { admin: '', hr: '', awa: '', member: '' };
 const ids: Record<string, string> = {};
 let key = 0;
+/** A day around today (`YYYY-MM-DD`): a campaign is open while the test runs, whatever the date. */
+const dayFromToday = (days: number) =>
+  new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 
 type Answer = Record<string, unknown>;
 async function call(token: string, method: 'GET' | 'POST', path: string, body?: object) {
@@ -177,8 +180,8 @@ describe('a campaign about the services', () => {
         questionnaireId: ids.questionnaire,
         title: 'Satisfaction T3',
         period: 'T3 2026',
-        opensOn: '2026-10-01',
-        closesOn: '2026-10-15',
+        opensOn: dayFromToday(-7),
+        closesOn: dayFromToday(14),
         audience: { kind: 'everyone' },
         minGroup: 3,
       }),
@@ -322,8 +325,8 @@ describe('an evaluation of the manager', () => {
         questionnaireId: questionnaire,
         title: 'Évaluation T3',
         period: 'T3 2026',
-        opensOn: '2026-10-01',
-        closesOn: '2026-10-15',
+        opensOn: dayFromToday(-7),
+        closesOn: dayFromToday(14),
         audience: { kind: 'units', unitIds: [ids.it] },
         about: 'manager',
         minGroup: 2,
