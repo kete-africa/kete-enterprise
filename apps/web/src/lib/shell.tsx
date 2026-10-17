@@ -405,7 +405,10 @@ function sectionsOf(me: Me, current: Page): PlaceSection[] {
       label: m.nav_for_me(),
       href: '/',
       icon: 'inbox',
-      ...(me.waiting ? { extra: { kind: 'count', value: me.waiting, hot: true } } : {}),
+      // What waits for her and what she was not yet told: « Pour moi » replaces the bell (D-057).
+      ...(me.waiting + me.unread
+        ? { extra: { kind: 'count', value: me.waiting + me.unread, hot: true } }
+        : {}),
     },
     // Her thread with Kete (D-057): the page « Demander » became the thread « Kete ».
     { id: 'assistant', label: m.nav_kete(), href: '/assistant', icon: 'spark' },
@@ -698,7 +701,6 @@ export function AppShell({
         setTab('files');
       }}
       sync={sync}
-      bell={{ href: '/notifications', count: me.unread }}
       tabs={['home', 'threads', 'plan']}
       signOutHref="/auth/sortie"
     >

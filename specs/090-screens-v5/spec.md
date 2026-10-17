@@ -75,8 +75,29 @@ flowchart LR
   the policies list KYA's six policies with their trial.
 - api tests unchanged and green; web build, typecheck, lint, format and i18n green.
 
-## Next, in this spec
+- **FR-011 — The bell folds into « Pour moi »** (D-057): her notifications are in « Pour info », the
+  unread first and the section open when there are some, read all in one gesture; the count of
+  « Pour moi » is what waits for her and what she was not yet told. `/notifications` stays one
+  Ctrl K away (devices, push).
+- **FR-012 — The morning point in the thread « Kete »**: when her briefing is written, Kete posts it
+  in her thread « Kete », once a day; the page « Kete » shows it apart from what she said from her
+  phone; Kete's own agents are named « Kete » in every thread.
 
-The bell folded into « Pour moi »; the morning point written into the thread « Kete »; Planifier's
-proposed blocks for the holdings without a slot; screenshots side by side, computer and phone,
-light and dark, once the v5 canvas is validated.
+## Screens
+
+Taken in the demo (`pnpm demo`) with Playwright, 1440 × 900 and 390 × 844, light and dark, in
+[`screens/`](screens/): « Pour moi » (computer and phone, light and dark), the threads with their
+state (computer and phone, light and dark), « Kete », Planifier, the policies (light and dark),
+Mon tableau.
+
+| Screen | Computer | Phone |
+| --- | --- | --- |
+| « Pour moi » | [dark](screens/pour-moi-desktop-dark.jpg) · [light](screens/pour-moi-desktop-light.jpg) | [dark](screens/pour-moi-phone-dark.jpg) · [light](screens/pour-moi-phone-light.jpg) |
+| The threads | [dark](screens/fils-desktop-dark.jpg) · [light](screens/fils-desktop-light.jpg) | [dark](screens/fils-phone-dark.jpg) · [light](screens/fils-phone-light.jpg) |
+| « Kete » | [dark](screens/kete-desktop-dark.jpg) | — |
+| Planifier | [dark](screens/planifier-desktop-dark.jpg) | — |
+| Politiques | [dark](screens/politiques-desktop-dark.jpg) · [light](screens/politiques-desktop-light.jpg) | — |
+| Mon tableau | [dark](screens/tableau-desktop-dark.jpg) | — |
+
+They are compared with the v5 canvas once the author validates it: a screen is checked against the
+validated mockup. Until then they show what is built, not what is approved.

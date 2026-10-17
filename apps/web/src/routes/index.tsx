@@ -3,6 +3,7 @@ import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { CardView } from '@/lib/dashboard-card';
 import { fetchForMe, fetchPlaces } from '@/lib/for-me';
+import { fetchNotifications } from '@/lib/notifications';
 import { ForMeSections } from '@/lib/for-me-view';
 import { kindIcon, why } from '@/lib/day';
 import { pinDashboard } from '@/lib/dashboards';
@@ -19,13 +20,16 @@ import { getLocale } from '@/paraglide/runtime.js';
 export const Route = createFileRoute('/')({
   beforeLoad: ({ location }) => requirePerson(location.href),
   loader: async () => {
-    const [today, briefing, forMe, places] = await Promise.all([
+    const [today, briefing, forMe, places, told] = await Promise.all([
       fetchToday(),
       fetchBriefing().catch(() => null),
       fetchForMe(),
       fetchPlaces(),
+      fetchNotifications()
+        .then((n) => n.notifications)
+        .catch(() => []),
     ]);
-    return { today, briefing, forMe, places };
+    return { today, briefing, forMe, places, told };
   },
   component: Today,
 });
@@ -72,7 +76,7 @@ function DayLine({ item, actions }: { item: DayItem; actions: ReactNode }) {
  */
 function Today() {
   const { me } = Route.useRouteContext();
-  const { today, briefing, forMe, places } = Route.useLoaderData();
+  const { today, briefing, forMe, places, told } = Route.useLoaderData();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -212,7 +216,7 @@ function Today() {
         )}
       </PageSection>
 
-      <ForMeSections forMe={forMe} places={places} readOnly={Boolean(me.viewedBy)} />
+      <ForMeSections forMe={forMe} places={places} told={told} readOnly={Boolean(me.viewedBy)} />
 
       {(working || session.started) && !me.viewedBy && (
         <PageSection title={m.meanwhile_title()}>

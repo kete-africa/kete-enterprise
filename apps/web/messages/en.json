@@ -2366,5 +2366,7 @@
   "fluidity_oldest_what": "The oldest: “{what}”.",
   "fluidity_open_it": "Open it",
   "fluidity_source": "Counted by Kete on the holdings, never by a model; nothing stays without a holder: the relay sees to it.",
-  "threads_back": "All threads"
+  "threads_back": "All threads",
+  "for_me_read_all": "Mark all as read",
+  "kete_morning": "The morning point"
 }
