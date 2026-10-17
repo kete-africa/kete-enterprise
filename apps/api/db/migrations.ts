@@ -10,6 +10,7 @@ import {
   dashboardsMigrationSql,
 } from '../src/features/dashboards/index.js';
 import { datasetsMigrationSql } from '../src/features/datasets/index.js';
+import { settingsMigrationSql } from '../src/features/settings/index.js';
 import { exchangesMigrationSql } from '../src/features/exchanges/index.js';
 import { receptionMigrationSql, requestsMigrationSql } from '../src/features/requests/index.js';
 import { connectorsMigrationSql } from '../src/features/connectors/index.js';
@@ -259,4 +260,6 @@ export const migrations: Migration[] = [
   { name: '0065_threads', sql: (context) => messagesMigrationSql(context) },
   // Where a holding opens: the apps say theirs with their address (spec 091, kete-core spec 114).
   { name: '0066_holding_links', sql: (context) => workLinksMigrationSql(context) },
+  // Kete's settings: the center's for the organization and each unit's, journaled (spec 092).
+  { name: '0067_kete_settings', sql: (context) => settingsMigrationSql(context) },
 ];

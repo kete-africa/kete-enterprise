@@ -27,6 +27,7 @@
     "@kete/records": "npm:@kete-africa/records@^0.1.1",
     "@kete/sandbox": "npm:@kete-africa/sandbox@^0.3.0",
     "@kete/sdk": "npm:@kete-africa/sdk@^0.14.0",
+    "@kete/settings": "npm:@kete-africa/settings@^0.2.0",
     "@kete/skills": "npm:@kete-africa/skills@^0.1.0",
     "@kete/tenancy": "npm:@kete-africa/tenancy@^0.1.1",
     "@kete/threads": "npm:@kete-africa/threads@^0.1.1",
