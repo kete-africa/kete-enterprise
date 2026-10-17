@@ -36,13 +36,15 @@ const dueDay = (day: string) =>
   );
 
 const iconOf = (h: Holding) =>
-  h.source.app === 'threads'
-    ? 'chat'
-    : h.source.kind === 'request'
-      ? 'people'
-      : h.source.kind === 'agent_task'
-        ? 'bot'
-        : 'inbox';
+  h.source.app.startsWith('prd_')
+    ? 'apps'
+    : h.source.app === 'threads'
+      ? 'chat'
+      : h.source.kind === 'request'
+        ? 'people'
+        : h.source.kind === 'agent_task'
+          ? 'bot'
+          : 'inbox';
 
 function HoldingLine({ holding, canHandBack }: { holding: Holding; canHandBack: boolean }) {
   const router = useRouter();

@@ -1,16 +1,13 @@
 import type pg from 'pg';
 import type { SqlExecutor } from '@kete/tenancy';
-import { dueNudges, reclaimUnheld, relayAbsences, type Holding, type Move } from '@kete/work';
+import { dueNudges, reclaimUnheld, relayAbsences, type Move } from '@kete/work';
 import { notificationWords, tell } from '../notifications/index.js';
-import { sourceKinds, type SourceKind } from './sources.js';
+import { hrefOf } from './links.js';
 import { centerStructure } from './structure.js';
 import { syncHoldings } from './sync.js';
 
 // The relay's round (spec 087, FR-002): the sources first, then who is away, who left, what waits
 // too long. Each new holder is told in her notifications; what nobody can take, the head is told.
-
-const hrefOf = (holding: Holding) =>
-  (sourceKinds[holding.source.kind as SourceKind] ?? (() => '/'))(holding.source.ref);
 
 export interface RelayReport {
   said: number;

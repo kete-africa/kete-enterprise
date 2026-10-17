@@ -6,24 +6,13 @@ import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { notificationWords, tell } from '../notifications/index.js';
 import { isAdministrator } from '../rights/index.js';
-import { sourceKinds, type SourceKind } from './sources.js';
+import { hrefOf } from './links.js';
 import { centerStructure } from './structure.js';
 import { syncHoldings } from './sync.js';
 
 // « Pour moi », handing back, the figures (spec 087, FR-003 to FR-005).
 
-/** Where the holdings of the threads and the router lead (spec 089): the object's thread, the card. */
-const threadsHref: Record<string, (holding: Holding) => string> = {
-  'threads:message': (h) => `/fils/${h.object.kind}/${encodeURIComponent(h.object.id)}`,
-  'channels:triage': (h) => `/fils/a-classer/${encodeURIComponent(h.source.ref)}`,
-};
-
-const shown = (holding: Holding) => ({
-  ...holding,
-  href:
-    threadsHref[`${holding.source.app}:${holding.source.kind}`]?.(holding) ??
-    (sourceKinds[holding.source.kind as SourceKind] ?? (() => '/'))(holding.source.ref),
-});
+const shown = (holding: Holding) => ({ ...holding, href: hrefOf(holding) });
 
 const isHolding = z.string().regex(/^hld_[0-9A-Za-z_-]{4,70}$/);
 const handBackInput = z.object({ reason: z.string().trim().min(1).max(500) });

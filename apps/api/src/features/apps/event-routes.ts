@@ -3,8 +3,10 @@ import { transaction } from '../../platform/db.js';
 import { appOf } from '../../platform/identity.js';
 import { appDecision, productOfClient } from './decisions.js';
 import { receiveAppEvent, type EventOutcome } from './events.js';
+import { AppModelError, receiveAppHoldings } from './model.js';
 
 const organization = /^org_[\w-]{2,64}$/;
+const productId = /^prd_[a-z0-9_]{2,40}$/;
 
 /**
  * What the apps say as themselves, under /public/apps, with their own token — never a person's:
@@ -34,6 +36,43 @@ export const appEventRoutes = new Hono()
       results.push(await transaction(org, (db) => receiveAppEvent(db, app.clientId, event)));
     }
     return c.json({ results });
+  })
+  // Every thing the app holds now, with its own token (spec 091): kept, relayed, finished.
+  .put('/holdings', async (c) => {
+    const app = await appOf(c.req.raw);
+    if (!app) return c.json({ error: 'unauthenticated' }, 401);
+    const body = (await c.req.json().catch(() => null)) as {
+      organization?: unknown;
+      product?: unknown;
+      holdings?: unknown;
+    } | null;
+    const org = body?.organization;
+    const product = body?.product;
+    if (
+      typeof org !== 'string' ||
+      !organization.test(org) ||
+      typeof product !== 'string' ||
+      !productId.test(product) ||
+      !Array.isArray(body?.holdings)
+    ) {
+      return c.json({ error: 'invalid_input' }, 422);
+    }
+    const holdings = body.holdings as unknown[];
+    try {
+      return c.json(
+        await transaction(org, (db) =>
+          receiveAppHoldings(db, org, app.clientId, { product, holdings }),
+        ),
+      );
+    } catch (error) {
+      if (error instanceof AppModelError) {
+        return c.json(
+          { error: error.code, issues: error.issues },
+          error.code === 'unknown_app' ? 404 : 422,
+        );
+      }
+      throw error;
+    }
   })
   // The outcome of a decision the app asked, read with its own token (spec 023).
   .get('/:organizationId/decisions/:requestId', async (c) => {
