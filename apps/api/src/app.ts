@@ -83,6 +83,7 @@ import { listenForRoutines, routineRoutes } from './features/routines/index.js';
 import { todoRoutes } from './features/todo/index.js';
 import { forMeRoutes, workRoutes } from './features/work/index.js';
 import { policiesRoutes } from './features/policies/index.js';
+import { settingsRoutes } from './features/settings/index.js';
 import { threadRoutes } from './features/messages/index.js';
 import {
   appTasksRoutes,
@@ -267,6 +268,7 @@ export function createApi(): Hono {
   v1.route('/rules', rulesRoutes(permissionCatalog));
   // One policy engine at the gesture (spec 088): written by administrators, asked by everyone.
   v1.route('/policies', policiesRoutes);
+  v1.route('/settings', settingsRoutes);
   // Threads: one per object, her thread « Kete », the router's cards, mail bridged (spec 089).
   v1.route('/threads', threadRoutes);
   v1.route('/connectors', connectorRoutes);

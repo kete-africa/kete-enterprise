@@ -19,6 +19,7 @@ import { resolveShortcut } from './sidebar-nav';
 
 /** Where a screen sits: the person's space, or the Administration (spec 010). */
 export type Page =
+  | 'settings'
   | 'home'
   | 'threads'
   | 'policies'
@@ -499,6 +500,8 @@ function footOf(me: Me) {
       : {}),
     places: [
       { id: 'apps', label: m.shell_all_apps(), href: '/apps', icon: 'grid' },
+      // « Réglages », as in every Kete app (spec 092; kete-core spec 116).
+      { id: 'settings', label: m.settings_place(), href: '/reglages', icon: 'gear' },
       ...(administers(me)
         ? [{ id: 'admin', label: m.nav_administration(), href: '/administration', icon: 'shield' }]
         : []),

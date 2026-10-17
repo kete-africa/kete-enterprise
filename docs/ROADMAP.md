@@ -219,6 +219,7 @@ flowchart LR
 | G    | `088-policies`             | `governance`: one policy engine at the gesture; circuits and agents' rules melt into it; compliance points to it; the six missing policies               | The same gesture by a person and by an agent goes through the same policy, journaled    |
 | M    | `089-threads-and-channels` | `messages`: a thread per object, the thread « Kete », exchanges and meetings as threads; WhatsApp and IMAP inbound; the router; cards on WhatsApp        | A client's message lands in its project's thread with a holder; a card settled anywhere |
 | S    | `090-screens-v5`           | « Pour moi », the thread with its state, Planifier, Mon tableau, an agent's settings, the phone — each compared with the validated v5 canvas             | Screenshots beside the canvas                                                           |
+| A6   | `092-settings`             | « Réglages » (kete-core specs 115 to 117): her preferences in the Compte Kete, the center's settings and each unit's (a subsidiary, a site), journaled   | KYA Ghana's currency wins at the site of Accra; a command there reads it                |
 | F    | `091-whole-journey`        | The whole journey as an end-to-end test in the demo, the fluidity figures computed, the real accounts plugged (WhatsApp Business, IMAP, the model's key) | The test passes on the demo; production answers                                         |
 
 At the end, the author, then a person at KYA, use it.
