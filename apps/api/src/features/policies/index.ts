@@ -8,8 +8,9 @@ export {
   GestureError,
   personBehind,
   policyCounts,
+  ruledHere,
   saveCircuitPolicy,
 } from './policies.js';
 export { useProposalModel } from './propose.js';
 export { policiesRoutes } from './routes.js';
-export { knownGestures } from './schema.js';
+export { appGestures, knownGestures } from './schema.js';

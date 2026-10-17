@@ -29,10 +29,11 @@ flowchart LR
   her deputy and whether she is away today; an agent works for a person, with its autonomy; a
   project has a lead, a card (a holding) a holder. A policy reads a role as
   `principal in Kete::Role::"rol_…"` — the rights stay what they are (D-058). The gestures:
-  `capability.use`, `request.open`, `contract.sign`, `purchase.commit`, `message.client`,
-  `document.read`, `document.delete`, `card.decide`. A context attribute an app may not know is
-  optional: a policy reads it with `has`. A gesture the center does not know is refused before the
-  engine.
+  `capability.use`, `request.open`, `contract.sign`, `purchase.commit`, `invoice.issue`,
+  `assignment.make`, `message.client`, `document.read`, `document.delete`, `card.decide`. A context
+  attribute an app may not know is optional: a policy reads it with `has`. A gesture the center
+  does not know is refused before the engine. The apps ask about theirs (`appGestures`, spec 091):
+  while no policy in force speaks of one (`ruledHere`), it is left to the app's own rules.
 - **Kete's base policies**, the same everywhere and never stored: a tool given to an agent may be
   used, a request opened. Everything else needs the organization's own permits: nothing is allowed
   that nobody allowed.

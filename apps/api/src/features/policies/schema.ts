@@ -27,10 +27,14 @@ namespace Kete {
     context: { permission: String, autonomy: Long } };
   action "request.open" appliesTo { principal: [Person, Agent], resource: Subject,
     context: { measure?: Long } };
-  action "contract.sign" appliesTo { principal: [Person, Agent], resource: Project,
+  action "contract.sign" appliesTo { principal: [Person, Agent], resource: [Project, Party, Subject],
     context: { amount: Long } };
-  action "purchase.commit" appliesTo { principal: [Person, Agent], resource: Project,
+  action "purchase.commit" appliesTo { principal: [Person, Agent], resource: [Project, Subject],
     context: { amount: Long, budgetLeft?: Long } };
+  action "invoice.issue" appliesTo { principal: [Person, Agent], resource: [Party, Project],
+    context: { amount: Long } };
+  action "assignment.make" appliesTo { principal: [Person, Agent], resource: Project,
+    context: { days: Long } };
   action "message.client" appliesTo { principal: [Person, Agent], resource: Party,
     context: { channel: String, hour: Long, approvedTemplate?: Bool, consent?: Bool,
       optedOut?: Bool } };
@@ -47,6 +51,8 @@ export const knownGestures = [
   'request.open',
   'contract.sign',
   'purchase.commit',
+  'invoice.issue',
+  'assignment.make',
   'message.client',
   'document.read',
   'document.delete',
@@ -54,17 +60,32 @@ export const knownGestures = [
 ] as const;
 export type GestureKind = (typeof knownGestures)[number];
 
-/** What a gesture's object must be, for each gesture the center knows. */
-export const objectOf: Record<GestureKind, string> = {
-  'capability.use': 'capability',
-  'request.open': 'subject',
-  'contract.sign': 'project',
-  'purchase.commit': 'project',
-  'message.client': 'party',
-  'document.read': 'document',
-  'document.delete': 'document',
-  'card.decide': 'card',
+/**
+ * What a gesture's object may be, for each gesture the center knows. An app's purchase outside any
+ * project is on its subject (`prd_kete_finance.purchase`); a contract outside any, on its party,
+ * or its subject when it has none.
+ */
+export const objectOf: Record<GestureKind, readonly string[]> = {
+  'capability.use': ['capability'],
+  'request.open': ['subject'],
+  'contract.sign': ['project', 'party', 'subject'],
+  'purchase.commit': ['project', 'subject'],
+  'invoice.issue': ['party', 'project'],
+  'assignment.make': ['project'],
+  'message.client': ['party'],
+  'document.read': ['document'],
+  'document.delete': ['document'],
+  'card.decide': ['card'],
 };
+
+/** The gestures an app makes and asks the center about (spec 091). */
+export const appGestures: readonly GestureKind[] = [
+  'contract.sign',
+  'purchase.commit',
+  'invoice.issue',
+  'assignment.make',
+  'message.client',
+];
 
 const base = (id: string, sentence: string, rule: string): Policy => ({
   id,

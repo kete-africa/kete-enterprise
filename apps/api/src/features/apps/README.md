@@ -12,6 +12,8 @@ with a person's token. See [the spec](../../../../../specs/022-app-permissions/s
 | `GET /v1/apps/:product/decisions/:requestId` | where it stands, for the person who asked |
 | `POST /public/apps/events` | the app's events, with its own token (spec 025) |
 | `GET /public/apps/:organizationId/decisions/:id` | the outcome, read with the app's own token |
+| `PUT /public/apps/holdings` | every thing the app holds now, with its own token (spec 091) |
+| `POST /v1/apps/:product/gestures` | a gesture the app is about to make, through the policies (spec 091) |
 
 - `appPermissions(db)`: the active apps of the registry that declare permissions, one per product.
 - `appGrants(db, identity, product)`: managed once a role carries one of the app's permissions.
@@ -27,3 +29,12 @@ with a person's token. See [the spec](../../../../../specs/022-app-permissions/s
 switched on that her rights open (`packs`: where each opens, the prefix of its permissions), the
 team's apps of the registry, the connected connectors — each with what the center receives: what
 waits for her (`app_tasks` by source), the capabilities agents may call (the gateway's list), a watch.
+
+## The living model (spec 091)
+
+`receiveAppHoldings` keeps an app's holdings in step with what it says it holds (`syncSource` of
+`@kete/work`): only from the app the registry holds under that client and product, each a
+`holding.v1` under its product; what it no longer says is finished; a holder the center does not
+know is refused, never kept for nobody. `checkAppGesture` asks the policies about an app's gesture
+for the person or her agent: `unruled` while no policy in force speaks of it (`ruledHere`), else
+the engine's verdict — journaled — with the policies' sentences and who approves.

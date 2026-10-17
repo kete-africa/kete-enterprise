@@ -80,6 +80,7 @@ import {
 import { appRequestsMigrationSql } from '../src/features/app-requests/index.js';
 import { phoneMigrationSql } from '../src/features/phone/index.js';
 import { holdingsMigrationSql } from '../src/features/work/index.js';
+import { workLinksMigrationSql } from '@kete/work';
 import { centerPoliciesMigrationSql } from '../src/features/policies/index.js';
 import { messagesMigrationSql } from '../src/features/messages/index.js';
 
@@ -256,4 +257,6 @@ export const migrations: Migration[] = [
   { name: '0064_policies', sql: (context) => centerPoliciesMigrationSql(context) },
   // Threads, channels and the router; the mailboxes the center reads (spec 089, D-056, D-057).
   { name: '0065_threads', sql: (context) => messagesMigrationSql(context) },
+  // Where a holding opens: the apps say theirs with their address (spec 091, kete-core spec 114).
+  { name: '0066_holding_links', sql: (context) => workLinksMigrationSql(context) },
 ];

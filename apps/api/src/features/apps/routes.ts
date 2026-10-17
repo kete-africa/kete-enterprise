@@ -4,6 +4,7 @@ import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { appGrants } from './app-permissions.js';
 import { appDecision, AppDecisionError, appDecisionInput, openAppDecision } from './decisions.js';
+import { appGestureInput, AppModelError, checkAppGesture } from './model.js';
 
 const product = /^prd_[a-z0-9_]{2,40}$/;
 
@@ -35,6 +36,29 @@ export const appRoutes = new Hono<{ Variables: IdentityVariables }>()
     } catch (error) {
       if (error instanceof AppDecisionError) {
         throw new GestureRefusal(error.code === 'duplicate' ? 409 : 422, error.code, error.message);
+      }
+      throw error;
+    }
+  })
+  // A gesture the app is about to make, through the organization's policies (spec 091).
+  .post('/:product/gestures', async (c) => {
+    const name = c.req.param('product');
+    if (!product.test(name)) throw new GestureRefusal(404, 'not_found', 'No such app.');
+    const parsed = appGestureInput.safeParse(await bodyOf(c));
+    if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', parsed.error.message);
+    const identity = c.get('identity');
+    try {
+      const verdict = await transaction(identity.organizationId, (db) =>
+        checkAppGesture(db, identity.organizationId, identity, name, parsed.data),
+      );
+      return c.json({ verdict });
+    } catch (error) {
+      if (error instanceof AppModelError) {
+        throw new GestureRefusal(
+          error.code === 'unknown_app' ? 404 : 422,
+          error.code,
+          error.message,
+        );
       }
       throw error;
     }

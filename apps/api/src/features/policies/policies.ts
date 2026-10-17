@@ -7,7 +7,7 @@ import {
   type JournaledDecision,
   type PolicyEngine,
 } from '@kete/policies';
-import type { Gesture } from '@kete/sdk';
+import type { Gesture, Policy } from '@kete/sdk';
 import type { SqlExecutor } from '@kete/tenancy';
 import { awayOn } from '@kete/work';
 import { transaction } from '../../platform/db.js';
@@ -31,11 +31,29 @@ import { policyWords } from './words.js';
 
 const raw = createPolicyEngine({ schema: centerSchema, namespace: NAMESPACE });
 
-/** The engine, with Kete's base policies read before the organization's. */
-export const engine: PolicyEngine = {
-  ...raw,
-  decide: (input) => raw.decide({ ...input, policies: [...basePolicies, ...input.policies] }),
-};
+/** The engine, with Kete's base policies — and any given — read before the organization's. */
+function engineWith(base: readonly Policy[]): PolicyEngine {
+  return {
+    ...raw,
+    decide: (input) => raw.decide({ ...input, policies: [...base, ...input.policies] }),
+  };
+}
+
+export const engine: PolicyEngine = engineWith(basePolicies);
+
+/**
+ * An app's gesture the organization allowed nowhere (spec 091): what the app's own rules allow is
+ * allowed, and the organization's forbids and approvals still apply.
+ */
+const appRules = (kind: string): Policy => ({
+  id: 'kete.app-rules',
+  version: 1,
+  sentence: policyWords().appRules,
+  rule: `permit (principal, action == ${NAMESPACE}::Action::"${kind}", resource);`,
+  set: 'authority',
+  owner: 'kete',
+  status: 'active',
+});
 
 /** A gesture the center cannot decide: unknown, or its object is not what it acts on. */
 export class GestureError extends Error {
@@ -197,21 +215,45 @@ export async function decideFor(
   db: SqlExecutor,
   organizationId: string,
   gesture: Gesture,
+  options: { appRules?: boolean } = {},
 ): Promise<JournaledDecision> {
   const kind = gesture.kind as GestureKind;
   if (!knownGestures.includes(kind)) {
     throw new GestureError('unknown_gesture', `The center does not know « ${gesture.kind} ».`);
   }
-  if (gesture.object.kind !== objectOf[kind]) {
-    throw new GestureError('wrong_object', `« ${kind} » acts on a ${objectOf[kind]}.`);
+  if (!objectOf[kind].includes(gesture.object.kind)) {
+    throw new GestureError('wrong_object', `« ${kind} » acts on a ${objectOf[kind].join(' or ')}.`);
   }
   const full = completed(gesture);
   const entities = await entitiesFor(db, full);
   const policies = (await currentPolicies(db)).filter((p) => p.status !== 'off');
-  const refused = engine.decide({ policies, gesture: full, entities }).effect === 'refuse';
+  const deciding = options.appRules
+    ? engineWith([...basePolicies, appRules(gesture.kind)])
+    : engine;
+  const refused = deciding.decide({ policies, gesture: full, entities }).effect === 'refuse';
   const decide = (on: SqlExecutor) =>
-    decideGesture(on, organizationId, { engine, gesture: full, entities });
+    decideGesture(on, organizationId, { engine: deciding, gesture: full, entities });
   return refused ? transaction(organizationId, decide) : decide(db);
+}
+
+/**
+ * What the policies in force say of a gesture (spec 091): whether any speaks of it — where none
+ * does, an app keeps its own rules — and whether one allows it. Where some forbid or ask an
+ * approval but none allows, what the app allows is allowed, under those forbids and approvals.
+ * Kete's base policies and those on trial do not rule.
+ */
+export async function ruledHere(
+  db: SqlExecutor,
+  kind: string,
+): Promise<{ spoken: boolean; allowed: boolean }> {
+  const action = `${NAMESPACE}::Action::"${kind}"`;
+  const speaking = (await currentPolicies(db)).filter(
+    (p) => p.status === 'active' && p.rule.includes(action),
+  );
+  return {
+    spoken: speaking.length > 0,
+    allowed: speaking.some((p) => p.set === 'authority' && /^\s*permit\b/.test(p.rule)),
+  };
 }
 
 /** What each policy did these last thirty days: as cited by the journal, and on trial. */
