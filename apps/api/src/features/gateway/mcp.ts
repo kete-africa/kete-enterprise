@@ -101,6 +101,18 @@ function ruled(
   }));
 }
 
+/**
+ * Tools that are not the registry's — an agent's abilities beyond Kete (spec 094) — at the same
+ * point of passage: the organization's policies are asked before each runs, by its name.
+ */
+export function underPolicies(
+  organizationId: string,
+  actor: Actor,
+  tools: readonly CapabilityTool[],
+): CapabilityTool[] {
+  return ruled(organizationId, actor, tools, new Map());
+}
+
 /** The drafts an agent may hold open for one person at once: beyond, it waits (D-028). */
 export const DRAFT_BUDGET = 10;
 

@@ -9,7 +9,18 @@ export {
   type ModelChoice,
   type PersonalPolicy,
 } from './connections.js';
+export {
+  abilitiesIn,
+  abilityTools,
+  computerForRun,
+  researcherOf,
+  speechPort,
+  useSpeech,
+  useWeb,
+  type Ability,
+} from './abilities.js';
 export { useKeyChecker } from './infrastructure/key-check.js';
+export { useSandboxProvider } from './infrastructure/sandboxes.js';
 export { subscriptionAgent, useSubscriptionAgent } from './infrastructure/subscription-agent.js';
 export {
   aiSubscriptionsMigrationSql,

@@ -91,3 +91,25 @@ flowchart LR
   B -->|question| Q[asPerson · her tools] --> CV[a conversation] --> TD[(app_tasks) · À faire]
   BR & TD --> M[(mail queue) if by e-mail]
 ```
+
+## Beyond Kete (spec 094)
+
+What the organization lets its agents do beyond Kete, in « Réglages » (`kete.agent_abilities`, none
+by default): **the web** — `web_search` on the model provider's own search, `web_read` over the
+public internet only — and **a computer of their own** — a sandbox kept per conversation
+(`assistant_conversations.sandbox_id`), one per task deleted at its end. Each is a tool under the
+organization's policies (`underPolicies`), and every tool of a turn is guarded together: once a page
+or a computer's output was read, nothing acts at once (`guardOutside`). An agent's task also gets a
+researcher to hand a question to (`delegate_researcher`), with the web only.
+
+```mermaid
+flowchart LR
+  S[« Réglages » · kete.agent_abilities] --> A[abilityTools]
+  A -->|web| W[web_search · web_read]
+  A -->|computer| C[computer_run · write · read]
+  W & C --> P[underPolicies]
+  P --> G[guardOutside · with every tool of the turn]
+  G --> Chat[the chat · askStream]
+  G --> Task[an agent's task · runAgent + delegate_researcher]
+  V[POST /v1/assistant/speech] -->|KETE_SPEECH_*| Audio[« Écouter » · read aloud when she chose kete.spoken_answers]
+```

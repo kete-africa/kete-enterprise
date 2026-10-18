@@ -1,4 +1,4 @@
-import { runAgent } from '@kete/agents';
+import { OUTSIDE_ABILITIES, runAgent } from '@kete/agents';
 import type { CapabilityTool, InvocationResult } from '@kete/capabilities';
 import { MAX_DELEGATION_DEPTH, type Actor } from '@kete/commands';
 import { newId } from '@kete/records';
@@ -9,10 +9,11 @@ import { z } from 'zod';
 import { asPerson } from '../../platform/acting.js';
 import { getPool, transaction } from '../../platform/db.js';
 import { env } from '../../platform/env.js';
-import { organizationLanguageModel } from '../../platform/models.js';
+import { organizationLanguageModel, organizationModelConfig } from '../../platform/models.js';
 import { sourcesOf, type Source } from '../../platform/sources.js';
 import { usageStore } from '../../platform/usage.js';
-import { toolPermissions, toolsForAgent } from '../gateway/index.js';
+import { abilitiesIn, abilityTools, computerForRun, researcherOf } from '../ai/index.js';
+import { toolPermissions, toolsForAgent, underPolicies } from '../gateway/index.js';
 import { notificationWords, tell } from '../notifications/index.js';
 import { readModules } from '../organization/index.js';
 import { putTask, spaceHref } from '../workspace/index.js';
@@ -708,6 +709,8 @@ export async function runTask(
       ),
     );
   };
+  // A computer of the task's own, when it asks for one: deleted at its end.
+  const computer = computerForRun();
   try {
     const answer = await asPerson(
       {
@@ -730,20 +733,37 @@ export async function runTask(
         for (const tool of own) {
           facts.set(tool.name, { permission: permissionOf.get(tool.name), level: tool.autonomy });
         }
-        const tools = [...own, ...delegationTools(organizationId, userId, task, agent)].map(
-          (tool): CapabilityTool => ({
-            ...tool,
-            async execute(input) {
-              if (await interrupted()) {
-                abort.abort();
-                return { status: 'confirmation_required', message: 'Interrupted by its person.' };
-              }
-              const result = await tool.execute(input);
-              await record(tool.name, result);
-              return result;
-            },
-          }),
+        // What the organization lets its agents do beyond Kete (spec 094): the web, a computer of
+        // the task's own, deleted when it ends — under its policies like every tool.
+        const metering = {
+          store: usageStore(),
+          context: { organizationId, actor, purpose: 'agents', model: '' },
+        };
+        const abilities = await transaction(organizationId, (db) =>
+          abilitiesIn(db, organizationId),
+        ).catch(() => []);
+        const beyond = underPolicies(
+          organizationId,
+          actor,
+          abilityTools({ abilities, config: organizationModelConfig(), metering, computer }),
         );
+        const researcher = researcherOf(beyond);
+        const tools = [
+          ...own,
+          ...beyond,
+          ...delegationTools(organizationId, userId, task, agent),
+        ].map((tool): CapabilityTool => ({
+          ...tool,
+          async execute(input) {
+            if (await interrupted()) {
+              abort.abort();
+              return { status: 'confirmation_required', message: 'Interrupted by its person.' };
+            }
+            const result = await tool.execute(input);
+            await record(tool.name, result);
+            return result;
+          },
+        }));
         return runAgent({
           agent: agent.agentId,
           name: agent.name,
@@ -756,10 +776,10 @@ export async function runTask(
           messages: [{ role: 'user', content: promptOf(task) }],
           tools,
           maxSteps: 8,
-          metering: {
-            store: usageStore(),
-            context: { organizationId, actor, purpose: 'agents', model: '' },
-          },
+          metering,
+          // What a page or a computer said is outside content: nothing acts at once after it.
+          outside: { tools: OUTSIDE_ABILITIES },
+          ...(researcher ? { subAgents: [researcher] } : {}),
           abortSignal: abort.signal,
         });
       },
@@ -780,6 +800,8 @@ export async function runTask(
     const parked = await park(organizationId, taskId).catch(() => null);
     if (parked) return parked;
     return fail('failed', (error as Error).message.slice(0, 500));
+  } finally {
+    await computer.close();
   }
 }
 

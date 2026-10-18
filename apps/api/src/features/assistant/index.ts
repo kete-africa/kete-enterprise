@@ -10,6 +10,7 @@ export { chatMigrationSql } from './attachments.js';
 export { feedbackMigrationSql, feedbackRoutes, feedbackShare } from './feedback.js';
 export { commandInstructions } from './chat-tools.js';
 export {
+  conversationComputerMigrationSql,
   conversationsMigrationSql,
   listConversations,
   readConversationOf,

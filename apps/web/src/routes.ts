@@ -91,4 +91,5 @@ export const routes = rootRoute('__root.tsx', [
   route('/auth/sortie', 'auth/sign-out.ts'),
   route('/health', 'api/health.ts'),
   route('/assistant/flux', 'api/assistant-stream.ts'),
+  route('/assistant/voix', 'api/assistant-speech.ts'),
 ]);

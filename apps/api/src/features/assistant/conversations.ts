@@ -1,6 +1,37 @@
+import type { ComputerSession } from '@kete/agents';
 import { newId } from '@kete/records';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
+import { transaction } from '../../platform/db.js';
 import type { AnswerTable } from '../../platform/tables.js';
+
+/** A conversation keeps the computer its agent works on (spec 094): one sandbox, its id. */
+export function conversationComputerMigrationSql(options: { schema: string }): string {
+  return `alter table ${options.schema}.assistant_conversations add column sandbox_id text;`;
+}
+
+/** Where a conversation's computer is kept between its turns. */
+export function conversationComputer(
+  organizationId: string,
+  conversationId: string,
+): ComputerSession {
+  return {
+    get: () =>
+      transaction(organizationId, async (db) => {
+        const { rows } = await db.query<{ sandbox_id: string | null }>(
+          'select sandbox_id from assistant_conversations where conversation_id = $1',
+          [conversationId],
+        );
+        return rows[0]?.sandbox_id ?? null;
+      }),
+    keep: (sandboxId) =>
+      transaction(organizationId, async (db) => {
+        await db.query(
+          'update assistant_conversations set sandbox_id = $2 where conversation_id = $1',
+          [conversationId, sandboxId],
+        );
+      }),
+  };
+}
 
 /**
  * The assistant's conversations (spec 017): a person finds hers again, as in any assistant. Each

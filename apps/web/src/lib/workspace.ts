@@ -68,6 +68,9 @@ export const fetchAssistant = createServerFn({ method: 'GET' }).handler(() =>
     model: string | null;
     /** Who may pay for her answers, the first by default (spec 026b). */
     payers: Payer[];
+    /** Whether a voice says answers here, and whether she wants hers read as they finish. */
+    speech: boolean;
+    readAloud: boolean;
   }>(getRequest(), '/v1/assistant'),
 );
 
