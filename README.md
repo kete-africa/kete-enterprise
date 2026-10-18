@@ -23,4 +23,9 @@ flowchart TB
   `pnpm --filter @kete-enterprise/web dev`.
 - **Look at the screens**: `pnpm demo` — the KYA demo organization on a throwaway schema of the test
   database, signed in through a local door (`apps/api/scripts/demo.ts`). Never a deployment.
+- **The whole platform**: kete-core's `pnpm platform` runs this demo joined (`KETE_DEMO_JOINED=on`):
+  sign-in through the local Compte Kete, the data in its « KYA démo » organization, the person signed
+  in as Abla Nyuiadzi; with `KETE_DEMO_MODEL=real` the configured model answers. The apps beside it
+  (`KETE_DEMO_APPS`) are registered in its registry as they answer — on the loopback, which only a
+  developer's machine accepts (`KETE_ENVIRONMENT=development`).
 - **Test**: `pnpm test` (a real Postgres: the Neon `test` branch, or `KETE_TEST_POSTGRES=container`).
