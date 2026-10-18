@@ -2438,5 +2438,9 @@
   "error_tools_name_taken": "Un de ses outils porte le nom d’un outil de Kete : choisissez un autre préfixe.",
   "error_tools_not_public": "Cette adresse n’est pas sur l’internet public.",
   "error_tools_invalid_description": "Ce n’est pas une description OpenAPI 3 en JSON, ou elle ne dit pas où vont ses appels.",
-  "error_tools_none": "Il n’offre aucun outil."
+  "error_tools_none": "Il n’offre aucun outil.",
+  "settings_group_agents": "Agents",
+  "intelligence_listen": "Écouter",
+  "intelligence_listen_stop": "Arrêter la lecture",
+  "intelligence_listen_off": "Aucune voix n’est configurée ici"
 }

@@ -264,6 +264,63 @@ function Opinion({
   );
 }
 
+let playing: HTMLAudioElement | null = null;
+
+/** Says an answer aloud through the instance's voice (spec 094); silent when it has none. */
+async function sayAloud(text: string): Promise<HTMLAudioElement | null> {
+  const response = await fetch('/assistant/voix', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ text, language: getLocale() }),
+  }).catch(() => null);
+  if (!response?.ok) return null;
+  playing?.pause();
+  const audio = new Audio(URL.createObjectURL(await response.blob()));
+  playing = audio;
+  await audio.play().catch(() => undefined);
+  return audio;
+}
+
+/** « Écouter »: the answer said aloud, and stopped again. */
+function Listen({ text }: { text: string }) {
+  const [state, setState] = useState<'idle' | 'loading' | 'playing' | 'off'>('idle');
+  const audio = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => () => audio.current?.pause(), []);
+  const toggle = async () => {
+    if (state === 'playing') {
+      audio.current?.pause();
+      setState('idle');
+      return;
+    }
+    setState('loading');
+    const started = await sayAloud(text);
+    if (!started) return setState('off');
+    audio.current = started;
+    started.onended = () => setState('idle');
+    started.onpause = () => setState('idle');
+    setState('playing');
+  };
+  const label =
+    state === 'off'
+      ? m.intelligence_listen_off()
+      : state === 'playing'
+        ? m.intelligence_listen_stop()
+        : m.intelligence_listen();
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={state === 'loading' || state === 'off'}
+      aria-pressed={state === 'playing'}
+      onClick={() => void toggle()}
+      className="inline-grid size-7 place-items-center rounded-[5px] text-fg-soft hover:bg-surface-hover hover:text-fg disabled:opacity-50 aria-pressed:bg-surface-selected aria-pressed:text-fg"
+    >
+      <CanvasIcon name={state === 'playing' ? 'stop' : 'play'} size={16} />
+    </button>
+  );
+}
+
 /** What an answer brought after its words: the tables it read, the document it wrote. */
 function After({
   extra,
@@ -390,13 +447,17 @@ export function CenterIntelligence({
         );
     }
   };
-  const [state, setState] = useState<{ available: boolean; payers: Payer[] } | null>(null);
+  const [state, setState] = useState<{
+    available: boolean;
+    payers: Payer[];
+    readAloud: boolean;
+  } | null>(null);
   const [withPage, setWithPage] = useState(true);
   useEffect(() => {
     if (state) return;
     void fetchAssistant()
-      .then((a) => setState({ available: a.available, payers: a.payers }))
-      .catch(() => setState({ available: false, payers: [] }));
+      .then((a) => setState({ available: a.available, payers: a.payers, readAloud: a.readAloud }))
+      .catch(() => setState({ available: false, payers: [], readAloud: false }));
   }, [state]);
   const shown = withPage ? page : null;
   const center = useCenterIntelligence({
@@ -411,10 +472,22 @@ export function CenterIntelligence({
     asked.current = question.at;
     center.ask(question.text);
   }, [question, state, center]);
-  const named = center.extras.at(-1)?.conversationId;
+  // Her answers read aloud as they finish, when she chose so (spec 094, `kete.spoken_answers`).
+  const read = useRef<string | null>(null);
+  const last = center.turns.at(-1);
   useEffect(() => {
-    if (named) onConversation?.(named);
-  }, [named, onConversation]);
+    if (!state?.readAloud || !last || last.state !== 'done' || !last.text) return;
+    if (read.current === last.id) return;
+    read.current = last.id;
+    void sayAloud(last.text);
+  }, [state, last]);
+  const named = center.extras.at(-1)?.conversationId;
+  // Said once its answer is over: a page that writes it in its address reloads, and must not cut
+  // the answer as it streams.
+  const answering = center.running;
+  useEffect(() => {
+    if (named && !answering) onConversation?.(named);
+  }, [named, answering, onConversation]);
   useEffect(() => setWithPage(true), [page?.href]);
 
   const words = intelligenceWords();
@@ -531,6 +604,7 @@ export function CenterIntelligence({
               <CanvasIcon name="pin" size={14} />
               {m.intelligence_pin()}
             </button>
+            <Listen text={turn.text} />
             <Opinion turnId={turn.id} conversationId={center.conversationId} />
           </>
         ) : null

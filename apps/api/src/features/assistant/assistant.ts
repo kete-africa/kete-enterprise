@@ -8,6 +8,7 @@ import {
   modelConfigFromEnv,
   type ModelConfig,
 } from '@kete/ai';
+import { guardOutside, OUTSIDE_ABILITIES } from '@kete/agents';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
 import { Hono, type Context } from 'hono';
 import { z } from 'zod';
@@ -19,7 +20,10 @@ import { secretsOn } from '../../platform/secrets.js';
 import { tableOf } from '../../platform/tables.js';
 import { usageStore } from '../../platform/usage.js';
 import {
+  abilitiesIn,
+  abilityTools,
   markSubscriptionUsed,
+  speechPort,
   modelChoiceFor,
   payers,
   payersFor,
@@ -36,13 +40,21 @@ import { formsOpen, formTools } from '../forms/index.js';
 import { knowledgeTool, libraryOpen } from '../knowledge/index.js';
 import { keepSkill, skillsForModel, skillsOf } from '../skills/index.js';
 import { skillFromText, SkillError } from '@kete/skills';
-import { appToolsFor, decideDraft, draftsFor, toolsForPerson } from '../gateway/index.js';
+import {
+  appToolsFor,
+  decideDraft,
+  draftsFor,
+  toolsForPerson,
+  underPolicies,
+} from '../gateway/index.js';
 import { readModules } from '../organization/index.js';
 import { isAdministrator } from '../rights/index.js';
+import { settingsFor } from '../settings/index.js';
 import { personOfAccount } from '../structure/index.js';
 import { factsFor, type Facts } from '../workspace/index.js';
 import {
   appendMessage,
+  conversationComputer,
   explainDraft,
   type AppView,
   listConversations,
@@ -145,7 +157,8 @@ const payersOf = (db: SqlExecutor, userId: string) =>
 
 /** What answers her in the chat: a model (hers or the organization's), or her own subscription. */
 type Answerer =
-  { kind: 'model'; model: Model; personal: boolean } | { kind: 'subscription'; machineId: string };
+  | { kind: 'model'; model: Model; personal: boolean; config: ModelConfig | null }
+  | { kind: 'subscription'; machineId: string };
 
 /**
  * The answerer she chose with « Pay with », if the organization's policy lets that payer pay — or
@@ -167,12 +180,17 @@ async function answererFor(
       const own = await readSubscription(db, identity.userId);
       return { kind: 'subscription', machineId: (own as { machineId: string }).machineId };
     }
-    if (override) return { kind: 'model', model: override, personal: false };
+    if (override) return { kind: 'model', model: override, personal: false, config: null };
     const choice = await modelChoiceFor(db, identity.userId, configured(), payer);
     if (!choice) {
       throw new GestureRefusal(409, 'assistant_unavailable', 'No model is configured here.');
     }
-    return { kind: 'model', model: languageModel(choice.config), personal: choice.personal };
+    return {
+      kind: 'model',
+      model: languageModel(choice.config),
+      personal: choice.personal,
+      config: choice.config,
+    };
   });
 }
 
@@ -373,12 +391,22 @@ export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
       choice: override ? null : await modelChoiceFor(db, identity.userId, configured()),
       payers: await payersOf(db, identity.userId),
     }));
+    // Her own choice, read in the Compte Kete with her token (spec 094).
+    const token = /^Bearer (.+)$/.exec(c.req.header('authorization') ?? '')?.[1] ?? null;
+    const speech = speechPort() !== null;
+    const readAloud =
+      speech &&
+      (await transaction(identity.organizationId, (db) => settingsFor(db, { token }))
+        .then((settings) => settings.value('kete.spoken_answers') === true)
+        .catch(() => false));
     return c.json({
       available: Boolean(override ?? choice) || payers.includes('subscription'),
       provider: choice?.config.provider ?? null,
       model: choice?.config.model ?? null,
       personal: choice?.personal ?? false,
       payers,
+      speech,
+      readAloud,
     });
   })
   .get('/briefing', async (c) => c.json(await writeBriefing(c.get('identity'), false)))
@@ -547,6 +575,41 @@ export const assistantRoutes = new Hono<{ Variables: IdentityVariables }>()
     } catch (error) {
       if (error instanceof AttachmentError) {
         throw new GestureRefusal(422, error.code, error.message);
+      }
+      throw error;
+    }
+  })
+  // An answer said aloud (spec 094): the instance's voice, counted for her organization.
+  .post('/speech', async (c) => {
+    const identity = c.get('identity');
+    const parsed = z
+      .object({
+        text: z.string().trim().min(1).max(20_000),
+        language: z.string().max(10).optional(),
+      })
+      .safeParse(await bodyOf(c));
+    if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'Some text is required.');
+    const voice = speechPort({
+      store: budgets(),
+      context: {
+        organizationId: identity.organizationId,
+        actor: { kind: 'person', id: identity.userId, channel: 'web' },
+        purpose: 'speech',
+        model: '',
+      },
+    });
+    if (!voice) throw new GestureRefusal(409, 'speech_off', 'No voice is configured here.');
+    try {
+      const spoken = await voice.speak(parsed.data.text, {
+        ...(parsed.data.language ? { language: parsed.data.language } : {}),
+        signal: c.req.raw.signal,
+      });
+      return new Response(spoken.audio, {
+        headers: { 'content-type': spoken.mediaType, 'cache-control': 'no-store' },
+      });
+    } catch (error) {
+      if (error instanceof BudgetExceededError) {
+        throw new GestureRefusal(409, 'budget_spent', 'The budget is spent.');
       }
       throw error;
     }
@@ -769,6 +832,12 @@ async function streamChat(c: Ctx): Promise<Response> {
   const forms = answerer.kind === 'model' && (await formsOpen(identity).catch(() => false));
   // The organization's document templates, filled for her (spec 038).
   const documents = answerer.kind === 'model' && (await documentsOpen(identity).catch(() => false));
+  // What its agents do beyond Kete, as the organization turned it on (spec 094): never while
+  // another views her space.
+  const abilities =
+    answerer.kind === 'model' && !c.get('viewedBy')
+      ? await transaction(organizationId, (db) => abilitiesIn(db, organizationId)).catch(() => [])
+      : [];
   const appTools = (apps?.tools ?? []).filter(
     (t) => named.length === 0 || named.some((n) => t.description.startsWith(n)),
   );
@@ -834,8 +903,36 @@ async function streamChat(c: Ctx): Promise<Response> {
         } else {
           await asPerson(identity, async () => {
             const capabilities = await toolsForPerson(identity);
+            const assistant = {
+              kind: 'agent' as const,
+              id: 'agt_assistant',
+              channel: 'chat' as const,
+              onBehalfOf: { kind: 'person' as const, id: userId },
+            };
+            const metering = {
+              store: meteringStore(answerer.personal),
+              context: {
+                organizationId,
+                actor: assistant,
+                purpose: purposeOf('chat', answerer.personal),
+                model: '',
+              },
+            };
+            // The web and a computer, under the organization's policies like every tool (spec 094).
+            const beyond = underPolicies(
+              organizationId,
+              assistant,
+              abilityTools({
+                abilities,
+                config: answerer.config,
+                metering,
+                computer: conversationComputer(organizationId, conversationId),
+              }),
+            );
             // Each capability's autonomy level, said with its call (spec 085): the drawer shows it.
-            const levelOf = new Map(capabilities.map((tool) => [tool.name, tool.autonomy]));
+            const levelOf = new Map(
+              [...capabilities, ...beyond].map((tool) => [tool.name, tool.autonomy]),
+            );
             const called = (part: Record<string, unknown>) => ({
               id: String(part['toolCallId'] ?? part['toolName']),
               name: String(part['toolName']),
@@ -855,36 +952,28 @@ async function streamChat(c: Ctx): Promise<Response> {
 ${skills.prompt}`
                   : ''),
               messages: [...history, { role: 'user', content }],
-              tools: [
-                ...capabilities,
-                canvasTool,
-                ...(c.get('viewedBy')
-                  ? []
-                  : [scheduleTool(identity), rememberTool(identity), colleagueTool(identity)]),
-                ...(library ? [knowledgeTool(identity)] : []),
-                ...(documents && !c.get('viewedBy') ? documentTools(identity) : []),
-                ...skills.tools,
-                ...(teamData ? datasetTools(identity) : []),
-                ...(forms ? formTools(identity) : []),
-                ...(dashboards ? dashboardTools(identity) : []),
-                ...appTools,
-              ],
+              // Once a page or a computer's output is read, nothing acts at once (spec 090).
+              tools: guardOutside(
+                [
+                  ...capabilities,
+                  canvasTool,
+                  ...(c.get('viewedBy')
+                    ? []
+                    : [scheduleTool(identity), rememberTool(identity), colleagueTool(identity)]),
+                  ...(library ? [knowledgeTool(identity)] : []),
+                  ...(documents && !c.get('viewedBy') ? documentTools(identity) : []),
+                  ...skills.tools,
+                  ...(teamData ? datasetTools(identity) : []),
+                  ...(forms ? formTools(identity) : []),
+                  ...(dashboards ? dashboardTools(identity) : []),
+                  ...appTools,
+                  ...beyond,
+                ],
+                { outside: OUTSIDE_ABILITIES },
+              ),
               maxSteps: 6,
               abortSignal: signal,
-              metering: {
-                store: meteringStore(answerer.personal),
-                context: {
-                  organizationId,
-                  actor: {
-                    kind: 'agent',
-                    id: 'agt_assistant',
-                    channel: 'chat',
-                    onBehalfOf: { kind: 'person', id: userId },
-                  },
-                  purpose: purposeOf('chat', answerer.personal),
-                  model: '',
-                },
-              },
+              metering,
             });
             for await (const part of result.fullStream as AsyncIterable<Record<string, unknown>>) {
               if (part['type'] === 'text-delta') {

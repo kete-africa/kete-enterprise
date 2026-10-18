@@ -25,6 +25,11 @@ function config(prefix: string): ModelConfig | null {
   }
 }
 
+/** The organization's model configuration (`KETE_AI_*`), or null when none is configured. */
+export function organizationModelConfig(): ModelConfig | null {
+  return config('KETE_AI');
+}
+
 /** The organization's language model, or null when none is configured. */
 export function organizationLanguageModel(): LanguageModel | null {
   if (languageOverride !== undefined) return languageOverride;

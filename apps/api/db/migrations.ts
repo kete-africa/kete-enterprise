@@ -48,6 +48,7 @@ import { draftsMigrationSql, proposalSetsMigrationSql } from '@kete/drafts';
 import {
   assistantMigrationSql,
   chatMigrationSql,
+  conversationComputerMigrationSql,
   conversationsMigrationSql,
   feedbackMigrationSql,
   memoryMigrationSql,
@@ -265,4 +266,9 @@ export const migrations: Migration[] = [
   { name: '0067_kete_settings', sql: (context) => settingsMigrationSql(context) },
   // The organization's own tools, imported for its agents under Kete's rules (spec 093).
   { name: '0068_imported_tools', sql: (context) => toolsMigrationSql(context) },
+  // A conversation keeps the computer its agent works on (spec 094).
+  {
+    name: '0069_conversation_computer',
+    sql: (context) => conversationComputerMigrationSql(context),
+  },
 ];

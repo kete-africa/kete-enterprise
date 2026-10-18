@@ -13,5 +13,6 @@ export {
   toolPermissions,
   toolsForAgent,
   toolsForPerson,
+  underPolicies,
 } from './mcp.js';
 export { gatewayRoutes } from './routes.js';

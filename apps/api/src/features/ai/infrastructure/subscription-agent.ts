@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { boatProvider, type Sandbox, type SandboxProvider } from '@kete/sandbox';
+import type { Sandbox } from '@kete/sandbox';
 import { SubscriptionLostError, type SubscriptionAgent } from '../subscriptions.js';
+import { sandboxProvider } from './sandboxes.js';
 
 // A person's subscription answers through Codex, signed in with her ChatGPT account on her own
 // sandbox (spec 026b). The agent's and the provider's names stay here, in the infrastructure. The
@@ -15,14 +16,7 @@ const strip = (text: string) => text.replace(ESCAPES, '');
 /** The model her subscription answers with (`KETE_SUBSCRIPTION_MODEL`, default gpt-6.1-sol). */
 const model = () => process.env.KETE_SUBSCRIPTION_MODEL?.trim() || 'gpt-6.1-sol';
 
-let provider: SandboxProvider | null | undefined;
-function sandboxes(): SandboxProvider | null {
-  if (provider === undefined) {
-    const apiKey = process.env.KETE_SANDBOX_API_KEY?.trim();
-    provider = apiKey ? boatProvider({ apiKey }) : null;
-  }
-  return provider;
-}
+const sandboxes = sandboxProvider;
 
 async function machine(id: string): Promise<Sandbox> {
   const box = await sandboxes()?.open(id);
