@@ -108,7 +108,11 @@ const sandboxes = memoryProvider((command) =>
 const search: WebSearchPort = {
   search: (query) => {
     searched.push(query);
-    return Promise.resolve({ summary: 'Fixé par l’ARSE.', sources: [] });
+    // Its source is the page read next: after outside content, only an address it gave is read.
+    return Promise.resolve({
+      summary: 'Fixé par l’ARSE.',
+      sources: [{ title: 'Tarifs', url: 'https://arse.tg/tarifs' }],
+    });
   },
 };
 const voice: SpeechPort = {

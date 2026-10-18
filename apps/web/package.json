@@ -13,7 +13,7 @@
   "dependencies": {
     "@kete/auth": "npm:@kete-africa/auth@^0.5.1",
     "@kete/design": "npm:@kete-africa/design@^0.14.1",
-    "@kete/intelligence": "npm:@kete-africa/intelligence@^0.3.2",
+    "@kete/intelligence": "npm:@kete-africa/intelligence@^0.3.3",
     "@kete/sdk": "npm:@kete-africa/sdk@^0.15.1",
     "@kete/shell": "npm:@kete-africa/shell@^0.4.1",
     "@kete/time": "npm:@kete-africa/time@^0.3.2",
