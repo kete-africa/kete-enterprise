@@ -41,12 +41,19 @@ const supportServer = createMcpHandler(
       {
         description: 'The open tickets.',
         inputSchema: z.object({}),
+        annotations: { readOnlyHint: true },
         _meta: { ui: { resourceUri: 'ui://kete/table' } },
       },
       async () => ({
         content: [{ type: 'text', text: '{}' }],
         structuredContent: { title: 'Tickets', rows: [{ id: 'T-1', subject: 'Onduleur' }] },
       }),
+    );
+    // A tool that writes, saying nothing of it: MCP's default is a destruction.
+    server.registerTool(
+      'tickets_close',
+      { description: 'Closes a ticket.', inputSchema: z.object({ id: z.string() }) },
+      async () => ({ content: [{ type: 'text', text: 'closed' }] }),
     );
     server.registerTool(
       'kete_draft_validate',
@@ -115,8 +122,27 @@ describe('the apps’ views in the chat', () => {
       { userId: 'usr_kofi', role: 'member', organizationId: 'org_kya' },
       t.kofi,
     );
-    expect(apps.tools.map((x) => x.name)).toEqual(['support__tickets_open']);
+    expect(apps.tools.map((x) => x.name)).toEqual([
+      'support__tickets_open',
+      'support__tickets_close',
+    ]);
     expect(apps.viewOf('support__tickets_open')).toEqual({ resourceId, uri: 'ui://kete/table' });
+    await apps.close();
+  });
+
+  it('lends only what a server that is not a Kete app marks read-only (spec 093)', async () => {
+    await call(t.kofi, 'POST', '/registry/resources', {
+      kind: 'mcp',
+      name: 'Helpdesk',
+      address: 'https://helpdesk.example.test',
+    });
+    const apps = await appToolsFor(
+      { userId: 'usr_kofi', role: 'member', organizationId: 'org_kya' },
+      t.kofi,
+    );
+    expect(apps.tools.map((x) => x.name).filter((name) => name.startsWith('helpdesk__'))).toEqual([
+      'helpdesk__tickets_open',
+    ]);
     await apps.close();
   });
 

@@ -11,12 +11,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@kete/auth": "npm:@kete-africa/auth@^0.3.0",
-    "@kete/design": "npm:@kete-africa/design@^0.14.0",
-    "@kete/intelligence": "npm:@kete-africa/intelligence@^0.3.0",
-    "@kete/sdk": "npm:@kete-africa/sdk@^0.10.0",
-    "@kete/shell": "npm:@kete-africa/shell@^0.4.0",
-    "@kete/time": "npm:@kete-africa/time@^0.2.0",
+    "@kete/auth": "npm:@kete-africa/auth@^0.5.1",
+    "@kete/design": "npm:@kete-africa/design@^0.14.1",
+    "@kete/intelligence": "npm:@kete-africa/intelligence@^0.3.1",
+    "@kete/sdk": "npm:@kete-africa/sdk@^0.15.1",
+    "@kete/shell": "npm:@kete-africa/shell@^0.4.1",
+    "@kete/time": "npm:@kete-africa/time@^0.3.2",
     "@mcp-ui/client": "7.1.1",
     "@tanstack/react-router": "^1.170.44",
     "@tanstack/react-start": "^1.169.2",

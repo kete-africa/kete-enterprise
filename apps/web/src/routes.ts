@@ -76,6 +76,7 @@ export const routes = rootRoute('__root.tsx', [
   route('/administration/politiques', 'policies.tsx'),
   route('/administration/boites-mail', 'mailboxes.tsx'),
   route('/administration/connecteurs', 'connectors.tsx'),
+  route('/administration/outils', 'tools.tsx'),
   route('/administration/circuits', 'circuits.tsx'),
   route('/administration/registre', 'registry.tsx'),
   route('/administration/agents', 'agents.tsx'),

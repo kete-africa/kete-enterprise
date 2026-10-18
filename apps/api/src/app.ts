@@ -84,6 +84,7 @@ import { todoRoutes } from './features/todo/index.js';
 import { forMeRoutes, workRoutes } from './features/work/index.js';
 import { policiesRoutes } from './features/policies/index.js';
 import { settingsRoutes } from './features/settings/index.js';
+import { toolsPermissions, toolsRoutes } from './features/tools/index.js';
 import { threadRoutes } from './features/messages/index.js';
 import {
   appTasksRoutes,
@@ -109,6 +110,7 @@ export const permissionCatalog = [
   ...structurePermissions,
   ...rightsPermissions,
   ...registryPermissions,
+  ...toolsPermissions,
   ...decisionsPermissions,
   ...agentsPermissions,
   ...partiesPermissions,
@@ -272,6 +274,7 @@ export function createApi(): Hono {
   // Threads: one per object, her thread « Kete », the router's cards, mail bridged (spec 089).
   v1.route('/threads', threadRoutes);
   v1.route('/connectors', connectorRoutes);
+  v1.route('/tools', toolsRoutes);
   v1.route('/parties', partiesRoutes);
   v1.route('/projects', projectsRoutes);
   v1.route('/money', moneyRoutes);
