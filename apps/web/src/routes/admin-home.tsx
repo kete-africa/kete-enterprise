@@ -106,6 +106,14 @@ function AdminHome() {
               description={m.admin_connectors()}
             />
           )}
+          {me.administrator && (
+            <AppCard
+              href="/administration/outils"
+              icon={<Icon name="apps" />}
+              name={m.nav_tools()}
+              description={m.admin_tools()}
+            />
+          )}
           <AppCard
             href="/administration/circuits"
             icon={<Icon name="arrow" />}

@@ -4,6 +4,7 @@ import {
   createCapabilityRegistry,
   createMcpHandler,
   protectedResourceMetadata,
+  type CapabilityRegistry,
   type CapabilityTool,
   type InvocationResult,
 } from '@kete/capabilities';
@@ -15,6 +16,7 @@ import { VERSION } from '../../platform/service.js';
 import { notificationWords } from '../notifications/index.js';
 import { reach, reachesAnything } from '../rights/index.js';
 import { ruleAgainst, type Refusing } from '../rules/index.js';
+import { importedCapabilities, reserveToolNames, toolSetsVersion } from '../tools/index.js';
 import { GATEWAY_PERMISSION, gatewayCapabilities } from './capabilities.js';
 import { recordCall } from './infrastructure/gateway.tables.js';
 
@@ -22,8 +24,8 @@ import { recordCall } from './infrastructure/gateway.tables.js';
  * The gateway's capabilities: the same rights, journal and autonomy rules as the screens. A call
  * is allowed for the person it acts for, in her organization only.
  */
-const registry = createCapabilityRegistry(gatewayCapabilities, {
-  authorize: async (caller, permission) => {
+const host = {
+  authorize: async (caller: { organizationId: string; actor: Actor }, permission: string) => {
     const acting = actingPerson();
     if (!acting || acting.organizationId !== caller.organizationId) return false;
     // The person herself (deciding a draft), or an agent acting for her.
@@ -38,7 +40,30 @@ const registry = createCapabilityRegistry(gatewayCapabilities, {
     );
   },
   transaction,
-});
+};
+
+const own = createCapabilityRegistry(gatewayCapabilities, host);
+reserveToolNames(gatewayCapabilities.map((capability) => capability.name));
+const kept = new Map<string, { version: string; registry: CapabilityRegistry }>();
+
+/**
+ * An organization's registry: the gateway's capabilities and the tools it imported (spec 093),
+ * under the same host. Kept until one of its sets changes.
+ */
+async function registryOf(organizationId: string): Promise<CapabilityRegistry> {
+  return transaction(organizationId, async (db) => {
+    const version = await toolSetsVersion(db);
+    if (!version) return own;
+    const known = kept.get(organizationId);
+    if (known?.version === version) return known.registry;
+    const registry = createCapabilityRegistry(
+      [...gatewayCapabilities, ...(await importedCapabilities(db))],
+      host,
+    );
+    kept.set(organizationId, { version, registry });
+    return registry;
+  });
+}
 
 /** A capability an organization's rule refused: nothing ran, and the rule is named. */
 export type RuleRefusal = InvocationResult & { rule: { ruleId: string; sentence: string } };
@@ -93,7 +118,12 @@ export async function toolsForPerson(identity: { organizationId: string; userId:
   const tools = ruled(
     identity.organizationId,
     actor,
-    await registry.tools({ organizationId: identity.organizationId, actor }),
+    await (
+      await registryOf(identity.organizationId)
+    ).tools({
+      organizationId: identity.organizationId,
+      actor,
+    }),
     await toolPermissions(identity.organizationId, actor),
   );
   // A draft beyond the budget is not prepared: too many validations and people stop reading.
@@ -117,7 +147,10 @@ export async function toolPermissions(
   actor: Actor,
 ): Promise<Map<string, string>> {
   return new Map(
-    (await registry.list({ organizationId, actor })).map((c) => [c.name, c.permission]),
+    (await (await registryOf(organizationId)).list({ organizationId, actor })).map((c) => [
+      c.name,
+      c.permission,
+    ]),
   );
 }
 
@@ -138,6 +171,7 @@ export async function toolsForAgent(
   },
 ) {
   const caller = { organizationId: person.organizationId, actor };
+  const registry = await registryOf(person.organizationId);
   const allowed = new Set(limits.permissions);
   const permissionOf = new Map(
     (await registry.list(caller)).map((capability) => [capability.name, capability.permission]),
@@ -206,6 +240,7 @@ export async function draftsFor(identity: { organizationId: string; userId: stri
     return rows.map((r) => r.draft_id);
   });
   const caller = personCaller(identity);
+  const registry = await registryOf(identity.organizationId);
   const reviews = await Promise.all(ids.map((id) => registry.review(caller, id)));
   return reviews.filter((r) => r !== null);
 }
@@ -220,13 +255,13 @@ export async function preparedDraftCount(db: SqlExecutor, userId: string): Promi
 }
 
 /** The person decides a draft from her screen: the same command, journaled with her as actor. */
-export function decideDraft(
+export async function decideDraft(
   identity: { organizationId: string; userId: string },
   draftId: string,
   decision: { action: 'validate' | 'refuse'; reason?: string | undefined },
 ) {
   const base = { ...personCaller(identity), draftId, idempotencyKey: `draft-${draftId}` };
-  return registry.decide(
+  return (await registryOf(identity.organizationId)).decide(
     decision.action === 'validate'
       ? { ...base, action: 'validate' }
       : { ...base, action: 'refuse', reason: decision.reason ?? 'refused' },
@@ -264,10 +299,14 @@ async function refusedCalls(
     onBehalfOf: { kind: 'person', id: identity.userId },
   };
   const offered = new Map(
-    (await registry.tools({ organizationId: identity.organizationId, actor })).map((tool) => [
-      tool.name,
-      tool,
-    ]),
+    (
+      await (
+        await registryOf(identity.organizationId)
+      ).tools({
+        organizationId: identity.organizationId,
+        actor,
+      })
+    ).map((tool) => [tool.name, tool]),
   );
   const permissionOf = await toolPermissions(identity.organizationId, actor);
   let refusing: Refusing | null = null;
@@ -330,7 +369,7 @@ function toolsCalled(body: string): string[] {
 export async function handleGateway(request: Request): Promise<Response> {
   const identity = await identityOf(request);
   const handler = createMcpHandler({
-    registry,
+    registry: identity ? await registryOf(identity.organizationId) : own,
     server: { name: 'kete-enterprise', version: VERSION },
     caller: async () =>
       identity

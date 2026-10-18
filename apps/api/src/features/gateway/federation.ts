@@ -74,8 +74,9 @@ function transportTo(address: string, token: string): Parameters<Client['connect
  * The tools of the team's apps, for the person's assistant (spec 018): every active app or MCP
  * server of the registry she may see, with an https address, is asked for its tools with her
  * mandate (spec 024) — or her own token while mandates are off — so each app applies its own
- * rights and autonomy, never more than hers. A tool is named after its app; an app that does not
- * answer within a few seconds is left out of this turn.
+ * rights and autonomy, never more than hers. A server that is not a Kete app lends only its tools
+ * marked read-only. A tool is named after its app; an app that does not answer within a few
+ * seconds is left out of this turn.
  */
 export async function appToolsFor(
   identity: Parameters<typeof registryFor>[1] & { organizationId: string },
@@ -104,6 +105,9 @@ export async function appToolsFor(
         return listed.tools.flatMap((remote): CapabilityTool[] => {
           const ui = uiOf(remote._meta);
           if (!ui.forModel) return [];
+          // A Kete app applies its own autonomy to her mandate; another MCP server lends only what
+          // it says reads. What it does beyond is imported in « Outils », as drafts (spec 093).
+          if (resource.kind === 'mcp' && remote.annotations?.readOnlyHint !== true) return [];
           const name = `${prefix}__${remote.name}`.slice(0, 64);
           if (ui.resourceUri) {
             views.set(name, { resourceId: resource.resourceId, uri: ui.resourceUri });

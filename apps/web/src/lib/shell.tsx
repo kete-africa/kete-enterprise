@@ -61,6 +61,7 @@ export type Page =
   | 'modules'
   | 'rules'
   | 'connectors'
+  | 'tools'
   | 'circuits'
   | 'registry'
   | 'agents'
@@ -79,6 +80,7 @@ const adminPages: Page[] = [
   'policies',
   'mailboxes',
   'connectors',
+  'tools',
   'circuits',
   'registry',
   'agents',
@@ -337,6 +339,12 @@ function adminPlaces(me: Me): ShellPlace[] {
       id: 'connectors',
       label: m.nav_connectors(),
       href: '/administration/connecteurs',
+      icon: 'apps',
+    },
+    me.administrator && {
+      id: 'tools',
+      label: m.nav_tools(),
+      href: '/administration/outils',
       icon: 'apps',
     },
     {
