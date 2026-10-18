@@ -41,6 +41,16 @@ export async function appClient(
   return client;
 }
 
+/** An https address — or, on a developer's machine only, an app beside it on the loopback. */
+function reachableAddress(address: string | null | undefined): boolean {
+  if (!address) return false;
+  if (address.startsWith('https://')) return true;
+  return (
+    process.env.KETE_ENVIRONMENT === 'development' &&
+    /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(address)
+  );
+}
+
 /** The active apps and MCP servers of the registry she may see, with an https address. */
 async function appsOf(identity: Parameters<typeof registryFor>[1] & { organizationId: string }) {
   return transaction(identity.organizationId, async (db) =>
@@ -48,7 +58,7 @@ async function appsOf(identity: Parameters<typeof registryFor>[1] & { organizati
       (r) =>
         (r.kind === 'app' || r.kind === 'mcp') &&
         r.status === 'active' &&
-        r.address?.startsWith('https://') &&
+        reachableAddress(r.address) &&
         (r.tier.kind !== 'personal' || r.ownerUserId === identity.userId),
     ),
   );

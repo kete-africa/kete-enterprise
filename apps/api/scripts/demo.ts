@@ -34,11 +34,24 @@ import { useModel } from '../src/features/assistant/index.js';
 //   http://localhost:3501/as/…   enters viewing the space of a demo person (the script lists them)
 //
 // The screens are built first; `--fresh` reuses the build that is there.
+//
+// Joined to a Compte Kete running on this machine (`KETE_DEMO_JOINED=on`, set by kete-core's
+// `pnpm platform`): this API also trusts that Compte Kete's tokens, the screens sign in through
+// it (`KETE_ACCOUNT_URL`, `KETE_CLIENT_ID`, `KETE_CLIENT_SECRET`), the data are seeded in its
+// organization (`KETE_DEMO_ORGANIZATION`), and its person (`KETE_DEMO_ME`) is the head of
+// after-sales whose day is played. With `KETE_DEMO_MODEL=real`, the assistant answers with the
+// configured model (`KETE_AI_*`) instead of answers written in advance.
 
 const API_PORT = 3600;
 const WEB_PORT = 3500;
 const DOOR_PORT = 3501;
-const ORGANIZATION = 'org_demo_kya';
+const joined = process.env.KETE_DEMO_JOINED === 'on';
+const realModel = process.env.KETE_DEMO_MODEL === 'real';
+const ORGANIZATION = (joined && process.env.KETE_DEMO_ORGANIZATION) || 'org_demo_kya';
+const ME = joined ? (process.env.KETE_DEMO_ME ?? '') : '';
+const joinedAccount = joined ? (process.env.KETE_ACCOUNT_URL ?? '') : '';
+// Joined: on 127.0.0.1, the loopback address the Compte Kete accepts for a client's return.
+const HOST = joined ? '127.0.0.1' : 'localhost';
 const ADMINISTRATOR = { userId: 'usr_demo_admin', name: 'Administratrice (démo)' };
 // Whose morning the demo plays, and who asks her for decisions (db/demo/kya.ts).
 const MANAGER = 'Abla Nyuiadzi';
@@ -51,10 +64,10 @@ const say = (line: string) => console.log(`[demo] ${line}`);
 loadRepositoryEnv();
 const sessionSecret = randomBytes(32).toString('hex');
 Object.assign(process.env, {
-  KETE_ACCOUNT_URL: issuer,
+  KETE_ACCOUNT_URL: joinedAccount || issuer,
   KETE_ENVIRONMENT: 'development',
-  PUBLIC_API_URL: `http://localhost:${API_PORT}`,
-  PUBLIC_WEB_URL: `http://localhost:${WEB_PORT}`,
+  PUBLIC_API_URL: `http://${HOST}:${API_PORT}`,
+  PUBLIC_WEB_URL: `http://${HOST}:${WEB_PORT}`,
   // No e-mail leaves, no worker runs: this is a look at the screens.
   KETE_MAIL_MODE: 'capture',
   KETE_WORKER_IN_PROCESS: 'false',
@@ -66,7 +79,12 @@ const jwk = { ...(await exportJWK(pair.publicKey)), kid: 'demo-1', alg: 'EdDSA' 
 const { usePool } = await import('../src/platform/db.js');
 const { acceptedAudiences, useVerifier } = await import('../src/platform/identity.js');
 const { createApi, permissionCatalog } = await import('../src/app.js');
-useVerifier(createTokenVerifier({ issuer, audience: acceptedAudiences(), jwks: { keys: [jwk] } }));
+const own = createTokenVerifier({ issuer, audience: acceptedAudiences(), jwks: { keys: [jwk] } });
+// Joined: the Compte Kete on this machine signs people in; this run's key still seeds the data.
+const account = joinedAccount
+  ? createTokenVerifier({ issuer: joinedAccount, audience: acceptedAudiences() })
+  : null;
+useVerifier(account ? (token) => own(token).catch(() => account(token)) : own);
 
 // A run that was killed could not drop its schema: the next one does.
 const leftover = fileURLToPath(new URL('../.demo-schema', import.meta.url));
@@ -100,6 +118,14 @@ const db = await createTestSchema({
 });
 usePool(db.app);
 writeFileSync(leftover, db.schema);
+// Joined: this throwaway schema alone also holds the apps beside it on this machine's loopback.
+if (joined) {
+  await db.owner.query(
+    `alter table ${db.schema}.resources drop constraint resources_address_check;
+     alter table ${db.schema}.resources add constraint resources_address_check
+       check (address like 'https://%' or address like 'http://127.0.0.1:%')`,
+  );
+}
 say(`Schéma ${db.schema}. Données de démonstration (profil KYA)…`);
 const report = await seedDemo({
   app: db.app,
@@ -110,6 +136,12 @@ const report = await seedDemo({
 });
 say(`Semé : ${report.units} unités, ${report.positions} postes, ${report.people} personnes.`);
 
+// Joined: the person signed in through the Compte Kete is the head of after-sales.
+if (ME) {
+  await inOrganization(db.app, ORGANIZATION, (client) =>
+    client.query('update people set account_user_id = $1 where name = $2', [ME, MANAGER]),
+  );
+}
 const people = await inOrganization(db.app, ORGANIZATION, (client) =>
   client.query<{ person_id: string; name: string; account_user_id: string }>(
     // Only a person with an account can be viewed as (spec 010).
@@ -235,10 +267,14 @@ if (manager && colleague) {
   }
   // No model here: the assistant's answers are written in advance, on the demo's own data.
   // « Créer un agent en une phrase » proposes the same job description, to show its dry run.
-  useAgentModel(scriptedProposal());
+  if (!realModel) useAgentModel(scriptedProposal());
   // « Ce soir » (spec 083): gestures proposed on her To do, written in advance.
-  useClosureModel(scriptedEvening());
-  if (day.datasetId) {
+  if (!realModel) useClosureModel(scriptedEvening());
+  if (realModel) {
+    say(
+      `Assistant : le vrai modèle (${process.env.KETE_AI_PROVIDER} ${process.env.KETE_AI_MODEL}).`,
+    );
+  } else if (day.datasetId) {
     useModel(scriptedAnswers(day.datasetId));
     say(
       'Assistant : réponses écrites d’avance (aucun modèle). Toute question rend le tableau ' +
@@ -266,6 +302,47 @@ const session = await sessionFor(ADMINISTRATOR.userId, ADMINISTRATOR.name, 'owne
 
 const api = serve({ fetch: app.fetch, port: API_PORT, hostname: '127.0.0.1' });
 
+// Joined: the apps beside the center (`KETE_DEMO_APPS`, their addresses) are registered in its
+// registry as soon as each answers — their identity card read on this machine, which only this
+// demo allows — in the name of the person signed in, so that the center takes their holdings, their
+// facts and their gestures, and lends their tools to her assistant.
+const joinedApps = joined ? (process.env.KETE_DEMO_APPS ?? '').split(',').filter(Boolean) : [];
+if (ME && joinedApps.length > 0) {
+  const { validateManifest } = await import('@kete/sdk');
+  const { useCardReader } = await import('../src/features/registry/index.js');
+  const cardAt = async (address: string) => {
+    const answer = await fetch(new URL('/.well-known/kete', address)).catch(() => null);
+    if (!answer?.ok) return null;
+    const manifest: unknown = await answer.json().catch(() => null);
+    return validateManifest(manifest).ok ? (manifest as { name: string }) : null;
+  };
+  useCardReader(async (address) => (await cardAt(address)) as never);
+  const mine = await tokenFor(ME, MANAGER, 'owner');
+  void (async () => {
+    for (const address of joinedApps) {
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        const card = await cardAt(address);
+        if (card) {
+          const registered = await app.request('/v1/registry/resources', {
+            method: 'POST',
+            headers: {
+              authorization: `Bearer ${mine}`,
+              'content-type': 'application/json',
+              'idempotency-key': `demo-app-${address.replace(/[^a-zA-Z0-9]+/g, '-')}`,
+            },
+            body: JSON.stringify({ kind: 'app', name: card.name, address }),
+          });
+          say(
+            `Registre : ${card.name} ${registered.ok ? 'inscrite' : `refusée (${registered.status} ${(await registered.text()).slice(0, 200)})`}.`,
+          );
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+    }
+  })();
+}
+
 const web = spawn(
   `pnpm --filter @kete-enterprise/web exec srvx serve --entry dist/server/server.js --static "${root}apps/web/dist/client" --prod --host 127.0.0.1 --port ${WEB_PORT}`,
   {
@@ -274,10 +351,11 @@ const web = spawn(
     stdio: 'ignore',
     env: {
       ...process.env,
-      PUBLIC_URL: `http://localhost:${WEB_PORT}`,
-      API_URL: `http://localhost:${API_PORT}`,
-      KETE_CLIENT_ID: 'demo',
-      KETE_CLIENT_SECRET: 'demo',
+      PUBLIC_URL: `http://${HOST}:${WEB_PORT}`,
+      API_URL: `http://${HOST}:${API_PORT}`,
+      // Joined: the screens sign in through the Compte Kete, with their registered client.
+      KETE_CLIENT_ID: (joined && process.env.KETE_CLIENT_ID) || 'demo',
+      KETE_CLIENT_SECRET: (joined && process.env.KETE_CLIENT_SECRET) || 'demo',
       SESSION_SECRET: sessionSecret,
     },
   },
@@ -327,7 +405,11 @@ for (let attempt = 0; attempt < 90; attempt++) {
   if (up) break;
   await new Promise((resolve) => setTimeout(resolve, 1000));
 }
-say(`Ouvrez http://localhost:${DOOR_PORT} (administratrice de la démonstration).`);
+say(
+  joined
+    ? `Ouvrez http://127.0.0.1:${WEB_PORT} et connectez-vous avec votre Compte Kete : vous êtes ${MANAGER}.`
+    : `Ouvrez http://localhost:${DOOR_PORT} (administratrice de la démonstration).`,
+);
 if (manager) {
   say(`Le matin de ${manager.name} : http://localhost:${DOOR_PORT}/comme/${manager.person_id}`);
 }

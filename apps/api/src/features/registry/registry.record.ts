@@ -19,9 +19,25 @@ export const registerInput = z.object({
   kind: z.enum(resourceKinds),
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(2000).optional(),
-  /** An app's or an MCP server's address: its identity card is read from there. */
-  address: z.url({ protocol: /^https$/ }).optional(),
+  /**
+   * An app's or an MCP server's address: its identity card is read from there. In https — or, on
+   * a developer's machine only (`KETE_ENVIRONMENT=development`), an app beside it on the loopback.
+   */
+  address: z
+    .url({ protocol: /^https?$/ })
+    .refine((address) => address.startsWith('https://') || loopbackInDevelopment(address), {
+      message: 'An https address.',
+    })
+    .optional(),
 });
+
+/** An http address on this machine, accepted while developing only. */
+function loopbackInDevelopment(address: string): boolean {
+  return (
+    process.env.KETE_ENVIRONMENT === 'development' &&
+    /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(address)
+  );
+}
 
 export const promotionTarget = z.union([
   z.object({ kind: z.literal('unit'), unitId: id('unt') }),
