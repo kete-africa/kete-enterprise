@@ -1,4 +1,4 @@
-import { Button, CanvasIcon, DecisionCard, Tag } from '@kete/design';
+import { Button, CanvasIcon, DecisionCard, Markdown, Tag } from '@kete/design';
 import { useRouter } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ageOf } from '@/lib/for-me-view';
@@ -92,7 +92,7 @@ function Avatar({ name, kind }: { name: string; kind: string }) {
     <span
       className={`inline-flex size-7 flex-none items-center justify-center text-[11px] font-bold ${
         kind === 'agent'
-          ? 'rounded-control bg-fg text-bg'
+          ? 'rounded-control bg-accent text-on-action'
           : kind === 'contact'
             ? 'rounded-full bg-state-success-fg text-bg'
             : 'rounded-full bg-surface-selected text-fg'
@@ -620,6 +620,11 @@ function MessageItem({
             </span>
             <span className="text-body-sm text-fg-muted">{m.threads_edit_keeps()}</span>
           </form>
+        ) : message.author.kind === 'agent' ? (
+          // An agent writes Markdown: drawn, never shown raw.
+          <div className="mt-0.5 grid gap-1.5 [&_p]:m-0">
+            <Markdown text={message.text} />
+          </div>
         ) : (
           <p
             className={`mt-0.5 whitespace-pre-wrap ${message.movedTo ? 'text-fg-muted line-through' : ''}`}
@@ -749,6 +754,11 @@ function Composer({
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
+  // Kete's answer is in the thread: « Kete lit le fil… » has done its work.
+  const last = view.messages.at(-1);
+  useEffect(() => {
+    if (last?.author.kind === 'agent') setNote(null);
+  }, [last?.first, last?.author.kind]);
   const picker = useRef<HTMLInputElement>(null);
   const members = (view.thread.members ?? []).filter(
     (mb) => !mb.until && mb.kind !== 'contact' && mb.id !== me,
@@ -841,6 +851,12 @@ function Composer({
             setText('');
             setFiles([]);
             setMentions([]);
+            // The next message starts plain: for information, internal.
+            setForWhat('information');
+            setTo('');
+            setDue('');
+            setPriority('normal');
+            setOutside(false);
             onReplyDone();
             const { delivered, waiting } = answer.data;
             if (waiting.length > 0) {
