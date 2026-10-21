@@ -2541,5 +2541,6 @@
   "policy_effect_allow": "autorisé",
   "policy_effect_approve": "avec accord",
   "policy_effect_refuse": "refusé",
-  "for_me_snooze": "Reporter à demain"
+  "for_me_snooze": "Reporter à demain",
+  "threads_outside_no_channel": "WhatsApp n’est pas relié à l’organisation : le message n’est pas parti par WhatsApp. Un administrateur relie le numéro dans Administration › Téléphone."
 }

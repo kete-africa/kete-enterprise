@@ -245,11 +245,13 @@ function ThreadList({
   names,
   current,
   people,
+  me,
 }: {
   threads: ThreadSummary[];
   names: Record<string, string>;
   current: string | null;
   people: Person[];
+  me: string;
 }) {
   const [creating, setCreating] = useState(false);
   const groups: { label: string; items: ThreadSummary[] }[] = [
@@ -264,7 +266,7 @@ function ThreadList({
     >
       <Search />
       {creating ? (
-        <NewGroup people={people} onClose={() => setCreating(false)} />
+        <NewGroup people={people.filter((p) => p.id !== me)} onClose={() => setCreating(false)} />
       ) : (
         <Button variant="secondary" onClick={() => setCreating(true)}>
           <CanvasIcon name="plus" size={14} /> {m.threads_new_group()}
@@ -850,11 +852,13 @@ function Composer({
                 ...delivered.chat.byTemplate,
               ];
               setNote(
-                delivered.chat.refused.length > 0
-                  ? m.threads_outside_window()
-                  : reached.length > 0
-                    ? m.threads_mailed({ to: reached.join(', ') })
-                    : m.threads_outside_nobody(),
+                delivered.chat.refused.some((r) => r.reason === 'no_channel')
+                  ? m.threads_outside_no_channel()
+                  : delivered.chat.refused.length > 0
+                    ? m.threads_outside_window()
+                    : reached.length > 0
+                      ? m.threads_mailed({ to: reached.join(', ') })
+                      : m.threads_outside_nobody(),
               );
             }
             if (said.includes(KETE)) setNote(m.threads_kete_thinking());
@@ -1385,6 +1389,7 @@ export function ThreadsScreen({
         names={names}
         current={view?.thread.id ?? null}
         people={people}
+        me={me}
       />
       {view ? (
         <section aria-label={view.thread.title} className="flex min-h-0 min-w-0 flex-col bg-bg">

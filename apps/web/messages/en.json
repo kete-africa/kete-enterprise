@@ -2541,5 +2541,6 @@
   "policy_effect_allow": "allowed",
   "policy_effect_approve": "with approval",
   "policy_effect_refuse": "refused",
-  "for_me_snooze": "Put off until tomorrow"
+  "for_me_snooze": "Put off until tomorrow",
+  "threads_outside_no_channel": "WhatsApp is not connected to the organization: the message did not leave by WhatsApp. An administrator connects the number in Administration › Phone."
 }
