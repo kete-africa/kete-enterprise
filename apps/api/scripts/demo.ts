@@ -42,7 +42,8 @@ import { useModel } from '../src/features/assistant/index.js';
 // after-sales whose day is played. With `KETE_DEMO_MODEL=real`, the assistant answers with the
 // configured model (`KETE_AI_*`) instead of answers written in advance.
 
-const API_PORT = 3600;
+// Another port when 3600 is taken on this machine (kete-core's `pnpm platform` uses 3610).
+const API_PORT = Number(process.env.KETE_DEMO_API_PORT ?? 3600);
 const WEB_PORT = 3500;
 const DOOR_PORT = 3501;
 const joined = process.env.KETE_DEMO_JOINED === 'on';
