@@ -16,6 +16,8 @@ export interface Holding {
   waitingSince: string | null;
   since: string;
   due: string | null;
+  priority?: 'urgent' | 'high' | 'normal' | 'low';
+  snoozedUntil?: string | null;
   state: 'held' | 'waiting' | 'done';
   takenOverFrom: { kind: 'person' | 'agent'; id: string } | null;
   href: string;
@@ -51,6 +53,44 @@ export const handBackHolding = createServerFn({ method: 'POST' })
       getRequest(),
       `/v1/pour-moi/${data.holdingId}/rendre`,
       { reason: data.reason },
+      crypto.randomUUID(),
+    ),
+  );
+
+/** How urgent a holding of hers is (spec 098, FR-017). */
+export const prioritizeHolding = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const holdingId = text(v.holdingId, 80);
+    if (!/^hld_[0-9A-Za-z_-]{4,70}$/.test(holdingId)) throw new Error('Which holding?');
+    const priority = text(v.priority, 10);
+    if (!['urgent', 'high', 'normal', 'low'].includes(priority)) throw new Error('Which priority?');
+    return { holdingId, priority };
+  })
+  .handler(async ({ data }): Promise<GestureAnswer<{ holding: Holding }>> =>
+    sendGesture(
+      getRequest(),
+      `/v1/pour-moi/${data.holdingId}/priorite`,
+      { priority: data.priority },
+      crypto.randomUUID(),
+    ),
+  );
+
+/** She puts a holding off until a moment: « Pour moi » shows it again then. */
+export const snoozeHolding = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const holdingId = text(v.holdingId, 80);
+    if (!/^hld_[0-9A-Za-z_-]{4,70}$/.test(holdingId)) throw new Error('Which holding?');
+    const until = text(v.until, 40);
+    if (Number.isNaN(Date.parse(until))) throw new Error('Until when?');
+    return { holdingId, until: new Date(until).toISOString() };
+  })
+  .handler(async ({ data }): Promise<GestureAnswer<{ holding: Holding }>> =>
+    sendGesture(
+      getRequest(),
+      `/v1/pour-moi/${data.holdingId}/reporter`,
+      { until: data.until },
       crypto.randomUUID(),
     ),
   );

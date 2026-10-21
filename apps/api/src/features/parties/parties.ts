@@ -1,6 +1,7 @@
 import { defineCommand } from '@kete/commands';
 import { newId } from '@kete/records';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
+import { openThread } from '@kete/threads';
 import { z } from 'zod';
 
 // Third parties (spec 073, doctrine D-047): the companies and people outside the organization it
@@ -279,7 +280,15 @@ export const createParty = defineCommand({
         actor.onBehalfOf?.id ?? actor.id,
       ],
     );
-    return partyOf(db, rows[0] as Row);
+    const party = await partyOf(db, rows[0] as Row);
+    // Its thread is born with it (spec 098, FR-010): who created it holds it.
+    await openThread(db, organizationId, {
+      kind: 'object',
+      object: { kind: 'party', id: party.partyId },
+      title: party.name,
+      holder: { kind: 'person', id: actor.onBehalfOf?.id ?? actor.id },
+    });
+    return party;
   },
   summarize: (input) => `Third party: ${input.name}`,
 });

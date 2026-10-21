@@ -85,7 +85,7 @@ import { phoneMigrationSql } from '../src/features/phone/index.js';
 import { holdingsMigrationSql } from '../src/features/work/index.js';
 import { workLinksMigrationSql } from '@kete/work';
 import { centerPoliciesMigrationSql } from '../src/features/policies/index.js';
-import { messagesMigrationSql } from '../src/features/messages/index.js';
+import { messagesLiveMigrationSql, messagesMigrationSql } from '../src/features/messages/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -271,4 +271,6 @@ export const migrations: Migration[] = [
     name: '0069_conversation_computer',
     sql: (context) => conversationComputerMigrationSql(context),
   },
+  // Threads people live in: files, moves, unread, live; priorities; Outlook (spec 098, core 139).
+  { name: '0070_threads_live', sql: (context) => messagesLiveMigrationSql(context) },
 ];

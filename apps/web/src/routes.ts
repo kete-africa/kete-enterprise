@@ -48,6 +48,8 @@ export const routes = rootRoute('__root.tsx', [
   route('/api/skills/$skillId', 'api/skill-file.ts'),
   route('/api/documents/$documentId', 'api/document-file.ts'),
   route('/api/pieces/$attachmentId', 'api/attachment-file.ts'),
+  route('/api/fils/fichiers/$fileId', 'api/thread-file.ts'),
+  route('/api/fils/flux', 'api/thread-events.ts'),
   route('/ressources/demandes', 'app-requests.tsx'),
   route('/ressources/demandes/nouvelle', 'app-request-new.tsx'),
   route('/ressources/demandes/$requestId', 'app-request.tsx'),

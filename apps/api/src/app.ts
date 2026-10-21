@@ -70,7 +70,13 @@ import { requirePerson, type IdentityVariables } from './platform/identity.js';
 import { health, manifest } from './platform/service.js';
 import { exchangeRoutes } from './features/exchanges/index.js';
 import { moneyPermissions, moneyRoutes } from './features/money/index.js';
-import { clashesThisWeek, timePermissions, timeRoutes } from './features/time/index.js';
+import {
+  clashesThisWeek,
+  timePermissions,
+  feedPublicRoutes,
+  feedRoutes,
+  timeRoutes,
+} from './features/time/index.js';
 import { closureRoutes } from './features/closure/index.js';
 import { partiesPermissions, partiesRoutes } from './features/parties/index.js';
 import { projectsFor, projectsPermissions, projectsRoutes } from './features/projects/index.js';
@@ -215,6 +221,9 @@ async function me(c: Ctx) {
       // The frame of the canvas (spec 085): her organization, her open projects, whether an agent
       // works for her now, the clashes of her week.
       organization: await organizationName(db),
+      // An organization with nothing here yet: the screens say so and offer the others (spec 098).
+      empty:
+        (await db.query<{ n: number }>(`select count(*)::int as n from people`)).rows[0]?.n === 0,
       projects: projects
         .filter((p) => p.status === 'open')
         .slice(0, 6)
@@ -279,6 +288,7 @@ export function createApi(): Hono {
   v1.route('/projects', projectsRoutes);
   v1.route('/money', moneyRoutes);
   // The time the apps say, and Planifier's days (spec 079, doctrine D-050).
+  v1.route('/time/feed', feedRoutes);
   v1.route('/time', timeRoutes);
   // The evening's closure: her note, understood as gestures on her To do (spec 083).
   v1.route('/closure', closureRoutes);
@@ -371,6 +381,8 @@ export function createApi(): Hono {
   open.route('/apps', appEventRoutes);
   // WhatsApp and Telegram, each checked with the organization's own secret (spec 077).
   open.route('/chat', phoneWebhookRoutes);
+  // Planifier in a calendar, under its secret address (spec 098).
+  open.route('/agenda', feedPublicRoutes);
   api.route('/public', open);
   // A refused gesture says why, with a stable code the screens translate.
   api.onError((error, c) => {

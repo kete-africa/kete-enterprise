@@ -10,7 +10,7 @@ import {
   runQueuedRoutines,
 } from './features/routines/index.js';
 import { relayRound, syncHoldings, workOrganizations } from './features/work/index.js';
-import { readMailboxes } from './features/messages/index.js';
+import { readMailboxes, sendDigests } from './features/messages/index.js';
 import { getPool, transaction } from './platform/db.js';
 import { env } from './platform/env.js';
 
@@ -113,6 +113,16 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const sent = await sendQueuedMail();
           if (sent > 0) console.log(`[worker] ${sent} e-mail(s) sent`);
+        },
+      }),
+      // The threads' summary by mail, once a day after 18 h, for who chose it (spec 098).
+      defineJob({
+        name: 'threads-digest',
+        schedule: '10 * * * *',
+        retryLimit: 0,
+        async handle() {
+          const sent = await sendDigests();
+          if (sent > 0) console.log(`[worker] ${sent} threads summary(ies) queued`);
         },
       }),
       // Holdings (spec 087): the six sources said as holdings each minute.

@@ -2,6 +2,7 @@ import { defineCommand } from '@kete/commands';
 import { createSource } from '@kete/knowledge';
 import { newId } from '@kete/records';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
+import { openThread } from '@kete/threads';
 import { z } from 'zod';
 import {
   addMember,
@@ -310,6 +311,14 @@ export const createProject = defineCommand({
         [organizationId, projectId, newId('pst'), post.name, post.budget, position],
       );
     }
+    // Its thread is born with it (spec 098, FR-010): its lead holds it, its creator is a member.
+    await openThread(db, organizationId, {
+      kind: 'object',
+      object: { kind: 'project', id: projectId },
+      title: input.name,
+      holder: { kind: 'person', id: lead.userId },
+      members: [{ kind: 'person', id: input.creator.userId }],
+    });
     return { project: (await findProject(db, projectId)) as Project, created: true };
   },
   summarize: (input) => `Project: ${input.name}`,

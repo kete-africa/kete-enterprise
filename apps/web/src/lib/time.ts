@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
-import { callApi } from '@/platform/api';
+import { callApi, sendGesture } from '@/platform/api';
 
 // Planifier (spec 079, doctrine D-050): the days of a person, her team or the organization, as the
 // API lets her see them — another person's absence and a « busy » fact without their words — and
@@ -73,3 +73,19 @@ export const fetchDays = createServerFn({ method: 'GET' })
   .handler(({ data }) =>
     callApi<Days>(getRequest(), `/v1/time/days?from=${data.from}&days=7&scope=${data.scope}`),
   );
+
+/** Whether her days already have an address for Outlook (spec 098, FR-018). */
+export const fetchFeed = createServerFn({ method: 'GET' }).handler(() =>
+  callApi<{ since: string | null }>(getRequest(), '/v1/time/feed').catch(() => ({ since: null })),
+);
+
+/** A new address of her days for Outlook: shown once; the previous one stops answering. */
+export const makeFeed = createServerFn({ method: 'POST' }).handler(async () => {
+  const answer = await sendGesture<{ address: string }>(
+    getRequest(),
+    '/v1/time/feed',
+    {},
+    crypto.randomUUID(),
+  );
+  return answer.ok ? answer.data.address : null;
+});

@@ -716,6 +716,23 @@ export function AppShell({
       signOutHref="/auth/sortie"
     >
       {me.viewedBy && <ViewingBanner me={me} />}
+      {me.empty && !me.viewedBy && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-3 border-b border-line bg-state-verify-bg px-5 py-3 text-body-sm"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">{m.org_empty_title({ org: me.organization })}</p>
+            <p className="text-fg-muted">{m.org_empty_body()}</p>
+          </div>
+          <a
+            href={me.switchHref}
+            className="inline-flex h-(--control-height) items-center rounded-control bg-action px-3 font-semibold text-on-action"
+          >
+            {m.org_switch()}
+          </a>
+        </div>
+      )}
       {bleed ? children : <FramePage wide={wideScreens.includes(current)}>{children}</FramePage>}
     </AppFrame>
   );

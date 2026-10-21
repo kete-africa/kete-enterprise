@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { deleteCookie, getRequest, setCookie } from '@tanstack/react-start/server';
+import { env } from '@/platform/env';
 import { callApi, SignInRequired, VIEW_AS_COOKIE } from '@/platform/api';
 import type { SidebarLayout } from './sidebar';
 
@@ -48,12 +49,22 @@ export interface Me {
   working: boolean;
   /** The clashes of her week: « 1 conflit » beside « Planifier ». */
   clashes: number;
+  /** Nothing here yet in this organization: the screens say so (spec 098, FR-001). */
+  empty: boolean;
+  /** Where she changes organization, coming back here signed in to it. */
+  switchHref: string;
 }
 
 /** The signed-in person and her organization, as the API sees them; null without a session. */
 export const fetchMe = createServerFn({ method: 'GET' }).handler(async (): Promise<Me | null> => {
   try {
-    return await callApi<Me>(getRequest(), '/v1/me');
+    const me = await callApi<Omit<Me, 'switchHref'>>(getRequest(), '/v1/me');
+    const back = `${env.publicUrl}/auth/connexion`;
+    return {
+      ...me,
+      empty: me.empty === true,
+      switchHref: `${env.accountUrl}/espace/changer?retour=${encodeURIComponent(back)}`,
+    };
   } catch (error) {
     if (error instanceof SignInRequired) return null;
     throw error;

@@ -44,3 +44,49 @@ flowchart LR
 | `POST /:threadId/messages`          | A message, for action or information; by mail to its mail contacts     |
 | `POST /messages/:messageId/edit`    | Its author edits it; the original is kept                              |
 | `GET /:threadId/export`             | Its journal and fingerprint; `?format=pdf` with the conversion service |
+
+## Threads people live in (spec 098)
+
+```mermaid
+flowchart LR
+  O[a project · a third party · an app's object] -->|born with it| T[its thread]
+  T --> L[GET /threads · unread · last message · ✔]
+  T --> V[GET /threads/:id · actions · cards · dates · files · done · link]
+  P[POST /threads/:id/messages] -->|internal| T
+  P -->|outside| G{message.client · the policies}
+  G -->|allowed| D[mail from her box · WhatsApp 24 h or template · Telegram]
+  G -->|approval| W[outside_pending · a holding per approver] -->|approved| D
+  P -->|@Kete| K[answerInThread · her rights] --> T
+  T -->|pg_notify| E[GET /threads/events · Server-Sent Events]
+```
+
+- **Live**: one listener per process (`live.ts`) on Postgres' announcements; each open screen gets
+  a Server-Sent Events stream of the changes in threads its person reads. Without a direct
+  connection, each stream asks what changed every 4 seconds.
+- **The list** (`GET /`): her open threads by last activity, unread counts, last message and open
+  actions; projects and third parties made before get their thread the first time it is read.
+- **A thread** (`GET /:threadId`): its messages (quoted answers, files, moves, mentions), the
+  actions asked in it with their holder, due day and priority, the outside messages waiting for an
+  approval, the cards of its object, its dated facts, files by name with versions, what was done
+  lately, and « Ouvrir la fiche ». Names come from the structure, else the signed-in account, else
+  « Quelqu'un hors de l'organisation » — never an identifier.
+- **Internal or outside**: a message is internal unless `visibility: 'outside'`; then it is the
+  gesture `message.client` on the thread's third party. Without a policy naming it, it leaves; with
+  one, the policies decide (a forbid or an approval alone leaves the rest allowed, as for the apps).
+- **Kete in the thread**: a mention of `agt_assistant` (« @Kete ») or « Créer… » asks the assistant
+  with her rights; its answer comes into the thread, what commits as a draft.
+- **An app's object** (`POST /v1/apps/:product/threads`): its thread, held by who created it, its
+  app address kept for « Ouvrir la fiche », the third party's mail joining.
+- **The digest**: who chose `kete.threads_digest` gets, once a day after 18 h, her unread threads.
+
+| Route                               | What                                                           |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `GET /events`                       | Server-Sent Events: a thread she reads changed                 |
+| `POST /:threadId/unread`            | Marked unread from a message on                                |
+| `POST /:threadId/members`           | Its holder adds and removes members                            |
+| `POST /:threadId/files`             | A file (base64, 10 MB at most); the same name is a new version |
+| `GET /files/:fileId`                | A file, for the thread's members                               |
+| `POST /messages/:messageId/move`    | Moved to another of her threads                                |
+| `POST /messages/:messageId/draft`   | Kete prepares a draft from it                                  |
+| `POST /messages/:messageId/outside` | An approver decides an outside message                         |
+| `POST /actions/:holdingId/done`     | Its holder says the action is done                             |

@@ -13,9 +13,10 @@ import {
 import type { DatedFact } from '@kete/sdk';
 import { occurrences, placeInDays, type Occurrence } from '@kete/time';
 import { createFileRoute } from '@tanstack/react-router';
+import { OutlookFeed } from '@/lib/outlook';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
-import { addDays, fetchDays, type Clash, type Scope, type SeenFact } from '@/lib/time';
+import { addDays, fetchDays, fetchFeed, type Clash, type Scope, type SeenFact } from '@/lib/time';
 import * as m from '@/paraglide/messages.js';
 import { getLocale } from '@/paraglide/runtime.js';
 
@@ -34,8 +35,12 @@ export const Route = createFileRoute('/planifier')({
   }),
   beforeLoad: ({ location }) => requirePerson(location.href),
   loaderDeps: ({ search }) => ({ vue: search.vue, du: search.du }),
-  loader: ({ deps }) =>
-    fetchDays({ data: { scope: scopeOf(deps.vue), ...(deps.du ? { from: deps.du } : {}) } }),
+  loader: async ({ deps }) => ({
+    ...(await fetchDays({
+      data: { scope: scopeOf(deps.vue), ...(deps.du ? { from: deps.du } : {}) },
+    })),
+    feed: await fetchFeed(),
+  }),
   component: PlanPage,
 });
 
@@ -229,6 +234,7 @@ function PlanPage() {
       ) : (
         <TeamLanes label={words.label} days={calendarDays.slice(0, 5)} rows={rows} />
       )}
+      {days.scope === 'me' && !me.viewedBy && <OutlookFeed since={days.feed.since} />}
     </AppShell>
   );
 }

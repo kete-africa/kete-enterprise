@@ -146,3 +146,28 @@ export async function fileOfApi(request: Request, path: string): Promise<Respons
     },
   });
 }
+
+/**
+ * A stream the API keeps open for the person (the threads' changes, spec 098): her token is added
+ * here, server-side; closing the screen closes it.
+ */
+export async function eventsOfApi(request: Request, path: string): Promise<Response> {
+  let headers: Record<string, string>;
+  try {
+    headers = await headersFor(request);
+  } catch {
+    return new Response(null, { status: 401 });
+  }
+  const response = await fetch(`${env.apiUrl}${path}`, {
+    headers: { ...headers, accept: 'text/event-stream' },
+    signal: request.signal,
+  });
+  return new Response(response.body, {
+    status: response.status,
+    headers: {
+      'content-type': 'text/event-stream',
+      'cache-control': 'no-store',
+      'x-accel-buffering': 'no',
+    },
+  });
+}
