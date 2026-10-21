@@ -13,6 +13,7 @@ const catalog = {
       `${who} veut écrire au client dans « ${thread} » : votre accord`,
     keteSilent:
       'Kete n’a pas pu répondre : aucun modèle n’est configuré, ou son budget est épuisé.',
+    keteFailed: 'Kete n’a pas pu joindre le modèle. Réessayez dans un moment.',
     digestSubject: (count: number) => `${count} fil(s) avec du non-lu`,
     digestIntro: 'Ce qui vous attend dans vos fils Kete :',
     digestLine: (thread: string, unread: number) => `${thread} — ${unread} message(s) non lu(s)`,
@@ -28,6 +29,7 @@ const catalog = {
     toApprove: (who: string, thread: string) =>
       `${who} wants to write to the client in “${thread}”: your approval`,
     keteSilent: 'Kete could not answer: no model is set, or its budget is spent.',
+    keteFailed: 'Kete could not reach the model. Try again in a moment.',
     digestSubject: (count: number) => `${count} thread(s) with unread messages`,
     digestIntro: 'What waits for you in your Kete threads:',
     digestLine: (thread: string, unread: number) => `${thread} — ${unread} unread message(s)`,
