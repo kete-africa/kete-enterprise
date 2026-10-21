@@ -5,6 +5,7 @@ import type { IdentityVariables } from '../../platform/identity.js';
 import { appGrants } from './app-permissions.js';
 import { appDecision, AppDecisionError, appDecisionInput, openAppDecision } from './decisions.js';
 import { appGestureInput, AppModelError, checkAppGesture } from './model.js';
+import { appObjectInput, openAppObjectThread } from '../messages/index.js';
 
 const product = /^prd_[a-z0-9_]{2,40}$/;
 
@@ -62,6 +63,22 @@ export const appRoutes = new Hono<{ Variables: IdentityVariables }>()
       }
       throw error;
     }
+  })
+  // An app's object gets its thread at the center, held by the person who created it (spec 098).
+  .post('/:product/threads', async (c) => {
+    const name = c.req.param('product');
+    if (!product.test(name)) throw new GestureRefusal(404, 'not_found', 'No such app.');
+    const parsed = appObjectInput.safeParse(await bodyOf(c));
+    if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', parsed.error.message);
+    const identity = c.get('identity');
+    const opened = await transaction(identity.organizationId, (db) =>
+      openAppObjectThread(db, identity.organizationId, {
+        product: name,
+        userId: identity.userId,
+        object: parsed.data,
+      }),
+    );
+    return c.json(opened, 201);
   })
   // The person who asked reads where her request stands.
   .get('/:product/decisions/:requestId', async (c) => {

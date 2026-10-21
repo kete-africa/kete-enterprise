@@ -1,6 +1,6 @@
 import { fromChat, fromMail, route } from '@kete/channels';
 import { inOrganization } from '@kete/tenancy';
-import { openThread, postMessage } from '@kete/threads';
+import { joinThread, openThread, postMessage, saveThreadFile } from '@kete/threads';
 import type pg from 'pg';
 import { centerRouter } from '../../src/features/messages/index.js';
 import { centerStructure } from '../../src/features/work/index.js';
@@ -41,13 +41,37 @@ export async function seedThreads(options: {
       router,
     );
     if (client.thread) {
-      await postMessage(db, options.organizationId, {
-        thread: client.thread,
-        author: { kind: 'person', id: options.colleague },
-        text: 'Je peux y aller demain 9 h si tu valides le déplacement.',
-        for: 'action',
-        via: 'kete',
+      const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+      // The client's mail, so an answer « au client » can leave by mail too (spec 098).
+      await joinThread(db, options.organizationId, client.thread, {
+        kind: 'contact',
+        id: 'mail:garage.be@demo.kya.tg',
       });
+      const quote = await saveThreadFile(db, options.organizationId, {
+        threadId: client.thread,
+        name: 'Devis batteries Garage Bè.txt',
+        mediaType: 'text/plain',
+        content: new TextEncoder().encode(
+          'Devis : 2 batteries 12 V 200 Ah — 420 000 F CFA ; pose et contrôle — 45 000 F CFA.',
+        ),
+        by: { kind: 'person', id: options.colleague },
+      });
+      await postMessage(
+        db,
+        options.organizationId,
+        {
+          thread: client.thread,
+          author: { kind: 'person', id: options.colleague },
+          text: 'Je peux y aller demain 9 h si tu valides le déplacement. Le devis des batteries est joint.',
+          for: 'action',
+          via: 'kete',
+          attachments: [
+            { id: quote.id, name: quote.name, media_type: quote.media_type, bytes: quote.bytes },
+          ],
+        },
+        new Date(),
+        { due: tomorrow, priority: 'high' },
+      );
     }
     const unknown = await route(
       db,

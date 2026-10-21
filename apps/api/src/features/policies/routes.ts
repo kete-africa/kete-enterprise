@@ -1,4 +1,13 @@
-import { currentPolicies, policyVersions, readDecisions } from '@kete/policies';
+import {
+  currentPolicies,
+  fillTemplate,
+  policyTemplates,
+  policyVersions,
+  readDecisions,
+  simulatePolicy,
+  TemplateError,
+  type Blanks,
+} from '@kete/policies';
 import { validateGesture, type Gesture } from '@kete/sdk';
 import { Hono, type Context } from 'hono';
 import { z } from 'zod';
@@ -11,6 +20,7 @@ import {
   approversFor,
   decideFor,
   engine,
+  entitiesFor,
   GestureError,
   personBehind,
   policyCounts,
@@ -105,6 +115,88 @@ export const policiesRoutes = new Hono<{ Variables: IdentityVariables }>()
       }
       throw error;
     }
+  })
+  // The six policies of D-058 as sentences with blanks: those the center's schema accepts (spec 098).
+  .get('/templates', (c: Ctx) => {
+    administrator(c);
+    const example: Blanks = {
+      amount: 1_000_000,
+      approver: 'direction',
+      channels: ['whatsapp', 'mail'],
+      from: 8,
+      to: 19,
+      days: 3650,
+    };
+    const owner = c.get('identity').userId;
+    return c.json({
+      templates: policyTemplates
+        .map((t) => ({ template: t, policy: fillTemplate(t.id, example, { owner }) }))
+        .filter(({ policy }) => engine.check(policy.rule).ok)
+        .map(({ template, policy }) => ({
+          id: template.id,
+          family: template.family,
+          set: template.set,
+          blanks: template.blanks,
+          example: policy.sentence,
+        })),
+    });
+  })
+  // A template filled: the policy it gives, and what it would have decided over 30 days.
+  .post('/templates/:templateId', async (c: Ctx) => {
+    administrator(c);
+    const identity = c.get('identity');
+    const values = z
+      .object({
+        amount: z.number().int().min(0).optional(),
+        approver: z.enum(['manager', 'direction', 'project.holder', 'on_behalf_of']).optional(),
+        channels: z
+          .array(z.enum(['whatsapp', 'mail', 'telegram', 'phone']))
+          .max(4)
+          .optional(),
+        from: z.number().int().min(0).max(24).optional(),
+        to: z.number().int().min(0).max(24).optional(),
+        days: z.number().int().min(1).max(36500).optional(),
+      })
+      .safeParse(await bodyOf(c));
+    if (!values.success) throw new GestureRefusal(422, 'invalid_input', 'The blanks.');
+    let policy;
+    try {
+      policy = fillTemplate(c.req.param('templateId') ?? '', values.data as Blanks, {
+        owner: identity.userId,
+      });
+    } catch (error) {
+      if (error instanceof TemplateError) {
+        throw new GestureRefusal(
+          error.code === 'unknown_template' ? 404 : 422,
+          error.code,
+          error.message,
+        );
+      }
+      throw error;
+    }
+    const simulation = await transaction(identity.organizationId, (db) =>
+      simulatePolicy(db, {
+        engine,
+        policy,
+        since: new Date(Date.now() - 30 * 86_400_000),
+        entitiesOf: (gesture) => entitiesFor(db, gesture),
+      }),
+    );
+    return c.json({
+      policy,
+      simulation: {
+        replayed: simulation.replayed,
+        changed: simulation.changed.slice(0, 50).map((change) => ({
+          at: change.at.toISOString(),
+          kind: change.gesture.kind,
+          actor: change.gesture.actor,
+          amount: change.gesture.amount ?? null,
+          before: change.before,
+          after: change.after,
+        })),
+        total: simulation.changed.length,
+      },
+    });
   })
   // Whether a rule fits the center's schema, and why not.
   .post('/check', async (c: Ctx) => {

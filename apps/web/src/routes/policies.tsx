@@ -6,12 +6,14 @@ import {
   checkRule,
   fetchPolicies,
   proposePolicy,
+  fetchTemplates,
   savePolicy,
   setPolicyStatus,
   type Decision,
   type Policy,
   type Proposal,
 } from '@/lib/policies';
+import { PolicyTemplates } from '@/lib/policy-templates';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import * as m from '@/paraglide/messages.js';
@@ -23,7 +25,7 @@ export const Route = createFileRoute('/administration/politiques')({
     if (!context.me.administrator) throw redirect({ to: '/administration' });
     return context;
   },
-  loader: () => fetchPolicies(),
+  loader: async () => ({ ...(await fetchPolicies()), templates: await fetchTemplates() }),
   component: PoliciesPage,
 });
 
@@ -245,11 +247,16 @@ function PolicyRow({ policy }: { policy: Policy }) {
 /** The policies (doctrine D-058, spec 090): one engine for people and agents, all journaled. */
 function PoliciesPage() {
   const { me } = Route.useRouteContext();
-  const { policies, decisions } = Route.useLoaderData();
+  const { policies, decisions, templates } = Route.useLoaderData();
   return (
     <AppShell me={me} current="policies">
       <PageHeader title={m.nav_policies()} description={m.policy_subtitle()} />
-      <PageSection first title={m.policy_new()}>
+      {templates.length > 0 && (
+        <PageSection first title={m.policy_templates()}>
+          <PolicyTemplates templates={templates} />
+        </PageSection>
+      )}
+      <PageSection first={templates.length === 0} title={m.policy_new()}>
         <NewPolicy />
       </PageSection>
       <PageSection title={m.policy_list({ count: String(policies.length) })}>

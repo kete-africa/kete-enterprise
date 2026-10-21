@@ -39,6 +39,7 @@ const groups: Record<string, () => string> = {
   calendar: m.settings_group_calendar,
   display: m.settings_group_display,
   agents: m.settings_group_agents,
+  work: m.settings_group_work,
 };
 const layers: Record<SettingLayer, () => string> = {
   kete: m.settings_from_kete,

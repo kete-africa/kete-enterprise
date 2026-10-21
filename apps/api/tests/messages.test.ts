@@ -289,10 +289,19 @@ describe('the mail bridged', () => {
       }),
     );
     expect(await readMailboxes()).toBe(1);
+    // A note stays internal: only what she says « au client » leaves (spec 098, FR-005).
+    const note = await post(t.kossi, `/threads/${ids.thread}/messages`, {
+      text: 'Je propose jeudi 10 h, à confirmer avec l’équipe.',
+    });
+    expect(note.body.delivered).toBeNull();
+    expect(sender.sent).toHaveLength(0);
     const answer = await post(t.kossi, `/threads/${ids.thread}/messages`, {
       text: 'Oui, jeudi à 10 h.',
+      visibility: 'outside',
     });
-    expect(answer.body.mailed).toEqual(['direction@hotel-golfe.tg']);
+    expect((answer.body.delivered as { mailed: string[] }).mailed).toEqual([
+      'direction@hotel-golfe.tg',
+    ]);
     const sent = sender.sent.at(-1);
     expect(sent).toMatchObject({
       from: { address: 'kossi@kya.tg', name: 'Kossi Amegah' },

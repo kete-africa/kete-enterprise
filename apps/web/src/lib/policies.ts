@@ -110,3 +110,57 @@ export const fetchAgentBounds = createServerFn({ method: 'GET' }).handler(() =>
     .then((a) => a.policies)
     .catch(() => []),
 );
+
+/** One of the six policies of D-058, as a sentence with blanks (spec 098, FR-019). */
+export interface PolicyTemplate {
+  id: string;
+  family: 'commits' | 'speaks' | 'spending' | 'deputies' | 'retention' | 'consent';
+  set: 'authority' | 'approval';
+  blanks: ('amount' | 'approver' | 'channels' | 'from' | 'to' | 'days')[];
+  example: string;
+}
+
+export interface Simulated {
+  policy: {
+    id: string;
+    sentence: string;
+    rule: string;
+    set: 'authority' | 'approval';
+    approver?: string;
+  };
+  simulation: {
+    replayed: number;
+    total: number;
+    changed: {
+      at: string;
+      kind: string;
+      amount: { value: number; currency: string } | null;
+      before: string;
+      after: string;
+    }[];
+  };
+}
+
+export const fetchTemplates = createServerFn({ method: 'GET' }).handler(() =>
+  callApi<{ templates: PolicyTemplate[] }>(getRequest(), '/v1/policies/templates')
+    .then((a) => a.templates)
+    .catch(() => [] as PolicyTemplate[]),
+);
+
+/** A template filled: its policy, and what it would have decided over the last 30 days. */
+export const simulateTemplate = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const id = text(v.templateId, 80);
+    if (!/^[a-z]+\.[a-z-]+$/.test(id)) throw new Error('Which template?');
+    const values = (v.values ?? {}) as Record<string, unknown>;
+    return { templateId: id, values };
+  })
+  .handler(async ({ data }): Promise<GestureAnswer<Simulated>> =>
+    sendGesture(
+      getRequest(),
+      `/v1/policies/templates/${data.templateId}`,
+      data.values,
+      crypto.randomUUID(),
+    ),
+  );

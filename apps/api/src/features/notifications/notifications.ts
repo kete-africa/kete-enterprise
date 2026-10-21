@@ -62,7 +62,10 @@ export interface Tell {
     | 'holding.taken_over'
     | 'holding.handed_back'
     | 'holding.stuck'
-    | 'holding.nudged';
+    | 'holding.nudged'
+    | 'thread.mentioned'
+    | 'thread.action'
+    | 'thread.approval';
   title: string;
   body?: string;
   href?: string;

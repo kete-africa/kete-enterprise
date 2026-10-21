@@ -2,6 +2,7 @@ import type pg from 'pg';
 import type { SqlExecutor } from '@kete/tenancy';
 import { dueNudges, reclaimUnheld, relayAbsences, type Move } from '@kete/work';
 import { notificationWords, tell } from '../notifications/index.js';
+import { settingsIn } from '../settings/index.js';
 import { hrefOf } from './links.js';
 import { centerStructure } from './structure.js';
 import { syncHoldings } from './sync.js';
@@ -57,7 +58,18 @@ export async function relayRound(
       });
     }
   }
-  const nudges = await dueNudges(db, organizationId, { now });
+  // The delays the organization set, by priority, and for a party (spec 098, FR-017).
+  const settings = await settingsIn(db, organizationId);
+  const nudges = await dueNudges(db, organizationId, {
+    now,
+    partyDelayDays: settings.value<number>('kete.party_nudge_days'),
+    nudgeHours: {
+      urgent: settings.value<number>('kete.nudge_hours_urgent'),
+      high: settings.value<number>('kete.nudge_hours_high'),
+      normal: settings.value<number>('kete.nudge_hours_normal'),
+      low: settings.value<number>('kete.nudge_hours_low'),
+    },
+  });
   for (const nudge of nudges) {
     // A colleague is asked for her answer; a party outside, its holder is reminded to follow up.
     const person = nudge.to.kind === 'person' ? nudge.to.id : null;

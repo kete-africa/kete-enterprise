@@ -2,7 +2,15 @@ import { Button, CanvasIcon, PageSection, Tag } from '@kete/design';
 import { useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { refusal } from '@/lib/forms';
-import { handBackHolding, receivedOf, settleTriage, type ForMe, type Holding } from '@/lib/for-me';
+import {
+  handBackHolding,
+  prioritizeHolding,
+  receivedOf,
+  settleTriage,
+  snoozeHolding,
+  type ForMe,
+  type Holding,
+} from '@/lib/for-me';
 import { readAllNotifications, type NotificationItem } from '@/lib/notifications';
 import * as m from '@/paraglide/messages.js';
 import { getLocale } from '@/paraglide/runtime.js';
@@ -92,6 +100,59 @@ function HoldingLine({ holding, canHandBack }: { holding: Holding; canHandBack: 
           >
             {m.for_me_hand_back()}
           </button>
+        )}
+        {holding.priority && holding.priority !== 'normal' && (
+          <Tag tone={holding.priority === 'urgent' ? 'error' : 'info'}>
+            {holding.priority === 'urgent'
+              ? m.threads_priority_urgent()
+              : holding.priority === 'high'
+                ? m.threads_priority_high()
+                : m.threads_priority_low()}
+          </Tag>
+        )}
+        {canHandBack && holding.holder.kind === 'person' && (
+          <>
+            <label className="inline-flex items-center gap-1">
+              <span className="sr-only">{m.threads_how_urgent()}</span>
+              <select
+                value={holding.priority ?? 'normal'}
+                disabled={busy}
+                onChange={(event) => {
+                  setBusy(true);
+                  void prioritizeHolding({
+                    data: { holdingId: holding.holdingId, priority: event.target.value },
+                  })
+                    .then(() => router.invalidate())
+                    .finally(() => setBusy(false));
+                }}
+                className="h-7 rounded-control border border-line-control bg-control px-1 text-[12px]"
+              >
+                <option value="urgent">{m.threads_priority_urgent()}</option>
+                <option value="high">{m.threads_priority_high()}</option>
+                <option value="normal">{m.threads_priority_normal()}</option>
+                <option value="low">{m.threads_priority_low()}</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              disabled={busy}
+              className="font-semibold text-link underline underline-offset-4"
+              onClick={() => {
+                setBusy(true);
+                // Tomorrow at 8 h, in her time.
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(8, 0, 0, 0);
+                void snoozeHolding({
+                  data: { holdingId: holding.holdingId, until: tomorrow.toISOString() },
+                })
+                  .then(() => router.invalidate())
+                  .finally(() => setBusy(false));
+              }}
+            >
+              {m.for_me_snooze()}
+            </button>
+          </>
         )}
         {error && <span className="text-state-error-fg">{error}</span>}
       </span>
