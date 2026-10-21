@@ -147,9 +147,13 @@ async function keteAnswers(identity: Identity, threadId: string, question: strin
     const found = await readable(db, identity, threadId);
     return { thread: found, context: await contextOf(db, identity, found) };
   });
+  const said = await answerInThread(identity, { thread: thread.title, context, question });
   const answer =
-    (await answerInThread(identity, { thread: thread.title, context, question })) ??
-    messageWords().keteSilent;
+    'text' in said
+      ? said.text
+      : said.failure === 'no_model'
+        ? messageWords().keteSilent
+        : messageWords().keteFailed;
   await transaction(identity.organizationId, async (db) => {
     await joinThread(db, identity.organizationId, threadId, KETE);
     await postMessage(db, identity.organizationId, {

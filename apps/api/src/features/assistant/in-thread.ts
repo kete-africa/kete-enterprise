@@ -11,13 +11,13 @@ import { meteringStore, modelFor, organizationName, purposeOf, system } from './
 
 type Identity = IdentityVariables['identity'];
 
-/** Her question in a thread, answered with her rights; null when no model is set. */
+/** Her question in a thread, answered with her rights; else why not: no model, or it failed. */
 export async function answerInThread(
   identity: Identity,
   input: { thread: string; context: string; question: string },
-): Promise<string | null> {
+): Promise<{ text: string } | { failure: 'no_model' | 'failed' }> {
   const choice = await modelFor(identity);
-  if (!choice) return null;
+  if (!choice) return { failure: 'no_model' };
   const organization = await transaction(identity.organizationId, (db) => organizationName(db));
   try {
     const answer = await asPerson(identity, async () =>
@@ -48,10 +48,11 @@ export async function answerInThread(
         },
       }),
     );
-    return answer.text.trim() || null;
+    const text = answer.text.trim();
+    return text ? { text } : { failure: 'failed' };
   } catch (error) {
-    if (error instanceof BudgetExceededError) return null;
+    if (error instanceof BudgetExceededError) return { failure: 'no_model' };
     console.error('[thread]', (error as Error).message);
-    return null;
+    return { failure: 'failed' };
   }
 }
