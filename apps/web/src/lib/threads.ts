@@ -172,6 +172,8 @@ export interface AgentSide {
   person: { id: string; name: string } | null;
   mine: boolean;
   state: { kind: string; instruction?: string; steps?: number; drafts?: number; reason?: string };
+  /** As the agents' list shows it. */
+  work: 'needs' | 'working' | 'finished' | 'idle';
   month: { done: number; asked: number; failed: number };
   permissions: { permission: string; level: number }[];
   autonomyMax: number;

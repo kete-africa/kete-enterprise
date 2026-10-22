@@ -26,7 +26,13 @@ import {
 import { useRouter } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ageOf } from '@/lib/for-me-view';
-import { AgentSidePanel, PauseAgent, Requests, RoutineBanner } from '@/lib/agent-colleague';
+import {
+  AgentHead,
+  AgentSidePanel,
+  PauseAgent,
+  Requests,
+  RoutineBanner,
+} from '@/lib/agent-colleague';
 import { FromPage, InviteToKete, KeteSide, Proposals, TurnAtWork } from '@/lib/kete-door';
 import { refusal } from '@/lib/forms';
 import { shownMoney } from '@/lib/money';
@@ -1575,6 +1581,7 @@ export function ThreadsScreen({
         actions={
           <>
             {kete && <InviteToKete threadId={view.thread.id} people={people} me={me} />}
+            {view.agent && <AgentHead agent={view.agent} />}
             {view.agent && <PauseAgent agent={view.agent} />}
             <Button
               variant="secondary"

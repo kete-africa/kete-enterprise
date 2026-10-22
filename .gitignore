@@ -21,3 +21,5 @@ Thumbs.db
 
 # The schema of a local demonstration that was not stopped cleanly (pnpm demo).
 .demo-schema
+# The screens shot beside the canvas (apps/web/scripts/screens.ts): read, never kept.
+.screens/

@@ -231,9 +231,15 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.1.2
         version: 6.1.2(vite@8.3.4(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+      playwright:
+        specifier: 1.63.0
+        version: 1.63.0
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -4540,6 +4546,16 @@ packages:
   pkce-challenge@5.0.1:
     resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==}
     engines: {node: '>=16.20.0'}
+
+  playwright-core@1.63.0:
+    resolution: {integrity: sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.63.0:
+    resolution: {integrity: sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   postcss@8.5.30:
     resolution: {integrity: sha512-zkd+e9S1AQHhmaBKye9zlFHWjOwVgqXl1q3ECYy8561K7qxR2cREf/STLskulBFd78k6AOFeA+ff1TtEzk9bAA==}
@@ -10177,6 +10193,12 @@ snapshots:
       pako: 2.2.0
 
   pkce-challenge@5.0.1: {}
+
+  playwright-core@1.63.0: {}
+
+  playwright@1.63.0:
+    dependencies:
+      playwright-core: 1.63.0
 
   postcss@8.5.30:
     dependencies:
