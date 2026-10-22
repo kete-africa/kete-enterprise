@@ -52,8 +52,6 @@ const list = async (token: string) =>
     threads: Summary[];
     names: Record<string, string>;
   };
-const say = (token: string, threadId: string, body: object) =>
-  post(token, `/threads/${threadId}/messages`, body);
 
 beforeAll(async () => {
   process.env.KETE_SECRETS_KEY ??= randomBytes(32).toString('base64');
