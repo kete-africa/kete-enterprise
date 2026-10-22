@@ -146,7 +146,77 @@ export interface ThreadView {
   runs: Record<string, ThreadRun & { message_id: string }>;
   cited: Record<string, { label: string; state: string | null }>;
   level: NotifyLevel;
+  /** What Kete proposed her under its messages (spec 099, FR-008 to FR-011). */
+  proposals: Record<string, Proposal[]>;
+  /** The page each of her questions to Kete was asked from, through the drawer. */
+  pages: Record<string, { href: string; title: string }>;
+  /** Kete's turn at work in this thread. */
+  turn: Turn | null;
+  /** In her thread « Kete »: the parts her agents work for her. */
+  handed: { agentId: string; name: string; part: string; state: AgentWorkState }[];
 }
+
+export type AgentWorkState = 'needs' | 'working' | 'finished' | 'idle';
+
+/** A turn of Kete at work: its steps and its words so far. */
+export interface Turn {
+  turnId: string;
+  askedBy: string;
+  steps: ThreadRun['steps'];
+  live: string;
+  startedAt: string;
+}
+
+export interface GestureSet {
+  summary: string;
+  object: { kind: 'project' | 'party'; id: string; title: string; thread: string | null } | null;
+  holdings: {
+    what: string;
+    holder: string;
+    due: string | null;
+    priority: 'urgent' | 'high' | 'normal' | 'low';
+    returnTo: string;
+    source: string | null;
+  }[];
+  dates: { label: string; day: string; source: string | null }[];
+  routines: {
+    title: string;
+    prompt: string;
+    cadence: 'daily' | 'weekdays' | 'weekly';
+    weekday: number | null;
+    time: string;
+    source: string | null;
+  }[];
+}
+export interface PolicyProposal {
+  rule: string;
+  template: string;
+  policy: { id: string; sentence: string; set: 'authority' | 'approval'; approver?: string };
+  simulation: { replayed: number; changed: number; byAgents: number };
+}
+export interface Handover {
+  agentId: string;
+  part: string;
+  taskId?: string;
+}
+
+/** What Kete proposed: a set of gestures, a policy, or a part handed to one of her agents. */
+export type Proposal = {
+  proposalId: string;
+  messageId: string;
+  state: 'proposed' | 'confirmed' | 'declined' | 'trial' | 'adopted' | 'handed';
+  proposedFor: string;
+  /** What her decision made: the holdings, dates, routines — or the policy. */
+  made: { holdings?: string[]; dates?: string[]; routines?: string[]; policyId?: string };
+} & (
+  | { kind: 'gestures'; body: GestureSet }
+  | { kind: 'policy'; body: PolicyProposal }
+  | {
+      kind: 'handover';
+      body: Handover;
+      agent?: { name: string; state: AgentWorkState; step?: string };
+    }
+);
 
 export interface Found extends Message {
   threadTitle: string;
@@ -261,6 +331,8 @@ export const postToThread = createServerFn({ method: 'POST' })
           chat: { sent: string[]; byTemplate: string[]; refused: { to: string; reason: string }[] };
         } | null;
         waiting: string[];
+        /** Kete's turn, when her message asked it or gave orders. */
+        turn: string | null;
       }>
     > => {
       const { threadId: id, ...body } = data;
@@ -589,4 +661,99 @@ export const mergeThreads = createServerFn({ method: 'POST' })
   })
   .handler(({ data }) =>
     gesture<{ moved: number }>(`/v1/threads/${data.threadId}/merge`, { into: data.into }),
+  );
+
+// --- Kete's door (spec 099, FR-007 to FR-011) -------------------------------------------------------
+
+const proposalId = (value: unknown) => {
+  const id = text(value, 80);
+  if (!/^prp_[0-9A-Za-z_-]{8,70}$/.test(id)) throw new Error('Which proposal?');
+  return id;
+};
+
+/** Kete's turn at work in a thread, if any. */
+export const fetchTurn = createServerFn({ method: 'GET' })
+  .validator((input: unknown) => ({
+    threadId: threadId((input as { threadId?: unknown })?.threadId),
+  }))
+  .handler(({ data }) =>
+    callApi<{ turn: Turn | null }>(getRequest(), `/v1/threads/${data.threadId}/turn`).then(
+      (a) => a.turn,
+    ),
+  );
+
+/** « Arrêter »: the turn she asked stops; what was said stays. */
+export const stopTurn = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const id = text((input as { turnId?: unknown })?.turnId, 80);
+    if (!/^trn_[0-9A-Za-z_-]{8,70}$/.test(id)) throw new Error('Which turn?');
+    return { turnId: id };
+  })
+  .handler(({ data }) => gesture<{ stopped: true }>(`/v1/threads/turns/${data.turnId}/stop`, {}));
+
+/** Her « oui » to a set of gestures: those she keeps, as she corrected them. */
+export const confirmGestures = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const keep = Array.isArray(v.keep)
+      ? v.keep.filter((n): n is number => Number.isInteger(n) && (n as number) >= 0).slice(0, 40)
+      : undefined;
+    const edits: Record<string, { holder?: string; due?: string | null; priority?: string }> = {};
+    for (const [index, edit] of Object.entries((v.edits ?? {}) as Record<string, unknown>)) {
+      if (!/^\d{1,2}$/.test(index) || !edit || typeof edit !== 'object') continue;
+      const e = edit as Record<string, unknown>;
+      const due = text(e.due, 10);
+      edits[index] = {
+        ...(text(e.holder, 100) ? { holder: text(e.holder, 100) } : {}),
+        ...(e.due === null ? { due: null } : /^\d{4}-\d{2}-\d{2}$/.test(due) ? { due } : {}),
+        ...(['urgent', 'high', 'normal', 'low'].includes(text(e.priority, 10))
+          ? { priority: text(e.priority, 10) }
+          : {}),
+      };
+    }
+    return { proposalId: proposalId(v.proposalId), ...(keep ? { keep } : {}), edits };
+  })
+  .handler(({ data }) => {
+    const { proposalId: id, ...body } = data;
+    return gesture<{ made: { holdings: string[]; dates: string[]; routines: string[] } }>(
+      `/v1/threads/proposals/${id}/confirm`,
+      body,
+    );
+  });
+
+export const declineProposal = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => ({
+    proposalId: proposalId((input as { proposalId?: unknown })?.proposalId),
+  }))
+  .handler(({ data }) =>
+    gesture<{ declined: true }>(`/v1/threads/proposals/${data.proposalId}/decline`, {}),
+  );
+
+/** A rule become a policy: adopted at once, or on trial. */
+export const decidePolicy = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    return { proposalId: proposalId(v.proposalId), how: v.how === 'adopt' ? 'adopt' : 'trial' };
+  })
+  .handler(({ data }) =>
+    gesture<{ policyId: string; status: 'active' | 'trial' }>(
+      `/v1/threads/proposals/${data.proposalId}/policy`,
+      { how: data.how },
+    ),
+  );
+
+/** « Inviter quelqu’un »: her thread « Kete » becomes a group. */
+export const inviteToKete = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    return {
+      threadId: threadId(v.threadId),
+      people: (Array.isArray(v.people) ? v.people : [])
+        .map((p) => text(p, 100))
+        .filter(Boolean)
+        .slice(0, 20),
+    };
+  })
+  .handler(({ data }) =>
+    gesture<{ invited: number }>(`/v1/threads/${data.threadId}/invite`, { people: data.people }),
   );
