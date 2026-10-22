@@ -161,11 +161,12 @@ function GesturesCard({
     );
   };
 
+  const title = count === 1 ? m.door_gesture_one() : m.door_gestures({ count: String(count) });
   return (
-    <Card label={m.door_gestures({ count: String(count) })}>
+    <Card label={title}>
       <CardHead
         icon="layers"
-        title={m.door_gestures({ count: String(count) })}
+        title={title}
         tag={<Tag tone="neutral">{m.door_draft()}</Tag>}
         side={open ? m.door_nothing_before() : undefined}
       />
@@ -250,8 +251,12 @@ function GesturesCard({
         <span className="flex flex-wrap items-center gap-2">
           <Button disabled={busy || chosen === 0} onClick={() => void decide(true)}>
             {chosen === count
-              ? m.door_yes({ count: String(count) })
-              : m.door_yes_these({ count: String(chosen) })}
+              ? count === 1
+                ? m.door_yes_one()
+                : m.door_yes({ count: String(count) })
+              : chosen === 1
+                ? m.door_yes_this()
+                : m.door_yes_these({ count: String(chosen) })}
           </Button>
           <Button
             variant="secondary"

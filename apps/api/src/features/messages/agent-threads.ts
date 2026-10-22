@@ -707,6 +707,44 @@ export async function runDueRoutines(now = new Date()): Promise<number> {
 export type AgentWorkState = 'needs' | 'working' | 'finished' | 'idle';
 
 /**
+ * Its work as she sees it: needs her (a request, blocked, paused), working, finished (an answer she
+ * has not read), idle — one rule for the list and for its own thread.
+ */
+async function workOf(
+  db: SqlExecutor,
+  agent: Agent,
+  userId: string,
+  threadId: string,
+  state: Awaited<ReturnType<typeof stateOfAgent>>,
+) {
+  const { rows: unread } = await db.query<{ n: string; last: string | null }>(
+    `select count(*) as n, max(m.text) filter (where m.at = (select max(at) from kete_messages
+               where thread_id = $1 and author_kind = 'agent')) as last
+         from kete_messages m
+        where m.thread_id = $1 and m.author_kind = 'agent' and m.edited_from is null
+          and not exists (select 1 from kete_message_reads r where r.message_id = m.message_id
+                           and r.reader_kind = 'person' and r.reader_id = $2)`,
+    [threadId, userId],
+  );
+  const { rows: waiting } = await db.query<{ n: string }>(
+    `select count(*) as n from kete_drafts where prepared_by_id = $1 and status = 'prepared'
+          and on_behalf_of_id = $2`,
+    [agent.agentId, userId],
+  );
+  const asks = Number(waiting[0]?.n ?? 0);
+  const unseen = Number(unread[0]?.n ?? 0);
+  const kind: AgentWorkState =
+    asks > 0 || state.kind === 'blocked' || state.kind === 'paused'
+      ? 'needs'
+      : state.kind === 'working'
+        ? 'working'
+        : unseen > 0
+          ? 'finished'
+          : 'idle';
+  return { kind, asks, unseen, last: unread[0]?.last ?? '' };
+}
+
+/**
  * Her agents by state (FR-013): needs her (a request waits, it is blocked or paused), works,
  * finished (an answer she has not read), idle — each with its thread; and how many work and wait.
  */
@@ -726,30 +764,7 @@ export async function agentsScreen(db: SqlExecutor, identity: Identity) {
     const owner = await personOfAgent(db, agent);
     const threadId = await agentThreadOf(db, identity.organizationId, agent, identity.userId);
     const state = await stateOfAgent(db, agent, on);
-    const { rows: unread } = await db.query<{ n: string; last: string | null }>(
-      `select count(*) as n, max(m.text) filter (where m.at = (select max(at) from kete_messages
-               where thread_id = $1 and author_kind = 'agent')) as last
-         from kete_messages m
-        where m.thread_id = $1 and m.author_kind = 'agent' and m.edited_from is null
-          and not exists (select 1 from kete_message_reads r where r.message_id = m.message_id
-                           and r.reader_kind = 'person' and r.reader_id = $2)`,
-      [threadId, identity.userId],
-    );
-    const { rows: waiting } = await db.query<{ n: string }>(
-      `select count(*) as n from kete_drafts where prepared_by_id = $1 and status = 'prepared'
-          and on_behalf_of_id = $2`,
-      [agent.agentId, identity.userId],
-    );
-    const asks = Number(waiting[0]?.n ?? 0);
-    const unseen = Number(unread[0]?.n ?? 0);
-    const kind: AgentWorkState =
-      asks > 0 || state.kind === 'blocked' || state.kind === 'paused'
-        ? 'needs'
-        : state.kind === 'working'
-          ? 'working'
-          : unseen > 0
-            ? 'finished'
-            : 'idle';
+    const { kind, asks, unseen, last } = await workOf(db, agent, identity.userId, threadId, state);
     agents.push({
       agentId: agent.agentId,
       name: agent.name,
@@ -765,7 +780,7 @@ export async function agentsScreen(db: SqlExecutor, identity: Identity) {
           : kind === 'working'
             ? `${state.instruction ?? ''}`.slice(0, 120)
             : kind === 'finished'
-              ? (unread[0]?.last ?? '').slice(0, 120)
+              ? last.slice(0, 120)
               : agent.routine
                 ? messageWords().routineAt(agent.routine.time)
                 : agent.mission.slice(0, 120),
@@ -824,6 +839,7 @@ export async function agentSide(db: SqlExecutor, identity: Identity, thread: Thr
     [agent.agentId],
   );
   const on = (await readModules(db)).agents;
+  const state = await stateOfAgent(db, agent, on);
   return {
     agentId: agent.agentId,
     name: agent.name,
@@ -831,7 +847,8 @@ export async function agentSide(db: SqlExecutor, identity: Identity, thread: Thr
     status: agent.status,
     person: person ? { id: person, name: names[person] ?? '' } : null,
     mine: person === identity.userId,
-    state: await stateOfAgent(db, agent, on),
+    state,
+    work: (await workOf(db, agent, identity.userId, thread.id, state)).kind,
     month: {
       done: Number(month[0]?.done ?? 0),
       asked: Number(month[0]?.asked ?? 0),

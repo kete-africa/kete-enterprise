@@ -145,6 +145,33 @@ export function RoutineBanner({ agent }: { agent: AgentSide }) {
   );
 }
 
+/** Its state in a word, as the agents' list says it, and the tag's tone when it is worth a look. */
+function stateOf(agent: AgentSide): { word: string; tone?: 'agent' | 'verify' | 'validated' } {
+  if (agent.work === 'needs') return { word: m.colleague_needs(), tone: 'verify' };
+  if (agent.work === 'working') return { word: m.colleague_working(), tone: 'agent' };
+  if (agent.work === 'finished') return { word: m.colleague_finished(), tone: 'validated' };
+  return { word: m.colleague_idle() };
+}
+
+/** In its head, as on the canvas: its state when it is worth a look, and its settings. */
+export function AgentHead({ agent }: { agent: AgentSide }) {
+  const state = stateOf(agent);
+  return (
+    <>
+      {state.tone && <Tag tone={state.tone}>{state.word}</Tag>}
+      {agent.mine && (
+        <a
+          href={`/mes-agents/reglages#${agent.agentId}`}
+          className="inline-flex h-(--control-height) items-center gap-1.5 rounded-control border border-line-control px-2.5 text-body-sm font-semibold text-fg no-underline hover:bg-surface-hover"
+        >
+          <CanvasIcon name="gear" size={13} />
+          <span className="max-[520px]:sr-only">{m.colleague_settings_short()}</span>
+        </a>
+      )}
+    </>
+  );
+}
+
 /** In its head: pause it, or set it to work again. */
 export function PauseAgent({ agent }: { agent: AgentSide }) {
   const router = useRouter();
@@ -251,14 +278,7 @@ export function AgentSidePanel({ agent }: { agent: AgentSide }) {
     { value: 'proposes', label: m.colleague_proposes() },
     { value: 'alone', label: m.colleague_alone() },
   ];
-  const stateWord =
-    agent.state.kind === 'working'
-      ? m.colleague_working()
-      : agent.state.kind === 'waiting' ||
-          agent.state.kind === 'blocked' ||
-          agent.state.kind === 'paused'
-        ? m.colleague_needs()
-        : m.colleague_idle();
+  const stateWord = stateOf(agent).word;
   return (
     <>
       {agent.person && (
