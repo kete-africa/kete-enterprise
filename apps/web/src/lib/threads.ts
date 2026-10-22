@@ -42,10 +42,59 @@ export interface Message {
   moved_from?: string;
   movedTo?: { thread: string; message: string; at: string };
   mentions?: { kind: 'person' | 'agent'; id: string }[];
+  /** The objects cited with « # » (spec 099). */
+  references?: { kind: string; id: string; app?: string }[];
+  only_for?: { kind: 'person'; id: string };
   edits: number;
   readBy: { kind: string; id: string; at: string }[];
-  attachments?: { id: string; name: string; media_type?: string; bytes?: number }[];
+  attachments?: {
+    id: string;
+    name: string;
+    media_type?: string;
+    bytes?: number;
+    duration_ms?: number;
+    transcript?: string;
+  }[];
+  reactions: { emoji: string; by: { kind: 'person' | 'agent' | 'contact'; id: string }[] }[];
+  pinned?: { by: { kind: 'person' | 'agent' | 'contact'; id: string }; at: string };
+  deleted?: { by: { kind: 'person' | 'agent' | 'contact'; id: string }; at: string };
+  imported?: true;
+  sharedAs?: string;
   at: string;
+}
+
+/** The turn of Kete or an agent that wrote a message (spec 099). */
+export interface ThreadRun {
+  title: string;
+  steps: { state: 'done' | 'now' | 'todo' | 'ask'; label: string; tag?: string }[];
+  seconds: number | null;
+}
+
+/** What a thread holds, for « Infos du fil » (spec 099, FR-002). */
+export interface ThreadMedia {
+  photos: { file: string; name: string; mediaType: string | null; message: string; at: string }[];
+  documents: { file: string; name: string; message: string; at: string; version: number }[];
+  links: { url: string; message: string; at: string }[];
+  voices: {
+    file: string;
+    name: string;
+    message: string;
+    at: string;
+    durationMs: number | null;
+    transcript: string | null;
+  }[];
+  pins: { message: string; at: string }[];
+}
+
+export type NotifyLevel = 'all' | 'mentions' | 'none';
+
+/** An object « # » offers, in its state of now. */
+export interface CitableObject {
+  kind: string;
+  id: string;
+  app?: string;
+  label: string;
+  state: string | null;
 }
 
 export interface ThreadHolding {
@@ -90,6 +139,13 @@ export interface ThreadView {
   link: string | null;
   names: Record<string, string>;
   mailbox: boolean;
+  /** There are older messages than this page. */
+  older: boolean;
+  /** The first message she had not read when she opened it. */
+  unreadFrom: string | null;
+  runs: Record<string, ThreadRun & { message_id: string }>;
+  cited: Record<string, { label: string; state: string | null }>;
+  level: NotifyLevel;
 }
 
 export interface Found extends Message {
@@ -181,6 +237,14 @@ export const postToThread = createServerFn({ method: 'POST' })
       ...(['urgent', 'high', 'normal', 'low'].includes(priority) ? { priority } : {}),
       ...(replyTo ? { replyTo: messageId(replyTo) } : {}),
       mentions: ids(v.mentions, 50).map(whoOf),
+      references: (Array.isArray(v.references) ? v.references : [])
+        .slice(0, 20)
+        .map((r) => {
+          const ref = (r ?? {}) as Record<string, unknown>;
+          const app = text(ref.app, 60);
+          return { kind: text(ref.kind, 60), id: text(ref.id, 200), ...(app ? { app } : {}) };
+        })
+        .filter((r) => r.kind && r.id),
       files: ids(v.files, 20),
       visibility: v.visibility === 'outside' ? ('outside' as const) : ('internal' as const),
     };
@@ -204,7 +268,7 @@ export const postToThread = createServerFn({ method: 'POST' })
     },
   );
 
-/** A file joins the thread (10 MB at most), sent as base64 like the assistant's. */
+/** A file joins the thread (100 MB at most), sent as base64 like the assistant's. */
 export const sendThreadFile = createServerFn({ method: 'POST' })
   .validator((input: unknown) => {
     const v = (input ?? {}) as Record<string, unknown>;
@@ -367,3 +431,162 @@ export const fetchPeopleToAdd = createServerFn({ method: 'GET' }).handler(() =>
     )
     .catch(() => [] as { id: string; name: string }[]),
 );
+
+// --- The threads at today's level (spec 099) ------------------------------------------------------
+
+const gesture = <T>(path: string, body: object) =>
+  sendGesture<T>(getRequest(), path, body, crypto.randomUUID());
+
+/** Fifty messages before one, or around one a search found. */
+export const fetchPage = createServerFn({ method: 'GET' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const before = text(v.before, 80);
+    const around = text(v.around, 80);
+    return {
+      threadId: threadId(v.threadId),
+      ...(before ? { before: messageId(before) } : {}),
+      ...(around ? { around: messageId(around) } : {}),
+    };
+  })
+  .handler(({ data }) => {
+    const query = data.before
+      ? `?before=${data.before}`
+      : data.around
+        ? `?around=${data.around}`
+        : '';
+    return callApi<{
+      messages: Message[];
+      older: boolean;
+      newer: boolean;
+      names: Record<string, string>;
+      cited: Record<string, { label: string; state: string | null }>;
+    }>(getRequest(), `/v1/threads/${data.threadId}/page${query}`);
+  });
+
+/** What a thread holds, and her notification level. */
+export const fetchMedia = createServerFn({ method: 'GET' })
+  .validator((input: unknown) => ({
+    threadId: threadId((input as { threadId?: unknown })?.threadId),
+  }))
+  .handler(({ data }) =>
+    callApi<{ media: ThreadMedia; level: NotifyLevel }>(
+      getRequest(),
+      `/v1/threads/${data.threadId}/media`,
+    ),
+  );
+
+/** The objects « # » offers for what she typed. */
+export const findObjects = createServerFn({ method: 'GET' })
+  .validator((input: unknown) => ({ q: text((input as { q?: unknown })?.q, 80) }))
+  .handler(({ data }) =>
+    callApi<{ objects: CitableObject[] }>(
+      getRequest(),
+      `/v1/threads/objects?q=${encodeURIComponent(data.q)}`,
+    ).then((a) => a.objects),
+  );
+
+export const reactTo = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    return { messageId: messageId(v.messageId), emoji: text(v.emoji, 16), on: v.on !== false };
+  })
+  .handler(({ data }) =>
+    gesture<{ ok: true }>(`/v1/threads/messages/${data.messageId}/react`, {
+      emoji: data.emoji,
+      on: data.on,
+    }),
+  );
+
+export const pinInThread = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    return { messageId: messageId(v.messageId), pinned: v.pinned !== false };
+  })
+  .handler(({ data }) =>
+    gesture<{ ok: true }>(`/v1/threads/messages/${data.messageId}/pin`, { pinned: data.pinned }),
+  );
+
+export const deleteInThread = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => ({
+    messageId: messageId((input as { messageId?: unknown })?.messageId),
+  }))
+  .handler(({ data }) =>
+    gesture<{ ok: true }>(`/v1/threads/messages/${data.messageId}/delete`, {}),
+  );
+
+export const shareInThread = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => ({
+    messageId: messageId((input as { messageId?: unknown })?.messageId),
+  }))
+  .handler(({ data }) =>
+    gesture<{ message: Message }>(`/v1/threads/messages/${data.messageId}/share`, {}),
+  );
+
+export const setNotifyLevel = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const level = text(v.level, 10);
+    return {
+      threadId: threadId(v.threadId),
+      level: (['all', 'mentions', 'none'].includes(level) ? level : 'all') as NotifyLevel,
+    };
+  })
+  .handler(({ data }) =>
+    gesture<{ level: NotifyLevel }>(`/v1/threads/${data.threadId}/notify`, { level: data.level }),
+  );
+
+/** She is writing: told to the thread, never kept. */
+export const typingIn = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => ({
+    threadId: threadId((input as { threadId?: unknown })?.threadId),
+  }))
+  .handler(({ data }) => gesture<{ ok: true }>(`/v1/threads/${data.threadId}/typing`, {}));
+
+/** A voice note, sent as base64, transcribed by Kete after. */
+export const sendVoice = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const replyTo = text(v.replyTo, 80);
+    return {
+      threadId: threadId(v.threadId),
+      data: typeof v.data === 'string' ? v.data : '',
+      contentType: text(v.contentType, 100) || 'audio/webm',
+      durationMs: Math.max(0, Math.round(Number(v.durationMs) || 0)),
+      ...(replyTo ? { replyTo: messageId(replyTo) } : {}),
+    };
+  })
+  .handler(({ data }) => {
+    const { threadId: id, ...body } = data;
+    return gesture<{ message: Message; file: string }>(`/v1/threads/${id}/voice`, body);
+  });
+
+/** A WhatsApp or Telegram export, or a mail file, kept in the thread once. */
+export const importIntoThread = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const kind = text(v.kind, 10);
+    return {
+      threadId: threadId(v.threadId),
+      kind: (['whatsapp', 'telegram', 'eml'].includes(kind) ? kind : 'whatsapp') as
+        'whatsapp' | 'telegram' | 'eml',
+      data: typeof v.data === 'string' ? v.data : '',
+    };
+  })
+  .handler(({ data }) => {
+    const { threadId: id, ...body } = data;
+    return gesture<{ imported: number; skipped: number; recognized: number; unknown: string[] }>(
+      `/v1/threads/${id}/import`,
+      body,
+    );
+  });
+
+/** Two threads become one, by the holder of the first. */
+export const mergeThreads = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    return { threadId: threadId(v.threadId), into: threadId(v.into) };
+  })
+  .handler(({ data }) =>
+    gesture<{ moved: number }>(`/v1/threads/${data.threadId}/merge`, { into: data.into }),
+  );

@@ -111,7 +111,7 @@ function RequestPage() {
       <PageSection title={m.request_thread()}>
         <ol className="grid gap-3">
           {request.events.map((event, index) => (
-            <li key={index} className="grid gap-1 border-s-2 border-line ps-3">
+            <li key={index} className="grid gap-1 rounded-control bg-surface px-3 py-2">
               <p className="text-body-sm text-fg-muted">
                 {event.actor.kind === 'agent' && <Tag tone="agent">{m.request_agent_tag()}</Tag>}{' '}
                 {eventWords[event.kind](event.actor.name)} · {when(event.at)}

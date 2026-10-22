@@ -165,7 +165,7 @@ function TaskRow({
         </p>
       )}
       {task.notes.map((note, index) => (
-        <p key={index} className="border-s-2 border-line ps-2">
+        <p key={index} className="rounded-control bg-surface px-2 py-1">
           {m.agent_task_note({ text: note.text })}
         </p>
       ))}
