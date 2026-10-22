@@ -256,7 +256,8 @@ export const createAgentAndRun = createServerFn({ method: 'POST' })
     const created = await sendGesture<{ agentId: string }>(
       request,
       '/v1/agents',
-      { ...data, kind: 'personal' },
+      // From one sentence it starts on trial (spec 099, FR-017).
+      { ...data, kind: 'personal', fromSentence: true },
       crypto.randomUUID(),
     );
     if (!created.ok) return { ok: false as const, raised: 0, error: created.error };

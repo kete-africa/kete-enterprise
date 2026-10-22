@@ -19,6 +19,7 @@ export const routes = rootRoute('__root.tsx', [
   route('/assistant/memoire', 'memory.tsx'),
   route('/assistant/echanges', 'exchanges.tsx'),
   route('/mes-agents', 'my-agents.tsx'),
+  route('/mes-agents/reglages', 'my-agents-settings.tsx'),
   route('/apps', 'apps.tsx'),
   route('/reglages', 'settings.tsx'),
   route('/planifier', 'plan.tsx'),

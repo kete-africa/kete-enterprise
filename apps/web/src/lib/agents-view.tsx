@@ -472,6 +472,11 @@ function AgentWeek({ agent }: { agent: AgentView }) {
   );
 }
 
+/** « Nouvel agent » (spec 099, FR-017): its job description from one sentence, created on trial. */
+export function NewAgent() {
+  return <AgentFromSentence watchLabelOf={watchLabel} />;
+}
+
 /** A personal agent from her sentence: its job description and plan, then « Créer » (spec 052). */
 function AgentFromSentence({ watchLabelOf }: { watchLabelOf: (w: string) => string }) {
   const router = useRouter();

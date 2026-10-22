@@ -10,6 +10,7 @@ import {
   fetchTurn,
   inviteToKete,
   stopTurn,
+  takeOnProposal,
   type AgentWorkState,
   type GestureSet,
   type Proposal,
@@ -44,6 +45,7 @@ const familyWord: Record<string, () => string> = {
   deputies: m.policy_family_deputies,
   retention: m.policy_family_retention,
   consent: m.policy_family_consent,
+  agent: m.door_family_agent,
 };
 
 const agentStateWord: Record<AgentWorkState, () => string> = {
@@ -382,6 +384,49 @@ function HandoverCard({ proposal }: { proposal: Extract<Proposal, { kind: 'hando
   );
 }
 
+// --- A holding an agent may take on ---------------------------------------------------------------
+
+function TakeOnCard({ proposal }: { proposal: Extract<Proposal, { kind: 'takeon' }> }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const decide = async (yes: boolean) => {
+    setBusy(true);
+    const answer = yes
+      ? await takeOnProposal({ data: { proposalId: proposal.proposalId } })
+      : await declineProposal({ data: { proposalId: proposal.proposalId } });
+    setBusy(false);
+    if (!answer.ok) return setNote(refusal(answer.error));
+    await router.invalidate();
+  };
+  return (
+    <div className="mt-2 grid max-w-[620px] gap-2 rounded-[8px] bg-state-info-surface px-3 py-2">
+      <span className="flex flex-wrap items-center gap-2 text-[13px]">
+        <span className="grid size-6 flex-none place-items-center rounded-[5px] bg-agent text-on-agent">
+          <CanvasIcon name="bot" size={12} />
+        </span>
+        <strong>{m.colleague_takeon_title({ agent: proposal.body.agentName })}</strong>
+        <span className="text-fg-soft">{m.colleague_takeon_hint()}</span>
+      </span>
+      {proposal.state === 'proposed' ? (
+        <span className="flex flex-wrap gap-2">
+          <Button disabled={busy} onClick={() => void decide(true)}>
+            {m.colleague_takeon_yes()}
+          </Button>
+          <Button variant="secondary" disabled={busy} onClick={() => void decide(false)}>
+            {m.colleague_takeon_no()}
+          </Button>
+        </span>
+      ) : (
+        <Tag tone={proposal.state === 'confirmed' ? 'validated' : 'neutral'}>
+          {proposal.state === 'confirmed' ? m.colleague_takeon_done() : m.door_declined()}
+        </Tag>
+      )}
+      {note && <p className="m-0 text-body-sm text-state-error-fg">{note}</p>}
+    </div>
+  );
+}
+
 /** What Kete proposed under one of its messages. */
 export function Proposals({
   list,
@@ -404,6 +449,8 @@ export function Proposals({
           />
         ) : proposal.kind === 'policy' ? (
           <PolicyCard key={proposal.proposalId} proposal={proposal} />
+        ) : proposal.kind === 'takeon' ? (
+          <TakeOnCard key={proposal.proposalId} proposal={proposal} />
         ) : (
           <HandoverCard key={proposal.proposalId} proposal={proposal} />
         ),
@@ -436,11 +483,14 @@ export function TurnAtWork({
   turn,
   me,
   words,
+  agent,
 }: {
   threadId: string;
   turn: Turn | { turnId: string } | null;
   me: string;
   words: ConversationWords;
+  /** An agent at work in its thread, by its name; Kete otherwise. */
+  agent?: string | undefined;
 }) {
   const router = useRouter();
   const [seen, setSeen] = useState<Turn | null>(turn && 'steps' in turn ? turn : null);
@@ -476,7 +526,7 @@ export function TurnAtWork({
   const steps = seen?.steps ?? [];
   const live = seen?.live.trim()
     ? seen.live.slice(-240)
-    : (steps.at(-1)?.label ?? m.door_working());
+    : (steps.at(-1)?.label ?? (agent ? m.door_working_named({ name: agent }) : m.door_working()));
   return (
     <div
       className="flex-none border-t border-line bg-bg px-4 py-2 max-[860px]:px-2.5"
@@ -484,14 +534,14 @@ export function TurnAtWork({
     >
       <div className="flex items-center gap-2 text-[12.5px] font-semibold text-fg-soft">
         <span className="grid size-6 place-items-center rounded-[6px] bg-agent text-on-agent">
-          <CanvasIcon name="spark" size={12} />
+          <CanvasIcon name={agent ? 'bot' : 'spark'} size={12} />
         </span>
-        Kete
+        {agent ?? 'Kete'}
       </div>
       <AgentRun
         words={words}
         run={{
-          title: m.door_working(),
+          title: agent ? m.door_working_named({ name: agent }) : m.door_working(),
           meta: m.door_working_meta({ steps: String(steps.length) }),
           steps,
           live,
