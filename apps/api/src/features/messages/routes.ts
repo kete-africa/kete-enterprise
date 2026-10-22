@@ -42,6 +42,7 @@ import {
   speakToAgent,
 } from './agent-threads.js';
 import { doorRoutes } from './door-routes.js';
+import { mailOverview, mailRulesInput, originalsOf, setMailRules } from './mail-settings.js';
 import { handedNow, pagesOf, proposalsOf, startTurn, workingTurn } from './door.js';
 import { threadEvents } from './live.js';
 import { listMailboxes, mailboxInput, MailboxError, mailboxOf, saveMailbox } from './mailboxes.js';
@@ -229,6 +230,24 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
     }
     return c.json({ connected: parsed.data.address }, 201);
   })
+  // What Kete reads and how it ranges: the boxes, the routing steps this week (spec 099, FR-018).
+  .get('/mailboxes/overview', async (c: Ctx) => {
+    const identity = c.get('identity');
+    if (!isAdministrator(identity)) throw new GestureRefusal(403, 'forbidden', 'Administrators.');
+    return c.json(await transaction(identity.organizationId, (db) => mailOverview(db)));
+  })
+  // A box shared and read whole, or personal and read by the three rules; its Sent folder too.
+  .post('/mailboxes/:userId/rules', async (c: Ctx) => {
+    const identity = c.get('identity');
+    if (!isAdministrator(identity)) throw new GestureRefusal(403, 'forbidden', 'Administrators.');
+    const parsed = mailRulesInput.safeParse(await bodyOf(c));
+    if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'What Kete reads.');
+    const set = await transaction(identity.organizationId, (db) =>
+      setMailRules(db, c.req.param('userId') ?? '', parsed.data),
+    );
+    if (!set) throw new GestureRefusal(404, 'not_found', 'No such mailbox.');
+    return c.json({ rules: parsed.data });
+  })
   // A file of a thread, for its members (FR-006).
   .get('/files/:fileId', async (c: Ctx) => {
     const identity = c.get('identity');
@@ -318,6 +337,8 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
           messages.map((m) => m.first),
         ),
         turn: await workingTurn(db, threadId),
+        // A mail shows cleaned; its original, one tap away (FR-018).
+        originals: await originalsOf(db, threadId, messages),
         agent: await agentSide(db, identity, thread),
         handed,
         actions,

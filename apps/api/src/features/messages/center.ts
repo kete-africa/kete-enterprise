@@ -115,6 +115,19 @@ export async function centerRouter(
     known: (received) => knownClient(db, received),
     read: (received) => readByModel(db, organizationId, received),
     threshold: 0.8,
+    // A mail read from a Sent folder is its person's: by her box's address, else her own email.
+    authorOf: async (received) => {
+      const address = received.from.address?.toLowerCase();
+      if (!address) return null;
+      const { rows } = await db.query<{ user_id: string }>(
+        `select user_id from mailbox_accounts where lower(address) = $1
+         union all
+         select account_user_id from people where lower(email) = $1 and account_user_id is not null
+         limit 1`,
+        [address],
+      );
+      return rows[0] ? { kind: 'person', id: rows[0].user_id } : null;
+    },
     threadFor: async (object) => {
       if (object.kind === 'project') {
         const { rows } = await db.query<{ name: string; lead_user_id: string }>(
