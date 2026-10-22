@@ -26,6 +26,7 @@ import {
 import { useRouter } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ageOf } from '@/lib/for-me-view';
+import { AgentSidePanel, PauseAgent, Requests, RoutineBanner } from '@/lib/agent-colleague';
 import { FromPage, InviteToKete, KeteSide, Proposals, TurnAtWork } from '@/lib/kete-door';
 import { refusal } from '@/lib/forms';
 import { shownMoney } from '@/lib/money';
@@ -94,6 +95,10 @@ const dueDay = (day: string) =>
   );
 
 /** Every word of @kete/conversation, in the app's language. */
+export function threadsWords(): ConversationWords {
+  return conversationWords();
+}
+
 function conversationWords(): ConversationWords {
   return {
     time: hour,
@@ -173,10 +178,10 @@ function conversationWords(): ConversationWords {
   };
 }
 
-function fieldWords(title: string, kete = false): MessageFieldWords {
+function fieldWords(title: string, placeholder?: string): MessageFieldWords {
   return {
     field: m.threads_write(),
-    placeholder: kete ? m.door_placeholder() : m.threads_field_placeholder({ title }),
+    placeholder: placeholder ?? m.threads_field_placeholder({ title }),
     send: m.threads_send(),
     stop: m.threads_stop(),
     add: m.threads_field_add(),
@@ -658,6 +663,8 @@ function Composer({
   onTurn: (turnId: string) => void;
 }) {
   const kete = view.thread.kind === 'kete';
+  // Her thread « Kete », or an agent's: words to it, without « internal » or « for action ».
+  const plain = kete || view.agent !== null;
   const router = useRouter();
   const [to, setTo] = useState('');
   const [due, setDue] = useState('');
@@ -862,7 +869,14 @@ function Composer({
   return (
     <div className="flex-none border-t border-line bg-surface px-4 pt-2 pb-3 max-[860px]:px-2.5">
       <MessageField
-        words={fieldWords(view.thread.title, kete)}
+        words={fieldWords(
+          view.thread.title,
+          kete
+            ? m.door_placeholder()
+            : view.agent
+              ? m.colleague_placeholder({ name: view.agent.name })
+              : undefined,
+        )}
         draftKey={view.thread.id}
         triggers={['@', '#']}
         search={search}
@@ -901,7 +915,7 @@ function Composer({
         tone={outside ? 'alert' : 'plain'}
         below={below}
         toggles={
-          kete ? undefined : (
+          plain ? undefined : (
             <>
               {contacts.length > 0 && (
                 <FieldToggle
@@ -1306,6 +1320,8 @@ export function ThreadsScreen({
   me,
   people,
   solo = false,
+  agents,
+  empty,
 }: {
   threads: ThreadSummary[];
   names: Record<string, string>;
@@ -1315,6 +1331,10 @@ export function ThreadsScreen({
   people: Person[];
   /** Her thread « Kete » alone, without the list (canvas v6.2, « Fil Kete »). */
   solo?: boolean;
+  /** « Mes agents »: her agents by state instead of her threads (canvas v6.2, « Les agents »). */
+  agents?: { list: ReactNode };
+  /** What the middle shows when no thread is open. */
+  empty?: ReactNode;
 }) {
   const router = useRouter();
   const [asked, setAsked] = useState<string | null>(null);
@@ -1518,6 +1538,8 @@ export function ThreadsScreen({
       />
     ) : kete ? (
       <KeteSide handed={view.handed} />
+    ) : view.agent ? (
+      <AgentSidePanel agent={view.agent} />
     ) : (
       <ThreadState view={view} money={money} me={me} people={people} threads={threads} />
     )
@@ -1535,6 +1557,8 @@ export function ThreadsScreen({
         subtitle={
           kete ? (
             m.door_subtitle()
+          ) : view.agent ? (
+            view.agent.mission
           ) : (
             <>
               {m.threads_held_by({
@@ -1551,6 +1575,7 @@ export function ThreadsScreen({
         actions={
           <>
             {kete && <InviteToKete threadId={view.thread.id} people={people} me={me} />}
+            {view.agent && <PauseAgent agent={view.agent} />}
             <Button
               variant="secondary"
               onClick={() => {
@@ -1576,6 +1601,7 @@ export function ThreadsScreen({
           </>
         }
       />
+      {view.agent && <RoutineBanner agent={view.agent} />}
       <PinBar
         pins={pinned.map((msg) => ({
           id: msg.first,
@@ -1644,6 +1670,9 @@ export function ThreadsScreen({
                   {view.pages[message.first] && (
                     <FromPage page={view.pages[message.first] as { href: string; title: string }} />
                   )}
+                  {view.requests?.[message.first] && (
+                    <Requests list={view.requests[message.first] ?? []} />
+                  )}
                   {view.proposals[message.first] && (
                     <Proposals
                       list={view.proposals[message.first] ?? []}
@@ -1709,7 +1738,13 @@ export function ThreadsScreen({
           );
         }}
       />
-      <TurnAtWork threadId={view.thread.id} turn={turn} me={me} words={words} />
+      <TurnAtWork
+        threadId={view.thread.id}
+        turn={turn}
+        me={me}
+        words={words}
+        agent={view.agent?.name}
+      />
       {view.thread.state === 'open' && (
         <Composer
           view={view}
@@ -1731,7 +1766,7 @@ export function ThreadsScreen({
     </section>
   ) : (
     <section className="grid place-items-center p-8 text-center text-fg-muted max-[860px]:hidden">
-      <p>{threads.length === 0 ? m.threads_none_yet() : m.threads_pick()}</p>
+      {empty ?? <p>{threads.length === 0 ? m.threads_none_yet() : m.threads_pick()}</p>}
     </section>
   );
   // Her thread « Kete » alone: the conversation and its side, the same aside as the frame's.
@@ -1765,13 +1800,15 @@ export function ThreadsScreen({
       asideShown={asideShown}
       onAsideClose={() => setAsideShown(false)}
       list={
-        <ThreadListPanel
-          words={words}
-          current={current}
-          hidden={Boolean(view)}
-          sections={sectionsOf(threads, allNames)}
-          top={<ListTop people={people} me={me} />}
-        />
+        agents?.list ?? (
+          <ThreadListPanel
+            words={words}
+            current={current}
+            hidden={Boolean(view)}
+            sections={sectionsOf(threads, allNames)}
+            top={<ListTop people={people} me={me} />}
+          />
+        )
       }
       aside={aside}
     >

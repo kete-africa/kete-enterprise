@@ -16,6 +16,7 @@ export { commandInstructions } from './chat-tools.js';
 export {
   conversationComputerMigrationSql,
   conversationsMigrationSql,
+  explainDraft,
   listConversations,
   readConversationOf,
   tablesMigrationSql,

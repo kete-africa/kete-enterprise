@@ -13,7 +13,7 @@ import { organizationLanguageModel, organizationModelConfig } from '../../platfo
 import { sourcesOf, type Source } from '../../platform/sources.js';
 import { usageStore } from '../../platform/usage.js';
 import { abilitiesIn, abilityTools, computerForRun, researcherOf } from '../ai/index.js';
-import { toolPermissions, toolsForAgent, underPolicies } from '../gateway/index.js';
+import { decideDraft, toolPermissions, toolsForAgent, underPolicies } from '../gateway/index.js';
 import { notificationWords, tell } from '../notifications/index.js';
 import { readModules } from '../organization/index.js';
 import { putTask, spaceHref } from '../workspace/index.js';
@@ -199,12 +199,14 @@ export async function queueTask(
     parentTaskId?: string;
     delegatedBy?: string[];
     traceId?: string;
+    /** Set by its routine (spec 099, FR-015): what it asks then expires after ten minutes. */
+    fromRoutine?: boolean;
   },
 ): Promise<AgentTask> {
   const { rows } = await db.query<TaskRow>(
     `insert into agent_tasks (organization_id, task_id, agent_id, given_by, parent_task_id,
-       delegated_by, trace_id, instruction, status)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, 'queued') returning ${COLUMNS}`,
+       delegated_by, trace_id, instruction, status, from_routine)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, 'queued', $9) returning ${COLUMNS}`,
     [
       input.organizationId,
       newId('tsk'),
@@ -214,9 +216,35 @@ export async function queueTask(
       input.delegatedBy ?? [],
       input.traceId ?? `trace-${randomUUID()}`,
       input.instruction,
+      input.fromRoutine === true,
     ],
   );
   return taskOf(rows[0] as TaskRow);
+}
+
+/** Its computer's minutes this month: the time of its tasks that used one (spec 099, FR-016). */
+async function computerMinutesUsed(db: SqlExecutor, agentId: string): Promise<number> {
+  const { rows } = await db.query<{ minutes: string | null }>(
+    `select sum(extract(epoch from (coalesce(finished_at, now()) - started_at)) / 60) as minutes
+       from agent_tasks
+      where agent_id = $1 and started_at >= date_trunc('month', now())
+        and steps @> '[{"tool": "computer"}]'`,
+    [agentId],
+  );
+  return Number(rows[0]?.minutes ?? 0);
+}
+
+/**
+ * « Toujours… » in force (spec 099, FR-015): its person's policy that this agent's drafts of this
+ * capability are hers at once. The draft stays, decided by her policy; signing and paying never.
+ */
+async function alwaysFor(db: SqlExecutor, agentId: string, capability: string): Promise<boolean> {
+  if (/sign|pay|purchase/i.test(capability)) return false;
+  const { rows } = await db.query<{ status: string }>(
+    `select status from kete_policies where policy_id = $1 order by version desc limit 1`,
+    [`agent.${agentId}.${capability.toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`],
+  );
+  return rows[0]?.status === 'active';
 }
 
 export async function getTask(db: SqlExecutor, taskId: string): Promise<AgentTask | null> {
@@ -656,6 +684,7 @@ export async function runTask(
   const { task, agent, on, userId, traceId } = prepared;
   const fail = async (status: 'stopped' | 'failed', error: string) => {
     await transaction(organizationId, (db) => finish(db, taskId, { status, answer: null, error }));
+    await answered(organizationId, taskId);
     return status;
   };
   if (!agent || agent.status !== 'active' || !on) return fail('stopped', 'agent_stopped');
@@ -723,10 +752,16 @@ export async function runTask(
         expiresAt: new Date(),
       },
       async () => {
+        // On trial (born from one sentence), it only proposes: never above « prepare ».
+        const onTrial = agent.trialUntil !== null && Date.parse(agent.trialUntil) > Date.now();
         const own = await toolsForAgent(person, actor, {
           permissions: agent.permissions,
-          autonomyMax: agent.autonomyMax,
-          autonomyByPermission: agent.autonomyByPermission,
+          autonomyMax: onTrial ? Math.min(agent.autonomyMax, 2) : agent.autonomyMax,
+          autonomyByPermission: onTrial
+            ? Object.fromEntries(
+                Object.entries(agent.autonomyByPermission).map(([p, l]) => [p, Math.min(l, 2)]),
+              )
+            : agent.autonomyByPermission,
           draftBudget: agent.draftBudget,
         });
         const permissionOf = await toolPermissions(organizationId, actor);
@@ -739,9 +774,13 @@ export async function runTask(
           store: usageStore(),
           context: { organizationId, actor, purpose: 'agents', model: '' },
         };
-        const abilities = await transaction(organizationId, (db) =>
-          abilitiesIn(db, organizationId),
-        ).catch(() => []);
+        // Its own computer only when its job description gives it one, within its minutes.
+        const abilities = await transaction(organizationId, async (db) => {
+          const on = await abilitiesIn(db, organizationId);
+          const minutes = agent.computerMinutes;
+          const left = minutes !== null && (await computerMinutesUsed(db, agent.agentId)) < minutes;
+          return on.filter((ability) => ability !== 'computer' || left);
+        }).catch(() => []);
         const beyond = underPolicies(
           organizationId,
           actor,
@@ -761,6 +800,17 @@ export async function runTask(
             }
             const result = await tool.execute(input);
             await record(tool.name, result);
+            // « Toujours… » in force: her policy decides this draft for her, at once.
+            if (
+              result.status === 'draft' &&
+              (await transaction(organizationId, (db) =>
+                alwaysFor(db, agent.agentId, tool.name),
+              ).catch(() => false))
+            ) {
+              await decideDraft(person, result.draftId, { action: 'validate' }).catch(
+                () => undefined,
+              );
+            }
             return result;
           },
         }));
@@ -794,6 +844,7 @@ export async function runTask(
         href: '/mes-agents',
       });
     });
+    await answered(organizationId, taskId);
     return 'done';
   } catch (error) {
     // Stopping it at a step may end the run with an error: what she asked comes first.
@@ -803,6 +854,14 @@ export async function runTask(
   } finally {
     await computer.close();
   }
+}
+
+/** Its answer goes to its thread (spec 099, FR-013): what it did, its steps, what it asks. */
+async function answered(organizationId: string, taskId: string): Promise<void> {
+  const { agentAnswered } = await import('../messages/index.js');
+  await agentAnswered(organizationId, taskId).catch((error: unknown) =>
+    console.error('[agent thread]', (error as Error).message),
+  );
 }
 
 /** The queued tasks of every organization, run one after the other (the worker, every minute). */

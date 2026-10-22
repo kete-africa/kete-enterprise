@@ -109,3 +109,20 @@ flowchart LR
 - **Her thread « Kete »**: the drawer writes into it (`keepInKete`, the page kept in
   `kete_message_pages`); `POST /:threadId/invite` turns it into a group, and the next question
   opens a new one; `handed` lists what her agents work for her.
+
+## Agents as colleagues (spec 099, FR-013 to FR-017)
+
+`agent-threads.ts` is an agent's thread and what passes in it; `agent-routes.ts` her gestures.
+
+- **Its thread** (`agentThreadOf`, `agent_threads`): her words there are its work (`speakToAgent`:
+  a task, or a note to the task at work); `GET /:threadId` adds `agent` (its job description at
+  work) and `requests` (its drafts under its answers). The task at work is the thread's `turn`.
+- **Its answer** (`agentAnswered`, called by the task runner): posted where it was asked, its
+  steps in `thread_runs`; a holding it worked returns to whom its job description says.
+- **Its requests** (`POST /requests/:draftId/once|always|refuse`): « always » allows this one and
+  proposes `agent.<agent>.<capability>`, simulated, hers to adopt; a routine's request expires
+  after ten minutes.
+- **What it takes on** (`offerHolding` on every holding given in a thread, `mentionedAgents`):
+  never, a `takeon` proposal for the holder (`POST /proposals/:id/takeon`), or alone.
+- **Its job description at work** (`POST /agents/:agentId/job`, the command `set-agent-job`),
+  its routine now (`POST /agents/:agentId/routine/now`), her agents by state (`GET /agents`).

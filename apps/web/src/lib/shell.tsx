@@ -8,6 +8,7 @@ import {
 } from '@kete/shell';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { refusal } from '@/lib/forms';
+import { AgentsPill } from '@/lib/agent-colleague';
 import * as m from '@/paraglide/messages.js';
 import { useAskBeside, useShownPage } from './chat/panel';
 import { CenterIntelligence } from './intelligence';
@@ -712,6 +713,7 @@ export function AppShell({
         setTab('files');
       }}
       sync={sync}
+      {...(me.modules.agents && !me.viewedBy ? { tools: <AgentsPill /> } : {})}
       tabs={['home', 'threads', 'plan']}
       signOutHref="/auth/sortie"
     >

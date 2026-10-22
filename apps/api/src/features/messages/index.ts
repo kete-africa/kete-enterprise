@@ -7,6 +7,7 @@ export {
   messagesLiveMigrationSql,
   messagesMigrationSql,
 } from './migration.js';
+export { agentAnswered, agentThreadsMigrationSql, runDueRoutines } from './agent-threads.js';
 export { doorMigrationSql, drawerDoor, keepInKete, settleTurns, startTurn } from './door.js';
 export { ringUnread } from './push.js';
 export { threadRoutes, useThreadConverter } from './routes.js';

@@ -154,6 +154,65 @@ export interface ThreadView {
   turn: Turn | null;
   /** In her thread « Kete »: the parts her agents work for her. */
   handed: { agentId: string; name: string; part: string; state: AgentWorkState }[];
+  /** In an agent's thread: its job description at work, beside it (spec 099, FR-016). */
+  agent: AgentSide | null;
+  /** What the agent asks, under its answers (FR-015). */
+  requests: Record<string, AgentRequest[]>;
+}
+
+export type TakeOnLevel = 'never' | 'proposes' | 'alone';
+
+export interface AgentSide {
+  agentId: string;
+  name: string;
+  mission: string;
+  status: 'active' | 'paused';
+  person: { id: string; name: string } | null;
+  mine: boolean;
+  state: { kind: string; instruction?: string; steps?: number; drafts?: number; reason?: string };
+  month: { done: number; asked: number; failed: number };
+  permissions: { permission: string; level: number }[];
+  autonomyMax: number;
+  takeOn: Record<'described' | 'other' | 'mention', TakeOnLevel>;
+  covers: string[];
+  computerMinutes: number | null;
+  computerUsed: number;
+  returnTo: 'giver' | 'owner';
+  trialUntil: string | null;
+  routine: { time: string; cadence: 'daily' | 'weekdays'; instruction: string } | null;
+  nextRoutineAt: string | null;
+  wakeEveryMinutes: number;
+  watches: string[];
+  draftBudget: number;
+}
+
+export interface AgentRequest {
+  draftId: string;
+  capability: string;
+  description: string;
+  recordType: string;
+  status: 'prepared' | 'validated' | 'refused';
+  values: Record<string, string | number | boolean | null>;
+  display: Record<string, string>;
+  expiresAt: string | null;
+  expired: boolean;
+  always: boolean;
+}
+
+export interface AgentsScreen {
+  agents: {
+    agentId: string;
+    name: string;
+    threadId: string;
+    state: AgentWorkState;
+    asks: number;
+    unread: number;
+    line: string;
+    mine: boolean;
+  }[];
+  together: { threadId: string; title: string; agents: string[] }[];
+  working: number;
+  needs: number;
 }
 
 export type AgentWorkState = 'needs' | 'working' | 'finished' | 'idle';
@@ -215,6 +274,10 @@ export type Proposal = {
       kind: 'handover';
       body: Handover;
       agent?: { name: string; state: AgentWorkState; step?: string };
+    }
+  | {
+      kind: 'takeon';
+      body: { agentId: string; agentName: string; holdingId: string; what: string };
     }
 );
 
@@ -686,7 +749,7 @@ export const fetchTurn = createServerFn({ method: 'GET' })
 export const stopTurn = createServerFn({ method: 'POST' })
   .validator((input: unknown) => {
     const id = text((input as { turnId?: unknown })?.turnId, 80);
-    if (!/^trn_[0-9A-Za-z_-]{8,70}$/.test(id)) throw new Error('Which turn?');
+    if (!/^(trn|tsk)_[0-9A-Za-z_-]{8,70}$/.test(id)) throw new Error('Which turn?');
     return { turnId: id };
   })
   .handler(({ data }) => gesture<{ stopped: true }>(`/v1/threads/turns/${data.turnId}/stop`, {}));
@@ -756,4 +819,107 @@ export const inviteToKete = createServerFn({ method: 'POST' })
   })
   .handler(({ data }) =>
     gesture<{ invited: number }>(`/v1/threads/${data.threadId}/invite`, { people: data.people }),
+  );
+
+// --- Her agents as colleagues (spec 099, FR-013 to FR-017) -------------------------------------------
+
+const agentId = (value: unknown) => {
+  const id = text(value, 100);
+  if (!/^agt_[0-9A-Za-z_-]{3,90}$/.test(id)) throw new Error('Which agent?');
+  return id;
+};
+
+/** Her agents by state, with their threads, and how many work and wait for her. */
+export const fetchAgentsScreen = createServerFn({ method: 'GET' }).handler(() =>
+  callApi<AgentsScreen>(getRequest(), '/v1/threads/agents'),
+);
+
+/** The thread of one of her agents: opened the first time. */
+export const openAgentThread = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => ({ agentId: agentId((input as { agentId?: unknown })?.agentId) }))
+  .handler(({ data }) =>
+    gesture<{ threadId: string }>(`/v1/threads/agents/${data.agentId}/thread`, {}),
+  );
+
+/** Its job description at work: what it takes on, covers, uses, returns, its routine. */
+export const setAgentJob = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const levels = ['never', 'proposes', 'alone'];
+    const takeOn = Object.fromEntries(
+      Object.entries((v.takeOn ?? {}) as Record<string, unknown>).filter(
+        ([k, l]) => ['described', 'other', 'mention'].includes(k) && levels.includes(String(l)),
+      ),
+    ) as Record<string, string>;
+    const routine = v.routine as {
+      time?: unknown;
+      cadence?: unknown;
+      instruction?: unknown;
+    } | null;
+    return {
+      agentId: agentId(v.agentId),
+      ...(Object.keys(takeOn).length ? { takeOn } : {}),
+      ...(Array.isArray(v.covers)
+        ? {
+            covers: v.covers
+              .map((w) => text(w, 40))
+              .filter((w) => w.length >= 2)
+              .slice(0, 20),
+          }
+        : {}),
+      ...(v.computerMinutes === null
+        ? { computerMinutes: null }
+        : typeof v.computerMinutes === 'number'
+          ? { computerMinutes: Math.max(1, Math.min(10000, Math.round(v.computerMinutes))) }
+          : {}),
+      ...(v.returnTo === 'giver' || v.returnTo === 'owner' ? { returnTo: v.returnTo } : {}),
+      ...(routine === null
+        ? { routine: null }
+        : routine && typeof routine === 'object'
+          ? {
+              routine: {
+                time: text(routine.time, 5),
+                cadence: routine.cadence === 'daily' ? 'daily' : 'weekdays',
+                instruction: text(routine.instruction, 2000),
+              },
+            }
+          : {}),
+    };
+  })
+  .handler(({ data }) => {
+    const { agentId: id, ...body } = data;
+    return gesture<{ agentId: string }>(`/v1/threads/agents/${id}/job`, body);
+  });
+
+/** « Essayer maintenant »: its routine sets it to work at once. */
+export const routineNow = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => ({ agentId: agentId((input as { agentId?: unknown })?.agentId) }))
+  .handler(({ data }) =>
+    gesture<{ taskId: string | null }>(`/v1/threads/agents/${data.agentId}/routine/now`, {}),
+  );
+
+/** Her answer to what an agent asks: once, always, or not. */
+export const answerRequest = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    const id = text(v.draftId, 100);
+    if (!/^[a-z]{3}_[0-9A-Za-z_-]{8,70}$/.test(id)) throw new Error('Which request?');
+    const how: 'once' | 'always' | 'refuse' =
+      v.how === 'always' ? 'always' : v.how === 'refuse' ? 'refuse' : 'once';
+    return { draftId: id, how };
+  })
+  .handler(({ data }) =>
+    gesture<{ status: string; proposalId?: string }>(
+      `/v1/threads/requests/${data.draftId}/${data.how}`,
+      {},
+    ),
+  );
+
+/** « Confier à l’agent »: the holding goes to the agent that proposed to take it on. */
+export const takeOnProposal = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => ({
+    proposalId: proposalId((input as { proposalId?: unknown })?.proposalId),
+  }))
+  .handler(({ data }) =>
+    gesture<{ handed: true }>(`/v1/threads/proposals/${data.proposalId}/takeon`, {}),
   );

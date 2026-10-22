@@ -10,7 +10,12 @@ import {
   runQueuedRoutines,
 } from './features/routines/index.js';
 import { relayRound, syncHoldings, workOrganizations } from './features/work/index.js';
-import { readMailboxes, ringUnread, sendDigests } from './features/messages/index.js';
+import {
+  readMailboxes,
+  ringUnread,
+  runDueRoutines,
+  sendDigests,
+} from './features/messages/index.js';
 import { getPool, transaction } from './platform/db.js';
 import { env } from './platform/env.js';
 
@@ -113,6 +118,16 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const sent = await sendQueuedMail();
           if (sent > 0) console.log(`[worker] ${sent} e-mail(s) sent`);
+        },
+      }),
+      // Agents whose routine is due set to work (spec 099, FR-015).
+      defineJob({
+        name: 'agent-routines',
+        schedule: '* * * * *',
+        retryLimit: 0,
+        async handle() {
+          const ran = await runDueRoutines();
+          if (ran > 0) console.log(`[worker] ${ran} agent routine(s)`);
         },
       }),
       // A message still unread three minutes after it rings her phone, once (spec 099).

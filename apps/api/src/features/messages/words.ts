@@ -41,6 +41,21 @@ const catalog = {
               ? `Confié à ${t.handed} agent${t.handed > 1 ? 's' : ''}`
               : `A lu ${t.read} source${t.read > 1 ? 's' : ''}`,
     keteGroup: (who: string, invited: string[]) => `${[who, ...invited].join(', ')} et Kete`,
+    agentDone: 'C’est fait.',
+    agentQueued: 'en file : il commence dans un instant',
+    agentStopped: 'Arrêté : ce qui était fait reste.',
+    agentFailed: (reason: string) =>
+      reason === 'assistant_unavailable'
+        ? 'Je n’ai pas pu travailler : aucun modèle n’est configuré.'
+        : 'Je n’ai pas pu aller au bout. Vous pouvez reprendre la main.',
+    agentRun: (instruction: string) => `« ${instruction} »`,
+    returnedBy: (agent: string) => `${agent} vous rend une tenue : c’est fait`,
+    alwaysSentence: (agent: string, what: string) => `${agent} fait seul : ${what}`,
+    takesOn: (agent: string) =>
+      `${agent} s’en charge. La tenue reste à sa personne ; l’agent en est le délégué.`,
+    asks: (count: number) =>
+      `${count} demande${count > 1 ? 's' : ''} attend${count > 1 ? 'ent' : ''} votre accord`,
+    routineAt: (time: string) => `prochaine routine à ${time}`,
     invited: (who: string, invited: string[]) =>
       `${who} invite ${invited.join(', ')} : la conversation devient un groupe, et ce qui précède se lit.`,
   },
@@ -82,6 +97,21 @@ const catalog = {
               ? `Handed to ${t.handed} agent${t.handed > 1 ? 's' : ''}`
               : `Read ${t.read} source${t.read > 1 ? 's' : ''}`,
     keteGroup: (who: string, invited: string[]) => `${[who, ...invited].join(', ')} and Kete`,
+    agentDone: 'Done.',
+    agentQueued: 'queued: it starts in a moment',
+    agentStopped: 'Stopped: what was done stays.',
+    agentFailed: (reason: string) =>
+      reason === 'assistant_unavailable'
+        ? 'I could not work: no model is set.'
+        : 'I could not finish. You may take the work over.',
+    agentRun: (instruction: string) => `“${instruction}”`,
+    returnedBy: (agent: string) => `${agent} returns a holding to you: done`,
+    alwaysSentence: (agent: string, what: string) => `${agent} does alone: ${what}`,
+    takesOn: (agent: string) =>
+      `${agent} takes it on. The holding stays its person's; the agent is its delegate.`,
+    asks: (count: number) =>
+      `${count} request${count > 1 ? 's' : ''} wait${count > 1 ? '' : 's'} for your approval`,
+    routineAt: (time: string) => `next routine at ${time}`,
     invited: (who: string, invited: string[]) =>
       `${who} invites ${invited.join(', ')}: the conversation becomes a group, and what came before can be read.`,
   },

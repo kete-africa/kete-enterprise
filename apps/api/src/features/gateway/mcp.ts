@@ -257,6 +257,17 @@ export async function draftsFor(identity: { organizationId: string; userId: stri
   return reviews.filter((r) => r !== null);
 }
 
+/** These drafts, as she reads them: what each asks, by which capability (spec 099, FR-015). */
+export async function reviewDrafts(
+  identity: { organizationId: string; userId: string },
+  draftIds: readonly string[],
+) {
+  const caller = personCaller(identity);
+  const registry = await registryOf(identity.organizationId);
+  const reviews = await Promise.all(draftIds.map((id) => registry.review(caller, id)));
+  return reviews.filter((r) => r !== null);
+}
+
 /** How many drafts wait for her decision: the count beside « À faire » (spec 046). */
 export async function preparedDraftCount(db: SqlExecutor, userId: string): Promise<number> {
   const { rows } = await db.query<{ count: string }>(

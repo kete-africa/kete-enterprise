@@ -7,6 +7,7 @@ import {
   agentStatusInput,
   closeSignalInput,
   createAgentInput,
+  jobInput,
   raiseSignalInput,
 } from './agents.record.js';
 import {
@@ -16,6 +17,7 @@ import {
   insertAgent,
   insertSignal,
   setAutonomy,
+  setJob,
   setSharing,
   setStatus,
 } from './infrastructure/agents.tables.js';
@@ -54,6 +56,8 @@ export const createAgent = defineCommand({
         responsibleUserId: input.kind === 'position' ? null : (input.responsibleUserId ?? creator),
         positionId: input.positionId ?? null,
         scopeUnitId: input.scopeUnitId ?? null,
+        // From one sentence it starts on trial: it proposes, and is proven before it acts.
+        ...(input.fromSentence ? { autonomyMax: Math.min(input.autonomyMax, 2) } : {}),
       });
       // Every agent is known: it enters the registry, in the space of the person who answers for it.
       const resourceId = await registerAgent(db, organizationId, {
@@ -116,6 +120,42 @@ export const setAgentAutonomy = defineCommand({
   },
   summarize: (input) =>
     `Agent ${input.agentId}: ${input.permission} at level ${input.level ?? 'its maximum'}`,
+});
+
+/**
+ * Its job description at work (spec 099, FR-016): what it takes on, what it covers, its computer,
+ * whom it returns to, its routine. Journaled with what it was before.
+ */
+export const setAgentJob = defineCommand({
+  name: 'set-agent-job',
+  input: jobInput,
+  reversibility: { reversible: true, inverse: 'set-agent-job' },
+  async handler(input, { db }) {
+    const before = await findAgent(db, input.agentId);
+    if (!before) throw new AgentRuleError('not_found', 'The agent does not exist here.');
+    const { agentId, ...job } = input;
+    const after = await setJob(db, agentId, job);
+    return {
+      agentId,
+      before: {
+        takeOn: before.takeOn,
+        covers: before.covers,
+        computerMinutes: before.computerMinutes,
+        returnTo: before.returnTo,
+        routine: before.routine,
+      },
+      after: after
+        ? {
+            takeOn: after.takeOn,
+            covers: after.covers,
+            computerMinutes: after.computerMinutes,
+            returnTo: after.returnTo,
+            routine: after.routine,
+          }
+        : null,
+    };
+  },
+  summarize: (input) => `Agent ${input.agentId}: its job description`,
 });
 
 /** Its person opens it to colleagues, or keeps it to herself (spec 066, doctrine D-044). */

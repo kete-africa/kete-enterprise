@@ -110,6 +110,37 @@ flowchart LR
   T -->|hands a part| A[Her agents · in parallel]
 ```
 
+### Agents as colleagues (spec 099, FR-013 to FR-017)
+
+Each agent has a thread with each person who gives it work (`agent_threads`; a direct thread, her
+and the agent). Her words there are its work: a task (`giveToAgent`), or a note to the task at work
+— she speaks to it without stopping it; « Arrêter » stops it. When a task ends, its answer is posted
+where it was asked (`agent_task_threads`), its steps folded under it; its drafts are its **requests**,
+answered « Autoriser une fois », « Refuser », or « Toujours… »: allowed this time, and proposed as
+her policy `agent.<agent>.<capability>`, simulated over thirty days, which — once in force —
+decides that agent's drafts of that capability for her (never to sign or to pay). A request born of
+its **routine** (`agents.routine_*`, the worker's `agent-routines`) expires after ten minutes, and
+nothing leaves. Its job description says what it **takes on**: a holding of its person it covers,
+any other of hers, a mention in a thread — never, it proposes (a « Confier à l'agent » card for the
+holder), or alone (the holding delegated, still hers); its own **computer** with its minutes a
+month; whom it **returns** to. Born from one sentence, it is **on trial** for two weeks and only
+proposes. « Mes agents » lists them by state — needs her, works, finished, idle —, and the top bar
+says how many work and wait for her.
+
+```mermaid
+flowchart LR
+  S[Her words in its thread] -->|a task · or a note to it| T[(agent_tasks)]
+  H[A holding of hers it covers] -->|proposes · alone| T
+  M[@agent in a thread] --> T
+  R[Its routine] -->|from_routine| T
+  T -->|its answer, its steps| A[The thread it was asked in]
+  T -->|its drafts| Q{Her answer}
+  Q -->|once| D[The draft, validated]
+  Q -->|always| P[Her policy · simulated · on trial or in force]
+  P -->|in force| D
+  Q -->|routine, 10 min passed| X[Refused · nothing leaves]
+```
+
 ## Where it runs
 
 - Any Postgres 16 or more (with pgvector) and any S3-compatible storage, or a disk for a single

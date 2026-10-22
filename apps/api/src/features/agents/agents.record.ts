@@ -37,6 +37,9 @@ export const createAgentInput = z
       .max(7 * 24 * 60)
       .default(60),
     watches: z.array(watchName).min(1).max(10),
+    /** Born from one sentence (spec 099, FR-017): on trial, it only proposes for two weeks. */
+    fromSentence: z.boolean().default(false),
+    covers: z.array(z.string().trim().min(2).max(40)).max(20).default([]),
   })
   .refine((a) => (a.kind === 'position') === Boolean(a.positionId), {
     message: "A position's agent names its position, and only it does.",
@@ -93,7 +96,51 @@ export interface Agent {
   sharedWith: string[];
   nextWakeAt: string;
   lastRunAt: string | null;
+  /**
+   * What it takes on (spec 099, FR-016): a holding of its person its job description covers, any
+   * other of hers, a mention in a thread — never, it proposes, or it takes it alone. The holding
+   * stays its person's; the agent is only its delegate.
+   */
+  takeOn: Record<'described' | 'other' | 'mention', TakeOnLevel>;
+  /** The words of the holdings its job description covers (« relance », « impayé »). */
+  covers: string[];
+  /** Its own computer, its minutes a month; none: no computer. */
+  computerMinutes: number | null;
+  /** Whom it returns its work to: who gave it (or the holding's return), or its person. */
+  returnTo: 'giver' | 'owner';
+  /** Born from one sentence, it is on trial until then: it only proposes. */
+  trialUntil: string | null;
+  /** When it sets to work by itself: every day or every working day, at a time. */
+  routine: { time: string; cadence: 'daily' | 'weekdays'; instruction: string } | null;
+  createdAt: string;
 }
+
+export const takeOnLevels = ['never', 'proposes', 'alone'] as const;
+export type TakeOnLevel = (typeof takeOnLevels)[number];
+
+/** Its job description at work (spec 099, FR-016), as its person sets it in its thread. */
+export const jobInput = z.object({
+  agentId,
+  takeOn: z
+    .object({
+      described: z.enum(takeOnLevels),
+      other: z.enum(takeOnLevels),
+      mention: z.enum(takeOnLevels),
+    })
+    .partial()
+    .optional(),
+  covers: z.array(z.string().trim().min(2).max(40)).max(20).optional(),
+  computerMinutes: z.number().int().min(1).max(10000).nullable().optional(),
+  returnTo: z.enum(['giver', 'owner']).optional(),
+  routine: z
+    .object({
+      time: z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/),
+      cadence: z.enum(['daily', 'weekdays']),
+      instruction: z.string().trim().min(2).max(2000),
+    })
+    .nullable()
+    .optional(),
+});
 
 /** Something a watch found: its key makes it one signal, however many times the agent wakes. */
 export interface Finding {

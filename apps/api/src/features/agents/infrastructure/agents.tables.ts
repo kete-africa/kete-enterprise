@@ -87,6 +87,15 @@ type AgentRow = {
   shared_with: string[];
   next_wake_at: Date;
   last_run_at: Date | null;
+  take_on: Agent['takeOn'] | null;
+  covers: string[] | null;
+  computer_minutes: number | null;
+  return_to: Agent['returnTo'] | null;
+  trial_until: Date | null;
+  routine_time: string | null;
+  routine_cadence: 'daily' | 'weekdays' | null;
+  routine_instruction: string | null;
+  created_at: Date;
 };
 
 const toAgent = (r: AgentRow): Agent => ({
@@ -108,11 +117,29 @@ const toAgent = (r: AgentRow): Agent => ({
   sharedWith: r.shared_with,
   nextWakeAt: new Date(r.next_wake_at).toISOString(),
   lastRunAt: r.last_run_at ? new Date(r.last_run_at).toISOString() : null,
+  takeOn: { ...defaultTakeOn, ...(r.take_on ?? {}) },
+  covers: r.covers ?? [],
+  computerMinutes: r.computer_minutes,
+  returnTo: r.return_to ?? 'giver',
+  trialUntil: r.trial_until ? new Date(r.trial_until).toISOString() : null,
+  routine:
+    r.routine_time && r.routine_cadence && r.routine_instruction
+      ? { time: r.routine_time, cadence: r.routine_cadence, instruction: r.routine_instruction }
+      : null,
+  createdAt: new Date(r.created_at).toISOString(),
 });
+
+/** What an agent takes on, by default (spec 099, FR-016): it proposes, never more. */
+export const defaultTakeOn: Agent['takeOn'] = {
+  described: 'proposes',
+  other: 'never',
+  mention: 'proposes',
+};
 
 const agentColumns = `agent_id, name, kind, mission, responsible_user_id, position_id, scope_unit_id,
   permissions, autonomy_max, autonomy_by_permission, draft_budget, wake_every_minutes, watches,
-  status, visibility, shared_with, next_wake_at, last_run_at`;
+  status, visibility, shared_with, next_wake_at, last_run_at, take_on, covers, computer_minutes,
+  return_to, trial_until, routine_time, routine_cadence, routine_instruction, created_at`;
 
 export async function insertAgent(
   db: SqlExecutor,
@@ -129,13 +156,16 @@ export async function insertAgent(
     draftBudget: number;
     wakeEveryMinutes: number;
     watches: string[];
+    fromSentence?: boolean;
+    covers?: string[];
   },
 ): Promise<Agent> {
   const { rows } = await db.query<AgentRow>(
     `insert into agents (agent_id, organization_id, name, kind, mission, responsible_user_id,
        position_id, scope_unit_id, permissions, autonomy_max, draft_budget, wake_every_minutes,
-       watches)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       watches, covers, trial_until)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+       case when $15 then now() + interval '14 days' end)
      returning ${agentColumns}`,
     [
       newId('agt'),
@@ -151,9 +181,51 @@ export async function insertAgent(
       input.draftBudget,
       input.wakeEveryMinutes,
       [...new Set(input.watches)].sort(),
+      [...new Set((input.covers ?? []).map((w) => w.toLowerCase()))],
+      input.fromSentence === true,
     ],
   );
   return toAgent(rows[0] as AgentRow);
+}
+
+/** Its job description at work (spec 099, FR-016): what it takes on, covers, uses, returns. */
+export async function setJob(
+  db: SqlExecutor,
+  agentId: string,
+  job: {
+    takeOn?: { [K in keyof Agent['takeOn']]?: Agent['takeOn'][K] | undefined } | undefined;
+    covers?: string[] | undefined;
+    computerMinutes?: number | null | undefined;
+    returnTo?: Agent['returnTo'] | undefined;
+    routine?: Agent['routine'] | undefined;
+  },
+): Promise<Agent | null> {
+  const current = await findAgent(db, agentId);
+  if (!current) return null;
+  const routine = job.routine === undefined ? current.routine : job.routine;
+  const { rows } = await db.query<AgentRow>(
+    `update agents set take_on = $2, covers = $3, computer_minutes = $4, return_to = $5,
+            routine_time = $6, routine_cadence = $7, routine_instruction = $8,
+            next_routine_at = case when $6::text is null then null
+                                   when $6 is distinct from routine_time
+                                     or $7 is distinct from routine_cadence then null
+                                   else next_routine_at end
+      where agent_id = $1 returning ${agentColumns}`,
+    [
+      agentId,
+      JSON.stringify({
+        ...current.takeOn,
+        ...Object.fromEntries(Object.entries(job.takeOn ?? {}).filter(([, v]) => v !== undefined)),
+      }),
+      job.covers ? [...new Set(job.covers.map((w) => w.toLowerCase()))] : current.covers,
+      job.computerMinutes === undefined ? current.computerMinutes : job.computerMinutes,
+      job.returnTo ?? current.returnTo,
+      routine?.time ?? null,
+      routine?.cadence ?? null,
+      routine?.instruction ?? null,
+    ],
+  );
+  return rows[0] ? toAgent(rows[0]) : null;
 }
 
 /** An agent's level per permission (spec 052): what it may do alone, kind of task by kind. */

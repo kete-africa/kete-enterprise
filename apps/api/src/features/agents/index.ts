@@ -1,6 +1,7 @@
 // The agents feature's only door: what the rest of the API may use (spec 007).
 export type { Agent, Finding, Signal } from './agents.record.js';
-export { AgentRuleError } from './commands.js';
+export { jobInput } from './agents.record.js';
+export { AgentRuleError, setAgentJob } from './commands.js';
 export {
   agentAutonomyMigrationSql,
   agentsMigrationSql,
@@ -21,7 +22,9 @@ export {
   runQueuedTasks,
   runTask,
   stateOfAgent,
+  stopTask,
   useTaskModel,
+  writeToTask,
   type AgentState,
   type AgentTask,
 } from './tasks.js';
