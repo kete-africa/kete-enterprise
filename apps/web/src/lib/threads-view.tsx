@@ -194,6 +194,30 @@ function fieldWords(title: string): MessageFieldWords {
   };
 }
 
+const projectStatus: Record<string, () => string> = {
+  open: m.project_status_open,
+  delivered: m.project_status_delivered,
+  closed: m.project_status_closed,
+};
+const partyRole: Record<string, () => string> = {
+  client: m.party_role_client,
+  supplier: m.party_role_supplier,
+  funder: m.party_role_funder,
+  partner: m.party_role_partner,
+};
+
+/** A cited object's state, in her words: a project's status, a third party's roles. */
+function stateWord(kind: string, state: string) {
+  if (kind === 'project') return projectStatus[state]?.() ?? state;
+  if (kind === 'party') {
+    return state
+      .split(', ')
+      .map((role) => partyRole[role]?.() ?? role)
+      .join(', ');
+  }
+  return state;
+}
+
 const toBase64 = (blob: Blob) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -675,7 +699,11 @@ function Composer({
       return objects.map((o) => {
         const key = `${o.kind}:${o.id}:${o.app ?? ''}`;
         cited.current.set(key, { kind: o.kind, id: o.id, ...(o.app ? { app: o.app } : {}) });
-        return { id: key, label: o.label, ...(o.state ? { hint: o.state } : {}) };
+        return {
+          id: key,
+          label: o.label,
+          ...(o.state ? { hint: stateWord(o.kind, o.state) } : {}),
+        };
       });
     },
     [candidates],
@@ -1093,22 +1121,17 @@ function ThreadState({
   me,
   people,
   threads,
-  onInfos,
 }: {
   view: ThreadView;
   money: ProjectMoney | null;
   me: string;
   people: Person[];
   threads: ThreadSummary[];
-  onInfos: () => void;
 }) {
   const [proof, setProof] = useState<string | null>(null);
   return (
     <>
       <span className="flex flex-wrap gap-1.5">
-        <Button variant="secondary" onClick={onInfos}>
-          <CanvasIcon name="more" size={13} /> {m.threads_infos()}
-        </Button>
         {view.link && (
           <a
             href={view.link}
@@ -1308,13 +1331,17 @@ export function ThreadsScreen({
     setOpen(null);
     setLevel(view?.level ?? 'all');
   }, [current]);
+  // What « Infos du fil » lists follows the thread: a message, a file, a pin.
+  const mediaKey = (view?.messages ?? [])
+    .map((msg) => `${msg.id}${msg.pinned ? '*' : ''}${msg.deleted ? '-' : ''}`)
+    .join();
   useEffect(() => {
     if (!infos || !current) return;
     void fetchMedia({ data: { threadId: current } }).then((answer) => {
       setMedia(answer.media);
       setLevel(answer.level);
     });
-  }, [infos, current, view?.messages.length]);
+  }, [infos, current, mediaKey]);
   useEffect(() => {
     const timer = setInterval(() => {
       const now = Date.now();
@@ -1490,14 +1517,7 @@ export function ThreadsScreen({
               onState={() => setInfos(false)}
             />
           ) : (
-            <ThreadState
-              view={view}
-              money={money}
-              me={me}
-              people={people}
-              threads={threads}
-              onInfos={() => setInfos(true)}
-            />
+            <ThreadState view={view} money={money} me={me} people={people} threads={threads} />
           )
         ) : undefined
       }
@@ -1533,7 +1553,8 @@ export function ThreadsScreen({
                     setAsideShown(true);
                   }}
                 >
-                  <CanvasIcon name="more" size={13} /> {m.threads_infos()}
+                  <CanvasIcon name="more" size={13} />
+                  <span className="max-[520px]:sr-only">{m.threads_infos()}</span>
                 </Button>
                 <button
                   type="button"
@@ -1545,7 +1566,7 @@ export function ThreadsScreen({
                   className="hidden h-(--control-height) items-center gap-1.5 rounded-control border border-line-control px-2.5 text-body-sm font-semibold max-[1180px]:inline-flex"
                 >
                   <CanvasIcon name="layers" size={14} />
-                  {m.threads_state()}
+                  <span className="max-[520px]:sr-only">{m.threads_state()}</span>
                 </button>
               </>
             }
@@ -1597,7 +1618,9 @@ export function ThreadsScreen({
                         <CanvasIcon name="hash" size={12} />
                         {state?.label ?? r.id}
                         {state?.state && (
-                          <span className="font-normal text-fg-soft">{state.state}</span>
+                          <span className="font-normal text-fg-soft">
+                            {stateWord(r.kind, state.state)}
+                          </span>
                         )}
                       </span>
                     );
