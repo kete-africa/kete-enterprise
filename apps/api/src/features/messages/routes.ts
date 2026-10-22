@@ -1,7 +1,6 @@
 import { settle } from '@kete/channels';
 import { pdfConverterFromEnv, type PdfConverter } from '@kete/files';
-import type { Message, Thread } from '@kete/sdk';
-import type { SqlExecutor } from '@kete/tenancy';
+import type { Message } from '@kete/sdk';
 import {
   editMessage,
   exportThread,
@@ -11,7 +10,6 @@ import {
   markRead,
   markUnread,
   MAX_THREAD_FILE_BYTES,
-  messagesOf,
   messagesPage,
   notifyLevelOf,
   moveMessage,
@@ -30,12 +28,13 @@ import { z } from 'zod';
 import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
-import { answerInThread } from '../assistant/index.js';
 import { tell } from '../notifications/index.js';
 import { isAdministrator } from '../rights/index.js';
 import { KETE, mayManage, me, readable, refuse } from './access.js';
 import { centerRouter, keteThreadOf } from './center.js';
 import { citedStates, comfortRoutes, threadStore } from './comfort.js';
+import { doorRoutes } from './door-routes.js';
+import { handedNow, pagesOf, proposalsOf, startTurn, workingTurn } from './door.js';
 import { threadEvents } from './live.js';
 import { listMailboxes, mailboxInput, MailboxError, mailboxOf, saveMailbox } from './mailboxes.js';
 import { ensureObjectThreads } from './objects.js';
@@ -50,7 +49,6 @@ import { actionsOf, namesOf, stateOf } from './state.js';
 import { messageWords } from './words.js';
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
-type Identity = IdentityVariables['identity'];
 
 let converterOverride: PdfConverter | null | undefined;
 /** Tests: another conversion service (`null`: none). */
@@ -87,73 +85,6 @@ const postInput = z.object({
   visibility: z.enum(['internal', 'outside']).default('internal'),
 });
 
-/** What Kete reads of a thread before answering in it: its object's state, its last words. */
-async function contextOf(db: SqlExecutor, identity: Identity, thread: Thread) {
-  const messages = (await messagesOf(db, thread.id)).slice(-30);
-  const state = await stateOf(db, thread);
-  const ids = [
-    ...messages.map((m) => m.author.id),
-    ...state.holdings.map((h) => h.holder.id),
-    ...state.cards.map((h) => h.holder.id),
-  ];
-  const names = await namesOf(db, ids, identity, messageWords().outsider);
-  return [
-    thread.object ? `Objet : ${thread.object.kind} ${thread.object.id}` : 'Fil sans objet.',
-    ...state.holdings.map((h) => `En cours : ${h.what} — ${names[h.holder.id]}`),
-    ...state.cards.map((h) => `À décider : ${h.what} — ${names[h.holder.id]}`),
-    ...state.dates.map((d) => `Date : ${d.label} — ${d.at ?? ''}`),
-    '',
-    ...messages.map((m) => `${names[m.author.id]} : ${m.text.slice(0, 1500)}`),
-  ].join('\n');
-}
-
-/** Kete answers in the thread, after the person's message has committed. */
-async function keteAnswers(identity: Identity, threadId: string, question: string) {
-  const { thread, context } = await transaction(identity.organizationId, async (db) => {
-    const found = await readable(db, identity, threadId);
-    return { thread: found, context: await contextOf(db, identity, found) };
-  });
-  const said = await answerInThread(identity, { thread: thread.title, context, question });
-  const words = messageWords();
-  const answer =
-    'text' in said ? said.text : said.failure === 'no_model' ? words.keteSilent : words.keteFailed;
-  // Read beyond the thread with her rights, and others read the thread: hers alone, until she
-  // shares it (spec 099, FR-009).
-  const others = (thread.members ?? []).some(
-    (m) => !m.until && m.kind !== 'agent' && !(m.kind === 'person' && m.id === identity.userId),
-  );
-  const sources = 'text' in said ? said.sources : [];
-  const onlyHers = sources.length > 0 && others;
-  await transaction(identity.organizationId, async (db) => {
-    await joinThread(db, identity.organizationId, threadId, KETE);
-    const posted = await postMessage(db, identity.organizationId, {
-      thread: threadId,
-      author: KETE,
-      text: answer.slice(0, 20000),
-      for: 'information',
-      via: 'kete',
-      mentions: [me(identity)],
-      ...(onlyHers ? { only_for: me(identity) } : {}),
-    });
-    if ('text' in said) {
-      await db.query(
-        `insert into thread_runs (organization_id, message_id, title, steps, seconds)
-         values ($1, $2, $3, $4, $5)`,
-        [
-          identity.organizationId,
-          posted.message.id,
-          words.keteRead(sources.length + 1),
-          JSON.stringify([
-            { state: 'done', label: words.readThread, tag: words.levelRead },
-            ...sources.map((name) => ({ state: 'done', label: name, tag: words.levelRead })),
-          ]),
-          said.seconds,
-        ],
-      );
-    }
-  });
-}
-
 /** Threads, under /v1/threads (specs 089, 098). */
 export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
   // Her open threads, by last activity, with what she has not read (FR-003).
@@ -174,6 +105,8 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
   .get('/events', (c: Ctx) => threadEvents(c))
   // The threads at today's level: pages, media, reactions, voice, « # », imports (spec 099).
   .route('/', comfortRoutes)
+  // Kete's door: its turn, what it proposes, her invitation (FR-007 to FR-011).
+  .route('/', doorRoutes)
   // A group or a direct thread she opens and holds, with its members (FR-008).
   .post('/', async (c: Ctx) => {
     const identity = c.get('identity');
@@ -339,7 +272,15 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
         ]);
         const state = await stateOf(db, thread);
         const actions = await actionsOf(db, threadId);
+        // What Kete proposed her here, the turn at work, and in her own thread what she handed.
+        const proposals = await proposalsOf(db, threadId, identity.userId);
+        const handed = thread.kind === 'kete' ? await handedNow(db, identity.userId) : [];
         const ids = [
+          ...Object.values(proposals).flatMap((list) =>
+            list.flatMap((p) =>
+              'holdings' in p.body ? p.body.holdings.flatMap((h) => [h.holder, h.returnTo]) : [],
+            ),
+          ),
           ...(thread.members ?? []).map((m) => m.id),
           ...messages.flatMap((m) => [
             m.author.id,
@@ -362,6 +303,13 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
             messages.flatMap((m) => m.references ?? []),
           ),
           level: await notifyLevelOf(db, threadId, me(identity)),
+          proposals,
+          pages: await pagesOf(
+            db,
+            messages.map((m) => m.first),
+          ),
+          turn: await workingTurn(db, threadId),
+          handed,
           actions,
           pending: await pendingOf(db, threadId),
           ...state,
@@ -461,8 +409,12 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
     if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'Some words.');
     const input = parsed.data;
     const words = messageWords();
+    // The thread it was said in, for Kete's turn after.
+    const place = { kind: '', holder: '' };
     const answer = await transaction(identity.organizationId, async (db) => {
       const thread = await readable(db, identity, threadId);
+      place.kind = thread.kind;
+      place.holder = thread.holder.id;
       const verdict =
         input.visibility === 'outside'
           ? await mayWriteOutside(db, identity.organizationId, { thread, userId: identity.userId })
@@ -565,13 +517,21 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
           : null;
       return { ...posted, delivered, waiting: [] as string[] };
     });
-    // « @Kete »: it answers in the thread once her message is there (FR-012).
-    if (input.mentions.some((m) => m.kind === 'agent' && m.id === KETE.id)) {
-      void keteAnswers(identity, threadId, input.text).catch((error: unknown) => {
-        console.error('[thread kete]', (error as Error).message);
-      });
-    }
-    return c.json(answer, 201);
+    // Kete takes its turn once her message is there: asked by « @Kete » or in her own thread
+    // « Kete » (FR-007, FR-009); unasked, it reads a message that gives orders in a group, and
+    // speaks only to propose, to her alone (FR-010, FR-011, case B).
+    const asked =
+      input.mentions.some((m) => m.kind === 'agent' && m.id === KETE.id) ||
+      (place.kind === 'kete' && place.holder === identity.userId);
+    const orders =
+      place.kind !== 'kete' &&
+      input.visibility === 'internal' &&
+      input.mentions.some((m) => m.kind === 'person' && m.id !== identity.userId);
+    const turn =
+      asked || orders
+        ? startTurn(identity, { threadId, question: input.text, review: !asked })
+        : null;
+    return c.json({ ...answer, turn }, 201);
   })
   // « Créer… »: Kete prepares, from a message, the draft she asks for (FR-013).
   .post('/messages/:messageId/draft', async (c: Ctx) => {
@@ -590,12 +550,11 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
       await readable(db, identity, rows[0].thread_id);
       return rows[0];
     });
-    void keteAnswers(
-      identity,
-      said.thread_id,
-      `Prépare en brouillon : ${parsed.data.what}, à partir de ce message — « ${said.text.slice(0, 4000)} ». Dis ce que tu as préparé.`,
-    ).catch((error: unknown) => console.error('[thread draft]', (error as Error).message));
-    return c.json({ asked: true }, 202);
+    const turn = startTurn(identity, {
+      threadId: said.thread_id,
+      question: `Prépare en brouillon : ${parsed.data.what}, à partir de ce message — « ${said.text.slice(0, 4000)} ». Dis ce que tu as préparé.`,
+    });
+    return c.json({ asked: true, turn }, 202);
   })
   // Its author edits it; the original is kept.
   .post('/messages/:messageId/edit', async (c: Ctx) => {

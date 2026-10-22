@@ -3,11 +3,14 @@ export {
   assistantMigrationSql,
   assistantRoutes,
   briefingByRules,
+  meteringStore,
+  modelFor,
   organizationName,
+  purposeOf,
+  system,
   useModel,
 } from './assistant.js';
 export { chatMigrationSql } from './attachments.js';
-export { answerInThread } from './in-thread.js';
 export { feedbackMigrationSql, feedbackRoutes, feedbackShare } from './feedback.js';
 export { commandInstructions } from './chat-tools.js';
 export {
@@ -27,6 +30,12 @@ export {
   type Instruction,
   type ScheduleRunOutcome,
 } from './schedule-runs.js';
-export { claimSchedule, listSchedules, schedulesMigrationSql, type Schedule } from './schedules.js';
+export {
+  claimSchedule,
+  createSchedule,
+  listSchedules,
+  schedulesMigrationSql,
+  type Schedule,
+} from './schedules.js';
 export { memoryMigrationSql, memoryRoutes } from './memory.js';
 export { nextRun } from './when.js';

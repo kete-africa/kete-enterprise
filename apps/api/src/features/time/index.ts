@@ -4,6 +4,7 @@ export { timePermissions, timeRoutes } from './routes.js';
 export {
   clashesThisWeek,
   factsBetween,
+  sayTimeFact,
   timeMigrationSql,
   visibleTo,
   type KeptFact,

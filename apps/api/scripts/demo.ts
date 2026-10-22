@@ -276,7 +276,18 @@ if (manager && colleague) {
       `Assistant : le vrai modèle (${process.env.KETE_AI_PROVIDER} ${process.env.KETE_AI_MODEL}).`,
     );
   } else if (day.datasetId) {
-    useModel(scriptedAnswers(day.datasetId));
+    // Kete's door plays cases A and B on the demo's project (spec 099).
+    const listed = await app.request('/v1/projects', {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const projects = ((await listed.json()) as { projects?: { projectId: string; name: string }[] })
+      .projects;
+    useModel(
+      scriptedAnswers(day.datasetId, {
+        projectId: projects?.find((p) => p.name === 'Chantier Garage Bè')?.projectId ?? null,
+        colleague: colleague.name,
+      }),
+    );
     say(
       'Assistant : réponses écrites d’avance (aucun modèle). Toute question rend le tableau ' +
         'des factures impayées, lu par son outil.',

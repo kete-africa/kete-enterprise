@@ -1,5 +1,6 @@
 // The policies feature's only door: one engine at the gesture (spec 088, doctrine D-058).
 export { centerPoliciesMigrationSql } from './migration.js';
+export { savePolicyCommand, setPolicyStatus } from './commands.js';
 export {
   approversFor,
   decideFor,

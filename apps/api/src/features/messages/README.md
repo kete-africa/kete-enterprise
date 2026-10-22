@@ -56,7 +56,7 @@ flowchart LR
   P -->|outside| G{message.client · the policies}
   G -->|allowed| D[mail from her box · WhatsApp 24 h or template · Telegram]
   G -->|approval| W[outside_pending · a holding per approver] -->|approved| D
-  P -->|@Kete| K[answerInThread · her rights] --> T
+  P -->|@Kete · her thread « Kete » · a group's orders| K[Kete's turn · door.ts · her rights] --> T
   T -->|pg_notify| E[GET /threads/events · Server-Sent Events]
 ```
 
@@ -90,3 +90,22 @@ flowchart LR
 | `POST /messages/:messageId/draft`   | Kete prepares a draft from it                                  |
 | `POST /messages/:messageId/outside` | An approver decides an outside message                         |
 | `POST /actions/:holdingId/done`     | Its holder says the action is done                             |
+
+## Kete, the door (spec 099, FR-007 to FR-011)
+
+`door.ts` is Kete's turn and what it proposes; `door-routes.ts` her decisions.
+
+- **A turn** (`startTurn`) runs in the background with her rights and her tools, plus three door
+  tools that only collect: `propose_gestures`, `propose_policy`, `hand_to_agent`. Its steps and
+  words are kept in `kete_turns` as they come (`GET /:threadId/turn`); `POST /turns/:turnId/stop`
+  stops it, and what was said stays. Read unasked (a group's message that gives orders), it speaks
+  only to propose, and only to its author.
+- **What it proposes** waits under its message (`kete_proposals`, returned by `GET /:threadId` as
+  `proposals`): `POST /proposals/:id/confirm` (the gestures she keeps, as corrected) makes the
+  holdings — « pour action » messages in the object's thread, returned to whom she names —, the
+  dated facts and the routines; `POST /proposals/:id/decline`; `POST /proposals/:id/policy`
+  (`adopt` or `trial`, an administrator) saves the template's policy through the policies' own
+  commands.
+- **Her thread « Kete »**: the drawer writes into it (`keepInKete`, the page kept in
+  `kete_message_pages`); `POST /:threadId/invite` turns it into a group, and the next question
+  opens a new one; `handed` lists what her agents work for her.

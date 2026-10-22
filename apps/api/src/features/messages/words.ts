@@ -24,6 +24,25 @@ const catalog = {
     pushed: (who: string, thread: string) => `${who} dans « ${thread} »`,
     voiceNote: 'Vocal',
     returned: (who: string, what: string) => `${who} vous rend « ${what} » : c’est fait`,
+    levelDraft: 'brouillon',
+    proposeGestures: 'Proposer un lot de gestes',
+    proposePolicy: 'Proposer une politique',
+    handToAgent: 'Confier à un agent',
+    stopped: (who: string) => `Arrêté par ${who}.`,
+    proposedBelow: 'Voici ce que je propose :',
+    turnTitle: (t: { read: number; gestures: boolean; policy: boolean; handed: number }) =>
+      t.policy && t.gestures
+        ? 'Une règle et des consignes'
+        : t.policy
+          ? 'Une règle, pas une tâche'
+          : t.gestures
+            ? 'A compris et rattaché'
+            : t.handed > 0
+              ? `Confié à ${t.handed} agent${t.handed > 1 ? 's' : ''}`
+              : `A lu ${t.read} source${t.read > 1 ? 's' : ''}`,
+    keteGroup: (who: string, invited: string[]) => `${[who, ...invited].join(', ')} et Kete`,
+    invited: (who: string, invited: string[]) =>
+      `${who} invite ${invited.join(', ')} : la conversation devient un groupe, et ce qui précède se lit.`,
   },
   en: {
     keteThread: 'Kete',
@@ -46,6 +65,25 @@ const catalog = {
     pushed: (who: string, thread: string) => `${who} in “${thread}”`,
     voiceNote: 'Voice note',
     returned: (who: string, what: string) => `${who} returns “${what}” to you: done`,
+    levelDraft: 'draft',
+    proposeGestures: 'Propose a set of gestures',
+    proposePolicy: 'Propose a policy',
+    handToAgent: 'Hand to an agent',
+    stopped: (who: string) => `Stopped by ${who}.`,
+    proposedBelow: 'Here is what I propose:',
+    turnTitle: (t: { read: number; gestures: boolean; policy: boolean; handed: number }) =>
+      t.policy && t.gestures
+        ? 'A rule and instructions'
+        : t.policy
+          ? 'A rule, not a task'
+          : t.gestures
+            ? 'Understood and attached'
+            : t.handed > 0
+              ? `Handed to ${t.handed} agent${t.handed > 1 ? 's' : ''}`
+              : `Read ${t.read} source${t.read > 1 ? 's' : ''}`,
+    keteGroup: (who: string, invited: string[]) => `${[who, ...invited].join(', ')} and Kete`,
+    invited: (who: string, invited: string[]) =>
+      `${who} invites ${invited.join(', ')}: the conversation becomes a group, and what came before can be read.`,
   },
 } as const;
 

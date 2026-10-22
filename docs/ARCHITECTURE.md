@@ -80,6 +80,36 @@ flowchart LR
   I[An export .txt, .json, .eml] -->|once per message| A
 ```
 
+### Kete, the door (spec 099, FR-007 to FR-011)
+
+Her thread « Kete » is her single conversation with Kete: the page « Kete » shows it, and the drawer
+of every page writes into it, with the page as context (`kete_message_pages`); the conversations
+kept before stay readable (« Conversations d’avant »). Kete takes a **turn** (`messages/door.ts`)
+when she writes in her thread « Kete » or sends it a voice note, when « @Kete » is written in a
+thread, from « Créer… » — and, unasked, when a message of a group gives orders to people: it then
+speaks only to propose, and only to its author. A turn runs in the background with her rights and
+her tools, plus three door tools that only **collect**: `propose_gestures` (holdings with whom,
+when, how urgent and whom to return to; dated facts; routines), `propose_policy` (a template of
+`@kete/policies`, simulated over thirty days) and `hand_to_agent` (a part for one of her agents,
+handed at once). Its steps are kept (`kete_turns`, then `thread_runs`); « Arrêter » stops it. What
+it proposes waits under its message (`kete_proposals`): nothing exists before her « oui », which
+makes the holdings in the object's thread — where the account of what was said is posted, signed
+by her —, the dated facts in Planifier and the routines; an administrator adopts a policy or puts it
+on trial. « Inviter quelqu’un » turns her thread « Kete » into a group.
+
+```mermaid
+flowchart LR
+  D[The drawer · any page] -->|her question + the page| KT[Her thread « Kete »]
+  KT --> T{Kete's turn · her rights}
+  G[@Kete · a group's orders · a voice note] --> T
+  T -->|steps · Arrêter| R[(kete_turns → thread_runs)]
+  T -->|answers| KT
+  T -->|proposes| P[(kete_proposals)]
+  P -->|her « oui »| H[Holdings in the object's thread · dates · routines]
+  P -->|an administrator| PO[A policy · on trial or in force]
+  T -->|hands a part| A[Her agents · in parallel]
+```
+
 ## Where it runs
 
 - Any Postgres 16 or more (with pgvector) and any S3-compatible storage, or a disk for a single
