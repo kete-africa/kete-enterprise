@@ -16,5 +16,8 @@ Thumbs.db
 **/src/paraglide/
 **/project.inlang/cache/
 
+# The files of the threads kept on the disk, in development (spec 099).
+.data/
+
 # The schema of a local demonstration that was not stopped cleanly (pnpm demo).
 .demo-schema

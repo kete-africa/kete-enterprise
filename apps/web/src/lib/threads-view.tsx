@@ -1,6 +1,30 @@
-import { Button, CanvasIcon, DecisionCard, Markdown, Tag } from '@kete/design';
+import {
+  ConversationFrame,
+  MessageItem,
+  MessageStream,
+  PinBar,
+  ThreadHeader,
+  ThreadInfo,
+  ThreadListPanel,
+  type ConversationWords,
+  type ListItem,
+  type MenuItem,
+  type ShownMessage,
+} from '@kete/conversation';
+import {
+  Button,
+  CanvasIcon,
+  DecisionCard,
+  FieldToggle,
+  MessageField,
+  Tag,
+  type FieldFile,
+  type FieldPick,
+  type FieldPicked,
+  type MessageFieldWords,
+} from '@kete/design';
 import { useRouter } from '@tanstack/react-router';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ageOf } from '@/lib/for-me-view';
 import { refusal } from '@/lib/forms';
 import { shownMoney } from '@/lib/money';
@@ -9,29 +33,42 @@ import {
   actionDone,
   changeMembers,
   decideOutside,
+  deleteInThread,
   draftFromMessage,
   editInThread,
   exportProof,
+  fetchMedia,
+  fetchPage,
+  findObjects,
+  importIntoThread,
   markThreadUnread,
+  mergeThreads,
   moveInThreads,
   openGroup,
+  pinInThread,
   postToThread,
+  reactTo,
   searchThreads,
   sendThreadFile,
+  sendVoice,
+  setNotifyLevel,
+  shareInThread,
+  typingIn,
   type Found,
   type Message,
-  type Thread,
+  type NotifyLevel,
   type ThreadHolding,
+  type ThreadMedia,
   type ThreadSummary,
   type ThreadView,
 } from '@/lib/threads';
 import * as m from '@/paraglide/messages.js';
 import { getLocale } from '@/paraglide/runtime.js';
 
-// The threads screen (doctrine D-057; specs 090, 098): her threads on the left — by last activity,
-// unread in bold, ✔ when nothing waits —, the conversation in the middle, live, and the state of
-// its object on the right. A trace at least as good as mail, and a place to work in: mentions,
-// files, quoted answers, actions with their holder, the object's cards, Kete in the thread.
+// The threads screen (doctrine D-057, D-061; specs 090, 098, 099), drawn by @kete/conversation
+// against the canvas v6.2: her threads on the left, the conversation in the middle — live, with
+// photos, voice notes, « # » citations, reactions, Kete's turn in folded steps —, its object's
+// state or « Infos du fil » on the right. The composer is @kete/design's one field.
 
 const KETE = 'agt_assistant';
 type Person = { id: string; name: string };
@@ -46,8 +83,7 @@ const dayOf = (iso: string) =>
   );
 const when = (iso: string) => {
   const date = new Date(iso);
-  const today = new Date();
-  return date.toDateString() === today.toDateString()
+  return date.toDateString() === new Date().toDateString()
     ? hour(iso)
     : new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'short' }).format(date);
 };
@@ -55,19 +91,160 @@ const dueDay = (day: string) =>
   new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'long' }).format(
     new Date(`${day}T12:00:00Z`),
   );
-const sizeOf = (bytes: number) =>
-  bytes < 1024 * 1024
-    ? `${Math.max(1, Math.round(bytes / 1024))} ko`
-    : `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
 
-/** Her threads, live: a change in one she reads reloads what the screen shows. */
-function useLive() {
+/** Every word of @kete/conversation, in the app's language. */
+function conversationWords(): ConversationWords {
+  return {
+    time: hour,
+    day: dayOf,
+    someone: m.threads_someone(),
+    agent: m.threads_agent(),
+    kete: 'Kete',
+    newMessages: m.threads_new_messages(),
+    jumpToNew: (count) => m.threads_jump_new({ count: String(count) }),
+    older: m.threads_older(),
+    typing: (names) => m.threads_typing({ names: names.join(', ') }),
+    readBy: (readers) => m.threads_read_by({ who: readers.join(' · ') }),
+    sent: m.threads_sent(),
+    edited: m.threads_edited(),
+    showOriginal: m.threads_show_original(),
+    movedHere: m.threads_moved_here(),
+    movedAway: m.threads_moved_away(),
+    deleted: (name) => m.threads_deleted({ name }),
+    imported: m.threads_imported(),
+    onlyForYou: m.threads_only_for_you(),
+    onlyForYouWhy: m.threads_only_for_you_why(),
+    share: m.threads_share(),
+    shared: m.threads_shared(),
+    via: {
+      whatsapp: m.threads_via_whatsapp(),
+      mail: m.threads_via_mail(),
+      telegram: m.threads_via_telegram(),
+      form: m.threads_via_form(),
+    },
+    toClient: m.threads_to_client(),
+    internal: m.threads_internal(),
+    forAction: m.threads_for_action(),
+    forInformation: m.threads_for_information(),
+    reply: m.threads_reply(),
+    react: (emoji) => m.threads_react({ emoji }),
+    more: m.threads_more(),
+    close: m.threads_close(),
+    transcript: m.threads_transcript(),
+    play: m.threads_play(),
+    speed: m.threads_speed(),
+    replyingTo: (name) => m.threads_replying({ name }),
+    steps: m.threads_steps(),
+    fold: m.threads_fold(),
+    stop: m.threads_stop(),
+    infos: m.threads_infos(),
+    state: m.threads_state(),
+    searchThread: m.threads_search_thread(),
+    notifications: m.threads_notifications(),
+    notifyLevel: {
+      all: m.threads_notify_all(),
+      mentions: m.threads_notify_mentions(),
+      none: m.threads_notify_none(),
+    },
+    notifyHint: m.threads_notify_hint(),
+    categories: {
+      pins: m.threads_cat_pins(),
+      photos: m.threads_cat_photos(),
+      documents: m.threads_cat_documents(),
+      links: m.threads_cat_links(),
+      voices: m.threads_cat_voices(),
+      actions: m.threads_cat_actions(),
+      decisions: m.threads_cat_decisions(),
+      members: m.threads_cat_members(),
+    },
+    nothingHere: m.threads_nothing_here(),
+    version: (n) => m.threads_version({ n: String(n) }),
+    list: m.threads_list(),
+    back: m.threads_back(),
+    states: {
+      needs: m.threads_state_needs(),
+      working: m.threads_state_working(),
+      finished: m.threads_state_finished(),
+      idle: m.threads_state_idle(),
+    },
+    resolved: m.threads_resolved(),
+    unread: (count) => m.threads_unread({ count: String(count) }),
+  };
+}
+
+function fieldWords(title: string): MessageFieldWords {
+  return {
+    field: m.threads_write(),
+    placeholder: m.threads_field_placeholder({ title }),
+    send: m.threads_send(),
+    stop: m.threads_stop(),
+    add: m.threads_field_add(),
+    attach: m.threads_field_attach(),
+    mention: m.threads_mention(),
+    cite: m.threads_field_cite(),
+    emoji: m.threads_field_emoji(),
+    moreEmoji: m.threads_field_more_emoji(),
+    remove: m.threads_field_remove(),
+    cancelReply: m.threads_field_cancel_reply(),
+    record: m.threads_field_record(),
+    recording: m.threads_field_recording(),
+    cancelRecording: m.threads_field_cancel_recording(),
+    sendRecording: m.threads_field_send_recording(),
+    dictate: m.threads_field_dictate(),
+  };
+}
+
+const projectStatus: Record<string, () => string> = {
+  open: m.project_status_open,
+  delivered: m.project_status_delivered,
+  closed: m.project_status_closed,
+};
+const partyRole: Record<string, () => string> = {
+  client: m.party_role_client,
+  supplier: m.party_role_supplier,
+  funder: m.party_role_funder,
+  partner: m.party_role_partner,
+};
+
+/** A cited object's state, in her words: a project's status, a third party's roles. */
+function stateWord(kind: string, state: string) {
+  if (kind === 'project') return projectStatus[state]?.() ?? state;
+  if (kind === 'party') {
+    return state
+      .split(', ')
+      .map((role) => partyRole[role]?.() ?? role)
+      .join(', ');
+  }
+  return state;
+}
+
+const toBase64 = (blob: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+
+/** Her threads, live: a change reloads what the screen shows; who is writing shows at once. */
+function useLive(me: string, current: string | null, onTyping: (who: string) => void) {
   const router = useRouter();
   useEffect(() => {
     if (typeof EventSource === 'undefined') return;
     const source = new EventSource('/api/fils/flux');
     let timer: ReturnType<typeof setTimeout> | null = null;
-    source.addEventListener('thread', () => {
+    source.addEventListener('thread', (event) => {
+      let change: { threadId?: string; kind?: string; who?: { id: string } } = {};
+      try {
+        change = JSON.parse((event as MessageEvent<string>).data) as typeof change;
+      } catch {
+        // An older server says only that something changed.
+      }
+      if (change.kind === 'typing') {
+        if (change.threadId === current && change.who && change.who.id !== me)
+          onTyping(change.who.id);
+        return;
+      }
       if (timer) return;
       timer = setTimeout(() => {
         timer = null;
@@ -78,52 +255,7 @@ function useLive() {
       if (timer) clearTimeout(timer);
       source.close();
     };
-  }, [router]);
-}
-
-function Avatar({ name, kind }: { name: string; kind: string }) {
-  const initials = name
-    .split(/\s+/)
-    .filter((w) => /\p{L}/u.test(w.charAt(0)))
-    .slice(0, 2)
-    .map((w) => w.charAt(0).toUpperCase())
-    .join('');
-  return (
-    <span
-      className={`inline-flex size-7 flex-none items-center justify-center text-[11px] font-bold ${
-        kind === 'agent'
-          ? 'rounded-control bg-accent text-on-action'
-          : kind === 'contact'
-            ? 'rounded-full bg-state-success-fg text-bg'
-            : 'rounded-full bg-surface-selected text-fg'
-      }`}
-      aria-hidden="true"
-    >
-      {kind === 'agent' ? <CanvasIcon name="bot" size={14} /> : initials || '·'}
-    </span>
-  );
-}
-
-/** Words with their mentions shown: « @Name » stands out. */
-function Said({ text, names }: { text: string; names: string[] }) {
-  if (names.length === 0) return <>{text}</>;
-  const pattern = new RegExp(
-    `(@(?:${names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')}))`,
-    'g',
-  );
-  return (
-    <>
-      {text.split(pattern).map((part, i) =>
-        part.startsWith('@') && names.includes(part.slice(1)) ? (
-          <b key={i} className="rounded-[4px] bg-surface-selected px-0.5 text-link">
-            {part}
-          </b>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
-    </>
-  );
+  }, [router, me, current, onTyping]);
 }
 
 // --- The list ------------------------------------------------------------------------------------
@@ -202,7 +334,7 @@ function Search() {
     return () => clearTimeout(timer);
   }, [q]);
   return (
-    <div className="grid gap-1">
+    <div className="mb-1 grid gap-1">
       <label className="relative block">
         <span className="sr-only">{m.threads_search()}</span>
         <span className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-fg-muted">
@@ -213,7 +345,7 @@ function Search() {
           value={q}
           onChange={(event) => setQ(event.target.value)}
           placeholder={m.threads_search()}
-          className="h-(--control-height) w-full rounded-control border border-line-control bg-control pr-2 pl-7 text-body-sm"
+          className="h-[30px] w-full rounded-[6px] border border-line-control bg-surface-control pr-2 pl-7 text-[12.5px]"
         />
       </label>
       {found && (
@@ -240,101 +372,52 @@ function Search() {
   );
 }
 
-function ThreadList({
-  threads,
-  names,
-  current,
-  people,
-  me,
-}: {
-  threads: ThreadSummary[];
-  names: Record<string, string>;
-  current: string | null;
-  people: Person[];
-  me: string;
-}) {
-  const [creating, setCreating] = useState(false);
-  const groups: { label: string; items: ThreadSummary[] }[] = [
-    { label: m.threads_objects(), items: threads.filter((t) => t.thread.kind === 'object') },
-    { label: m.threads_groups(), items: threads.filter((t) => t.thread.kind === 'group') },
-    { label: m.threads_direct(), items: threads.filter((t) => t.thread.kind === 'direct') },
-  ];
-  return (
-    <nav
-      aria-label={m.nav_threads()}
-      className={`flex min-h-0 flex-col gap-2 overflow-auto border-r border-line bg-surface p-2 ${current ? 'max-[1000px]:hidden' : ''}`}
-    >
-      <Search />
-      {creating ? (
-        <NewGroup people={people.filter((p) => p.id !== me)} onClose={() => setCreating(false)} />
-      ) : (
-        <Button variant="secondary" onClick={() => setCreating(true)}>
-          <CanvasIcon name="plus" size={14} /> {m.threads_new_group()}
-        </Button>
-      )}
-      {groups.map((group) => (
-        <div key={group.label} className="grid gap-0.5">
-          <p className="px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-fg-muted uppercase">
-            {group.label}
-          </p>
-          {group.items.length === 0 && (
-            <p className="px-2 text-body-sm text-fg-muted">{m.threads_none()}</p>
-          )}
-          {group.items.map((t) => {
-            const unread = t.unread > 0;
-            const author = t.last ? (names[t.last.author.id] ?? '') : '';
-            return (
-              <a
-                key={t.thread.id}
-                href={`/fils?fil=${t.thread.id}`}
-                aria-current={t.thread.id === current ? 'page' : undefined}
-                className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 rounded-control px-2 py-1.5 text-body-sm ${
-                  t.thread.id === current ? 'bg-surface-selected' : 'hover:bg-surface-hover'
-                }`}
-              >
-                <span
-                  className={`flex min-w-0 items-center gap-1.5 ${unread ? 'font-bold' : 'font-semibold'}`}
-                >
-                  {t.openActions === 0 && t.thread.kind === 'object' && (
-                    <span className="text-state-success-fg" title={m.threads_resolved()}>
-                      <CanvasIcon name="ok" size={12} />
-                    </span>
-                  )}
-                  <span className="truncate">{t.thread.title}</span>
-                </span>
-                <span className="text-[11px] text-fg-muted">{when(t.lastAt)}</span>
-                <span className={`truncate text-[12px] ${unread ? 'text-fg' : 'text-fg-muted'}`}>
-                  {t.last ? `${author} : ${t.last.text}` : m.threads_empty_short()}
-                </span>
-                {unread ? (
-                  <span
-                    className="justify-self-end rounded-full bg-accent px-1.5 text-[11px] font-bold text-on-action"
-                    aria-label={m.threads_unread({ count: String(t.unread) })}
-                  >
-                    {t.unread}
-                  </span>
-                ) : (
-                  <span />
-                )}
-              </a>
-            );
-          })}
-        </div>
-      ))}
-    </nav>
-  );
+const initials = (title: string) =>
+  title
+    .split(/[\s—-]+/)
+    .filter((w) => /\p{L}/u.test(w.charAt(0)))
+    .slice(0, 2)
+    .map((w) => w.charAt(0).toUpperCase())
+    .join('');
+
+function sectionsOf(threads: ThreadSummary[], names: Record<string, string>) {
+  const item = (t: ThreadSummary): ListItem => {
+    const author = t.last ? (names[t.last.author.id] ?? '') : '';
+    return {
+      id: t.thread.id,
+      href: `/fils?fil=${t.thread.id}`,
+      title: t.thread.title,
+      badge:
+        t.thread.kind === 'kete'
+          ? { text: '', tone: 'agent' }
+          : t.thread.kind === 'object'
+            ? {
+                text: initials(t.thread.title),
+                tone: t.thread.object?.kind === 'party' ? 'party' : 'object',
+              }
+            : { text: '#', tone: 'group' },
+      last: t.last ? `${author} : ${t.last.text || '🎤'}` : m.threads_empty_short(),
+      when: when(t.lastAt),
+      unread: t.unread,
+      resolved: t.openActions === 0 && t.thread.kind === 'object',
+    };
+  };
+  const open = threads.filter((t) => t.thread.state === 'open');
+  return [
+    {
+      label: m.threads_active(),
+      items: open.filter((t) => t.thread.kind === 'object' || t.thread.kind === 'kete').map(item),
+    },
+    { label: m.threads_groups(), items: open.filter((t) => t.thread.kind === 'group').map(item) },
+    { label: m.threads_direct(), items: open.filter((t) => t.thread.kind === 'direct').map(item) },
+    {
+      label: m.threads_put_away(),
+      items: threads.filter((t) => t.thread.state === 'closed').map(item),
+    },
+  ].filter((section) => section.items.length > 0);
 }
 
-// --- A message -----------------------------------------------------------------------------------
-
-const viaWord = (via: Message['via']) =>
-  ({
-    kete: null,
-    whatsapp: m.threads_via_whatsapp(),
-    telegram: m.threads_via_telegram(),
-    mail: m.threads_via_mail(),
-    form: m.threads_via_form(),
-  })[via];
+// --- A message's own blocks ----------------------------------------------------------------------
 
 const priorityWord: Record<string, () => string> = {
   urgent: m.threads_priority_urgent,
@@ -356,9 +439,8 @@ function ActionBlock({
   const done = action.state === 'done' || Boolean(action.doneAt);
   return (
     <div
-      className={`mt-1.5 flex flex-wrap items-center gap-2 rounded-control border px-2 py-1 text-body-sm ${
-        done ? 'border-line text-fg-muted' : 'border-state-verify-fg/40 bg-state-verify-bg'
-      }`}
+      data-done={done || undefined}
+      className="mt-1.5 flex max-w-[620px] flex-wrap items-center gap-2 rounded-[7px] border border-state-verify-fg/40 bg-state-verify-surface px-2 py-1 text-body-sm data-[done]:border-line data-[done]:bg-transparent data-[done]:text-fg-muted"
     >
       <CanvasIcon name={done ? 'ok' : 'decide'} size={14} />
       <span>
@@ -388,345 +470,169 @@ function ActionBlock({
   );
 }
 
-function MessageMenu({
+function PendingBlock({
   message,
-  mine,
-  holder,
-  threads,
-  onReply,
-  onEdit,
-}: {
-  message: Message;
-  mine: boolean;
-  holder: boolean;
-  threads: ThreadSummary[];
-  onReply: () => void;
-  onEdit: () => void;
-}) {
-  const router = useRouter();
-  const [open, setOpen] = useState<'menu' | 'move' | 'create' | null>(null);
-  const [what, setWhat] = useState('');
-  const [note, setNote] = useState<string | null>(null);
-  const others = threads.filter((t) => t.thread.id !== message.thread);
-  return (
-    <span className="relative inline-flex flex-wrap items-center gap-3">
-      <button type="button" className="font-semibold text-link" onClick={onReply}>
-        {m.threads_reply()}
-      </button>
-      {mine && !message.movedTo && (
-        <button type="button" className="font-semibold text-link" onClick={onEdit}>
-          {m.threads_edit()}
-        </button>
-      )}
-      <button
-        type="button"
-        aria-expanded={open !== null}
-        aria-label={m.threads_more()}
-        className="text-fg-muted hover:text-fg"
-        onClick={() => setOpen((o) => (o ? null : 'menu'))}
-      >
-        <CanvasIcon name="more" size={14} />
-      </button>
-      {open && (
-        <span className="absolute top-6 left-0 z-20 grid w-64 gap-1 rounded-control border border-line bg-surface p-2 shadow-lg">
-          {open === 'menu' && (
-            <>
-              <button
-                type="button"
-                className="rounded-control px-2 py-1 text-left hover:bg-surface-hover"
-                onClick={() => setOpen('create')}
-              >
-                {m.threads_create_from()}
-              </button>
-              {(mine || holder) && !message.movedTo && (
-                <button
-                  type="button"
-                  className="rounded-control px-2 py-1 text-left hover:bg-surface-hover"
-                  onClick={() => setOpen('move')}
-                >
-                  {m.threads_move()}
-                </button>
-              )}
-              <button
-                type="button"
-                className="rounded-control px-2 py-1 text-left hover:bg-surface-hover"
-                onClick={() =>
-                  void markThreadUnread({
-                    data: { threadId: message.thread, from: message.first },
-                  }).then(() => {
-                    window.location.href = '/fils?liste=1';
-                  })
-                }
-              >
-                {m.threads_mark_unread()}
-              </button>
-            </>
-          )}
-          {open === 'move' && (
-            <>
-              <span className="px-2 text-[11px] font-semibold text-fg-muted uppercase">
-                {m.threads_move_to()}
-              </span>
-              {others.map((t) => (
-                <button
-                  key={t.thread.id}
-                  type="button"
-                  className="truncate rounded-control px-2 py-1 text-left hover:bg-surface-hover"
-                  onClick={() =>
-                    void moveInThreads({
-                      data: { messageId: message.first, to: t.thread.id },
-                    }).then(async (answer) => {
-                      if (!answer.ok) return setNote(refusal(answer.error));
-                      setOpen(null);
-                      await router.invalidate();
-                    })
-                  }
-                >
-                  {t.thread.title}
-                </button>
-              ))}
-            </>
-          )}
-          {open === 'create' && (
-            <form
-              className="grid gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void draftFromMessage({ data: { messageId: message.first, what } }).then(
-                  (answer) => {
-                    setNote(answer.ok ? m.threads_create_asked() : refusal(answer.error));
-                    if (answer.ok) setOpen(null);
-                  },
-                );
-              }}
-            >
-              <span className="text-body-sm">{m.threads_create_hint()}</span>
-              <span className="flex flex-wrap gap-1">
-                {[
-                  m.threads_create_ticket(),
-                  m.threads_create_expense(),
-                  m.threads_create_quote(),
-                  m.threads_create_request(),
-                  m.threads_create_task(),
-                ].map((choice) => (
-                  <button
-                    key={choice}
-                    type="button"
-                    className="rounded-full border border-line-control px-2 py-0.5 text-[12px] hover:bg-surface-hover"
-                    onClick={() => setWhat(choice)}
-                  >
-                    {choice}
-                  </button>
-                ))}
-              </span>
-              <input
-                value={what}
-                onChange={(event) => setWhat(event.target.value)}
-                className="h-(--control-height) rounded-control border border-line-control bg-control px-2"
-                aria-label={m.threads_create_from()}
-              />
-              <Button type="submit" disabled={what.trim().length < 2}>
-                {m.threads_create_ask()}
-              </Button>
-            </form>
-          )}
-          {note && <span className="px-2 text-body-sm text-fg-muted">{note}</span>}
-        </span>
-      )}
-      {note && !open && <span className="text-fg-muted">{note}</span>}
-    </span>
-  );
-}
-
-function MessageItem({
-  message,
-  view,
+  pending,
+  names,
   me,
-  threads,
-  quoted,
-  onReply,
 }: {
   message: Message;
-  view: ThreadView;
+  pending: ThreadView['pending'][string];
+  names: Record<string, string>;
   me: string;
-  threads: ThreadSummary[];
-  quoted: Message | undefined;
-  onReply: (message: Message) => void;
 }) {
   const router = useRouter();
-  const names = view.names;
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(message.text);
-  const name = names[message.author.id] ?? m.threads_someone();
-  const via = viaWord(message.via);
-  const mine = message.author.kind === 'person' && message.author.id === me;
-  const readers = message.readBy
-    .filter((r) => r.id !== message.author.id)
-    .map((r) => `${names[r.id] ?? m.threads_someone()} ${hour(r.at)}`);
-  const action = view.actions[message.first];
-  const pending = view.pending[message.first];
-  const outside = message.visibility === 'outside';
-  const mentioned = (message.mentions ?? []).map((x) => names[x.id] ?? '').filter(Boolean);
+  const decide = (approve: boolean) =>
+    void decideOutside({ data: { messageId: message.first, approve } }).then(() =>
+      router.invalidate(),
+    );
   return (
-    <li id={message.first} className="grid scroll-mt-4 grid-cols-[28px_minmax(0,1fr)] gap-3">
-      <Avatar name={name} kind={message.author.kind} />
-      <div className="min-w-0">
-        <p className="flex flex-wrap items-baseline gap-2 text-body-sm text-fg-muted">
-          <b className="text-body text-fg">{name}</b>
-          {message.author.kind === 'agent' && <Tag tone="agent">{m.threads_agent()}</Tag>}
-          <time dateTime={message.at}>{hour(message.at)}</time>
-          {via && <Tag tone="validated">{via}</Tag>}
-          {outside && message.author.kind !== 'contact' && (
-            <Tag tone="verify">{m.threads_to_client()}</Tag>
-          )}
-          {message.for === 'action' && !action && <Tag tone="verify">{m.threads_for_action()}</Tag>}
-          {message.edits > 0 && <span>{m.threads_edited()}</span>}
-          {message.moved_from && <span>{m.threads_moved_here()}</span>}
-        </p>
-        {quoted && (
-          <a
-            href={`#${quoted.first}`}
-            className="mt-1 block truncate border-l-2 border-line-strong pl-2 text-body-sm text-fg-muted"
-          >
-            {names[quoted.author.id] ?? ''} : {quoted.text}
-          </a>
-        )}
-        {editing ? (
-          <form
-            className="mt-1 grid gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void editInThread({ data: { messageId: message.id, text: draft } }).then(
-                async (a) => {
-                  if (a.ok) {
-                    setEditing(false);
-                    await router.invalidate();
-                  }
-                },
-              );
-            }}
-          >
-            <textarea
-              aria-label={m.threads_edit()}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              className="min-h-16 rounded-control border border-line-strong bg-control p-2"
-            />
-            <span className="flex gap-2">
-              <Button type="submit">{m.threads_keep_edit()}</Button>
-              <Button type="button" variant="secondary" onClick={() => setEditing(false)}>
-                {m.common_cancel()}
-              </Button>
-            </span>
-            <span className="text-body-sm text-fg-muted">{m.threads_edit_keeps()}</span>
-          </form>
-        ) : message.author.kind === 'agent' ? (
-          // An agent writes Markdown: drawn, never shown raw.
-          <div className="mt-0.5 grid gap-1.5 [&_p]:m-0">
-            <Markdown text={message.text} />
-          </div>
-        ) : (
-          <p
-            className={`mt-0.5 whitespace-pre-wrap ${message.movedTo ? 'text-fg-muted line-through' : ''}`}
-          >
-            <Said text={message.text} names={mentioned} />
-          </p>
-        )}
-        {message.movedTo && (
-          <a
-            href={`/fils?fil=${message.movedTo.thread}#${message.movedTo.message}`}
-            className="text-body-sm font-semibold text-link"
-          >
-            {m.threads_moved_away()}
-          </a>
-        )}
-        {(message.attachments ?? []).length > 0 && (
-          <span className="mt-1.5 flex flex-wrap gap-1.5">
-            {message.attachments?.map((file) => (
-              <a
-                key={file.id}
-                href={`/api/fils/fichiers/${file.id}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded-control border border-line bg-surface px-2 py-1 text-body-sm hover:bg-surface-hover"
-              >
-                <CanvasIcon name="clip" size={13} />
-                {file.name}
-                {file.bytes ? <span className="text-fg-muted">{sizeOf(file.bytes)}</span> : null}
-              </a>
-            ))}
-          </span>
-        )}
-        {action && <ActionBlock action={action} names={names} me={me} />}
-        {pending && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 rounded-control border border-line px-2 py-1 text-body-sm">
-            <span>
-              {pending.state === 'waiting'
-                ? m.threads_outside_waiting({
-                    names: pending.approvers.map((a) => names[a] ?? '').join(', '),
-                  })
-                : pending.state === 'sent'
-                  ? m.threads_outside_sent({ name: names[pending.decidedBy ?? ''] ?? '' })
-                  : m.threads_outside_refused({ name: names[pending.decidedBy ?? ''] ?? '' })}
-            </span>
-            {pending.state === 'waiting' && pending.approvers.includes(me) && (
-              <>
-                <Button
-                  onClick={() =>
-                    void decideOutside({ data: { messageId: message.first, approve: true } }).then(
-                      () => router.invalidate(),
-                    )
-                  }
-                >
-                  {m.threads_outside_approve()}
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() =>
-                    void decideOutside({ data: { messageId: message.first, approve: false } }).then(
-                      () => router.invalidate(),
-                    )
-                  }
-                >
-                  {m.threads_outside_refuse()}
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-        <p className="mt-1 flex flex-wrap items-center gap-x-3 text-body-sm text-fg-muted">
-          <span>
-            {readers.length > 0
-              ? m.threads_read_by({ who: readers.join(', ') })
-              : mine
-                ? m.threads_sent()
-                : m.threads_read_by_nobody()}
-          </span>
-          {!editing && (
-            <MessageMenu
-              message={message}
-              mine={mine}
-              holder={view.thread.holder.id === me}
-              threads={threads}
-              onReply={() => onReply(message)}
-              onEdit={() => setEditing(true)}
-            />
-          )}
-        </p>
-      </div>
-    </li>
+    <div className="mt-1.5 flex max-w-[620px] flex-wrap items-center gap-2 rounded-[7px] border border-line px-2 py-1 text-body-sm">
+      <span>
+        {pending.state === 'waiting'
+          ? m.threads_outside_waiting({
+              names: pending.approvers.map((a) => names[a] ?? '').join(', '),
+            })
+          : pending.state === 'sent'
+            ? m.threads_outside_sent({ name: names[pending.decidedBy ?? ''] ?? '' })
+            : m.threads_outside_refused({ name: names[pending.decidedBy ?? ''] ?? '' })}
+      </span>
+      {pending.state === 'waiting' && pending.approvers.includes(me) && (
+        <>
+          <Button onClick={() => decide(true)}>{m.threads_outside_approve()}</Button>
+          <Button variant="secondary" onClick={() => decide(false)}>
+            {m.threads_outside_refuse()}
+          </Button>
+        </>
+      )}
+    </div>
   );
 }
 
-// --- The composer ------------------------------------------------------------------------------
+/** « Créer… »: Kete prepares, from a message, the draft she asks for. */
+function CreateFrom({ message, onDone }: { message: Message; onDone: (note: string) => void }) {
+  const [what, setWhat] = useState('');
+  return (
+    <form
+      className="mt-1.5 grid max-w-[520px] gap-2 rounded-[8px] border border-line bg-surface p-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void draftFromMessage({ data: { messageId: message.first, what } }).then((answer) =>
+          onDone(answer.ok ? m.threads_create_asked() : refusal(answer.error)),
+        );
+      }}
+    >
+      <span className="text-body-sm">{m.threads_create_hint()}</span>
+      <span className="flex flex-wrap gap-1">
+        {[
+          m.threads_create_ticket(),
+          m.threads_create_expense(),
+          m.threads_create_quote(),
+          m.threads_create_request(),
+          m.threads_create_task(),
+        ].map((choice) => (
+          <button
+            key={choice}
+            type="button"
+            className="rounded-full border border-line-control px-2 py-0.5 text-[12px] hover:bg-surface-hover"
+            onClick={() => setWhat(choice)}
+          >
+            {choice}
+          </button>
+        ))}
+      </span>
+      <input
+        value={what}
+        onChange={(event) => setWhat(event.target.value)}
+        className="h-(--control-height) rounded-control border border-line-control bg-control px-2"
+        aria-label={m.threads_create_from()}
+      />
+      <span className="flex gap-2">
+        <Button type="submit" disabled={what.trim().length < 2}>
+          {m.threads_create_ask()}
+        </Button>
+        <Button type="button" variant="secondary" onClick={() => onDone('')}>
+          {m.common_cancel()}
+        </Button>
+      </span>
+    </form>
+  );
+}
 
-const toBase64 = (file: File) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+function MoveTo({
+  message,
+  threads,
+  onDone,
+}: {
+  message: Message;
+  threads: ThreadSummary[];
+  onDone: (note: string) => void;
+}) {
+  const router = useRouter();
+  return (
+    <div className="mt-1.5 grid max-w-[360px] gap-0.5 rounded-[8px] border border-line bg-surface p-1.5">
+      <span className="px-1 text-[11px] font-semibold text-fg-muted uppercase">
+        {m.threads_move_to()}
+      </span>
+      {threads
+        .filter((t) => t.thread.id !== message.thread && t.thread.state === 'open')
+        .map((t) => (
+          <button
+            key={t.thread.id}
+            type="button"
+            className="truncate rounded-control px-2 py-1 text-left text-body-sm hover:bg-surface-hover"
+            onClick={() =>
+              void moveInThreads({ data: { messageId: message.first, to: t.thread.id } }).then(
+                async (answer) => {
+                  if (!answer.ok) return onDone(refusal(answer.error));
+                  onDone('');
+                  await router.invalidate();
+                },
+              )
+            }
+          >
+            {t.thread.title}
+          </button>
+        ))}
+    </div>
+  );
+}
+
+function EditInPlace({ message, onDone }: { message: Message; onDone: () => void }) {
+  const router = useRouter();
+  const [draft, setDraft] = useState(message.text);
+  return (
+    <form
+      className="mt-1.5 grid max-w-[620px] gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void editInThread({ data: { messageId: message.id, text: draft } }).then(async (a) => {
+          if (a.ok) {
+            onDone();
+            await router.invalidate();
+          }
+        });
+      }}
+    >
+      <textarea
+        aria-label={m.threads_edit()}
+        value={draft}
+        autoFocus
+        onChange={(event) => setDraft(event.target.value)}
+        className="min-h-16 rounded-control border border-line-strong bg-control p-2"
+      />
+      <span className="flex gap-2">
+        <Button type="submit">{m.threads_keep_edit()}</Button>
+        <Button type="button" variant="secondary" onClick={onDone}>
+          {m.common_cancel()}
+        </Button>
+      </span>
+      <span className="text-body-sm text-fg-muted">{m.threads_edit_keeps()}</span>
+    </form>
+  );
+}
+
+// --- The composer -------------------------------------------------------------------------------
 
 function Composer({
   view,
@@ -734,32 +640,31 @@ function Composer({
   people,
   replyTo,
   onReplyDone,
+  onEditLast,
+  forAction,
+  onForAction,
 }: {
   view: ThreadView;
   me: string;
   people: Person[];
   replyTo: Message | null;
   onReplyDone: () => void;
+  onEditLast: () => void;
+  forAction: boolean;
+  onForAction: (on: boolean) => void;
 }) {
   const router = useRouter();
-  const [text, setText] = useState('');
-  const [forWhat, setForWhat] = useState<'information' | 'action'>('information');
   const [to, setTo] = useState('');
   const [due, setDue] = useState('');
   const [priority, setPriority] = useState('normal');
   const [outside, setOutside] = useState(false);
-  const [files, setFiles] = useState<{ id: string; name: string }[]>([]);
-  const [mentions, setMentions] = useState<Person[]>([]);
-  const [suggest, setSuggest] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [files, setFiles] = useState<FieldFile[]>([]);
   const [note, setNote] = useState<string | null>(null);
-  const input = useRef<HTMLTextAreaElement>(null);
-  // Kete's answer is in the thread: « Kete lit le fil… » has done its work.
+  const cited = useRef(new Map<string, { kind: string; id: string; app?: string }>());
   const last = view.messages.at(-1);
   useEffect(() => {
     if (last?.author.kind === 'agent') setNote(null);
   }, [last?.first, last?.author.kind]);
-  const picker = useRef<HTMLInputElement>(null);
   const members = (view.thread.members ?? []).filter(
     (mb) => !mb.until && mb.kind !== 'contact' && mb.id !== me,
   );
@@ -775,35 +680,51 @@ function Composer({
       ),
     ),
   ];
-  // Who can be mentioned: Kete, the thread's members, the organization's people.
   const candidates = useMemo(() => {
     const known = new Map<string, Person>([[KETE, { id: KETE, name: 'Kete' }]]);
     for (const mb of members) known.set(mb.id, { id: mb.id, name: view.names[mb.id] ?? mb.id });
     for (const p of people) if (p.id !== me) known.set(p.id, p);
     return [...known.values()];
   }, [members, people, view.names, me]);
-  const shown =
-    suggest === null
-      ? []
-      : candidates.filter((c) => c.name.toLowerCase().includes(suggest.toLowerCase())).slice(0, 6);
 
-  function typed(value: string) {
-    setText(value);
-    const at = /(?:^|\s)@([\p{L}' -]{0,30})$/u.exec(
-      value.slice(0, input.current?.selectionStart ?? value.length),
-    );
-    setSuggest(at ? (at[1] ?? '') : null);
-  }
-  function mention(person: Person) {
-    const cut = text.replace(/@([\p{L}' -]{0,30})$/u, `@${person.name} `);
-    setText(cut);
-    setMentions((list) => (list.some((p) => p.id === person.id) ? list : [...list, person]));
-    setSuggest(null);
-    input.current?.focus();
-  }
+  const search = useCallback(
+    async (trigger: '@' | '#' | '/', query: string): Promise<FieldPick[]> => {
+      if (trigger === '@') {
+        return candidates
+          .filter((c) => c.name.toLowerCase().includes(query.toLowerCase()))
+          .map((c) => ({ id: c.id, label: c.name }));
+      }
+      if (trigger !== '#' || query.length < 1) return [];
+      const objects = await findObjects({ data: { q: query } });
+      return objects.map((o) => {
+        const key = `${o.kind}:${o.id}:${o.app ?? ''}`;
+        cited.current.set(key, { kind: o.kind, id: o.id, ...(o.app ? { app: o.app } : {}) });
+        return {
+          id: key,
+          label: o.label,
+          ...(o.state ? { hint: stateWord(o.kind, o.state) } : {}),
+        };
+      });
+    },
+    [candidates],
+  );
 
-  async function attach(list: FileList | null) {
-    for (const file of Array.from(list ?? [])) {
+  async function attach(list: File[]) {
+    for (const file of list) {
+      const temporary = `sending-${file.name}-${Date.now()}`;
+      setFiles((f) => [
+        ...f,
+        {
+          id: temporary,
+          name: file.name,
+          state: 'sending',
+          kind: file.type.startsWith('image/')
+            ? 'image'
+            : file.type.startsWith('audio/')
+              ? 'audio'
+              : 'file',
+        },
+      ]);
       const answer = await sendThreadFile({
         data: {
           threadId: view.thread.id,
@@ -812,271 +733,195 @@ function Composer({
           data: await toBase64(file),
         },
       });
-      if (answer.ok)
-        setFiles((f) => [...f, { id: answer.data.file.id, name: answer.data.file.name }]);
-      else setNote(refusal(answer.error));
+      setFiles((f) =>
+        f.map((x) =>
+          x.id !== temporary
+            ? x
+            : answer.ok
+              ? { ...x, id: answer.data.file.id, state: 'ready' }
+              : { ...x, state: 'failed' },
+        ),
+      );
+      if (!answer.ok) setNote(refusal(answer.error));
     }
   }
 
-  return (
-    <form
-      className="grid flex-none gap-2 border-t border-line bg-surface p-3"
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={(event) => {
-        event.preventDefault();
-        void attach(event.dataTransfer.files);
-      }}
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!text.trim()) return;
-        setBusy(true);
-        setNote(null);
-        const said = mentions.filter((p) => text.includes(`@${p.name}`)).map((p) => p.id);
-        void postToThread({
-          data: {
-            threadId: view.thread.id,
-            text,
-            for: forWhat,
-            ...(forWhat === 'action' && to ? { to } : {}),
-            ...(forWhat === 'action' && due ? { due } : {}),
-            ...(forWhat === 'action' ? { priority } : {}),
-            ...(replyTo ? { replyTo: replyTo.first } : {}),
-            mentions: said,
-            files: files.map((f) => f.id),
-            visibility: outside ? 'outside' : 'internal',
-          },
-        })
-          .then(async (answer) => {
-            if (!answer.ok) return setNote(refusal(answer.error));
-            setText('');
-            setFiles([]);
-            setMentions([]);
-            // The next message starts plain: for information, internal.
-            setForWhat('information');
-            setTo('');
-            setDue('');
-            setPriority('normal');
-            setOutside(false);
-            onReplyDone();
-            const { delivered, waiting } = answer.data;
-            if (waiting.length > 0) {
-              setNote(m.threads_outside_asked());
-            } else if (delivered) {
-              const reached = [
-                ...delivered.mailed,
-                ...delivered.chat.sent,
-                ...delivered.chat.byTemplate,
-              ];
-              setNote(
-                delivered.chat.refused.some((r) => r.reason === 'no_channel')
-                  ? m.threads_outside_no_channel()
-                  : delivered.chat.refused.length > 0
-                    ? m.threads_outside_window()
-                    : reached.length > 0
-                      ? m.threads_mailed({ to: reached.join(', ') })
-                      : m.threads_outside_nobody(),
-              );
-            }
-            if (said.includes(KETE)) setNote(m.threads_kete_thinking());
-            await router.invalidate();
-          })
-          .finally(() => setBusy(false));
-      }}
-    >
-      {replyTo && (
-        <p className="flex items-center gap-2 border-l-2 border-accent pl-2 text-body-sm text-fg-muted">
-          <span className="min-w-0 flex-1 truncate">
-            {m.threads_replying({ name: view.names[replyTo.author.id] ?? '' })} — {replyTo.text}
-          </span>
-          <button type="button" aria-label={m.common_cancel()} onClick={onReplyDone}>
-            <CanvasIcon name="x" size={14} />
-          </button>
+  const reset = () => {
+    setFiles([]);
+    onForAction(false);
+    setTo('');
+    setDue('');
+    setPriority('normal');
+    setOutside(false);
+    onReplyDone();
+  };
+
+  async function send(text: string, picked: FieldPicked[]) {
+    setNote(null);
+    const mentions = picked.filter((p) => p.trigger === '@').map((p) => p.id);
+    const references = picked
+      .filter((p) => p.trigger === '#')
+      .map((p) => cited.current.get(p.id))
+      .filter((r): r is NonNullable<typeof r> => Boolean(r));
+    const answer = await postToThread({
+      data: {
+        threadId: view.thread.id,
+        text,
+        for: forAction ? 'action' : 'information',
+        ...(forAction && to ? { to } : {}),
+        ...(forAction && due ? { due } : {}),
+        ...(forAction ? { priority } : {}),
+        ...(replyTo ? { replyTo: replyTo.first } : {}),
+        mentions,
+        references,
+        files: files.filter((f) => f.state === 'ready').map((f) => f.id),
+        visibility: outside ? 'outside' : 'internal',
+      },
+    });
+    if (!answer.ok) {
+      setNote(refusal(answer.error));
+      return false;
+    }
+    reset();
+    const { delivered, waiting } = answer.data;
+    if (waiting.length > 0) setNote(m.threads_outside_asked());
+    else if (delivered) {
+      const reached = [...delivered.mailed, ...delivered.chat.sent, ...delivered.chat.byTemplate];
+      setNote(
+        delivered.chat.refused.some((r) => r.reason === 'no_channel')
+          ? m.threads_outside_no_channel()
+          : delivered.chat.refused.length > 0
+            ? m.threads_outside_window()
+            : reached.length > 0
+              ? m.threads_mailed({ to: reached.join(', ') })
+              : m.threads_outside_nobody(),
+      );
+    }
+    if (mentions.includes(KETE)) setNote(m.threads_kete_thinking());
+    await router.invalidate();
+    return true;
+  }
+
+  const below = (
+    <>
+      {forAction && (
+        <p className="flex flex-wrap items-center gap-1.5 px-3 pb-1.5 text-[12.5px] font-semibold text-state-verify-fg">
+          <CanvasIcon name="ok" size={13} />
+          <span>{m.threads_who_acts()}</span>
+          <select
+            value={to}
+            onChange={(event) => setTo(event.target.value)}
+            className="h-[26px] rounded-full border border-line-control bg-surface px-2 text-[12.5px] text-fg"
+          >
+            <option value="">{m.threads_holder_acts()}</option>
+            {members.map((mb) => (
+              <option key={mb.id} value={mb.id}>
+                {view.names[mb.id] ?? mb.id}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            aria-label={m.threads_by_when()}
+            value={due}
+            onChange={(event) => setDue(event.target.value)}
+            className="h-[26px] rounded-full border border-line-control bg-surface px-2 text-[12.5px] text-fg"
+          />
+          <select
+            aria-label={m.threads_how_urgent()}
+            value={priority}
+            onChange={(event) => setPriority(event.target.value)}
+            className="h-[26px] rounded-full border border-line-control bg-surface px-2 text-[12.5px] text-fg"
+          >
+            {(['urgent', 'high', 'normal', 'low'] as const).map((p) => (
+              <option key={p} value={p}>
+                {priorityWord[p]?.()}
+              </option>
+            ))}
+          </select>
         </p>
       )}
-      <div className="relative">
-        <label htmlFor="thread-say" className="sr-only">
-          {m.threads_write()}
-        </label>
-        <textarea
-          id="thread-say"
-          ref={input}
-          value={text}
-          rows={2}
-          onChange={(event) => typed(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-              event.currentTarget.form?.requestSubmit();
-            }
-          }}
-          placeholder={m.threads_write_hint()}
-          className="max-h-48 min-h-16 w-full resize-y rounded-control border border-line-strong bg-control p-2"
-        />
-        {shown.length > 0 && (
-          <ul
-            role="listbox"
-            className="absolute bottom-full left-2 z-20 mb-1 grid w-60 rounded-control border border-line bg-surface p-1 shadow-lg"
-          >
-            {shown.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-control px-2 py-1 text-left text-body-sm hover:bg-surface-hover"
-                  onClick={() => mention(c)}
-                >
-                  <Avatar name={c.name} kind={c.id.startsWith('agt_') ? 'agent' : 'person'} />
-                  {c.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      {files.length > 0 && (
-        <span className="flex flex-wrap gap-1.5">
-          {files.map((f) => (
-            <span
-              key={f.id}
-              className="inline-flex items-center gap-1 rounded-control border border-line px-2 py-0.5 text-body-sm"
-            >
-              <CanvasIcon name="clip" size={12} />
-              {f.name}
-              <button
-                type="button"
-                aria-label={m.common_cancel()}
-                onClick={() => setFiles((list) => list.filter((x) => x.id !== f.id))}
-              >
-                <CanvasIcon name="x" size={12} />
-              </button>
-            </span>
-          ))}
-        </span>
-      )}
-      <div className="flex flex-wrap items-center gap-2">
-        <div
-          role="group"
-          aria-label={m.threads_for_what()}
-          className="inline-flex rounded-control border border-line-control p-0.5"
-        >
-          {(['information', 'action'] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={forWhat === value}
-              onClick={() => setForWhat(value)}
-              className={`rounded-[4px] px-2 py-1 text-body-sm font-semibold ${
-                forWhat === value ? 'bg-surface-selected text-fg' : 'text-fg-muted'
-              }`}
-            >
-              {value === 'action' ? m.threads_for_action() : m.threads_for_information()}
-            </button>
-          ))}
-        </div>
-        {contacts.length > 0 && (
-          <div
-            role="group"
-            aria-label={m.threads_who_reads()}
-            className="inline-flex rounded-control border border-line-control p-0.5"
-          >
-            {[false, true].map((value) => (
-              <button
-                key={String(value)}
-                type="button"
-                aria-pressed={outside === value}
-                onClick={() => setOutside(value)}
-                className={`rounded-[4px] px-2 py-1 text-body-sm font-semibold ${
-                  outside === value ? 'bg-surface-selected text-fg' : 'text-fg-muted'
-                }`}
-              >
-                {value
-                  ? m.threads_to_client_by({ channels: channels.join(', ') })
-                  : m.threads_internal_note()}
-              </button>
-            ))}
-          </div>
-        )}
-        <input
-          ref={picker}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(event) => {
-            void attach(event.target.files);
-            event.target.value = '';
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => picker.current?.click()}
-          aria-label={m.threads_attach()}
-          title={m.threads_attach()}
-          className="inline-flex size-(--control-height) items-center justify-center rounded-control border border-line-control text-fg-muted hover:text-fg"
-        >
-          <CanvasIcon name="clip" size={15} />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            typed(`${text}${text && !text.endsWith(' ') ? ' ' : ''}@`);
-            input.current?.focus();
-          }}
-          aria-label={m.threads_mention()}
-          title={m.threads_mention()}
-          className="inline-flex size-(--control-height) items-center justify-center rounded-control border border-line-control text-fg-muted hover:text-fg"
-        >
-          <CanvasIcon name="at" size={15} />
-        </button>
-        <span className="flex-1" />
-        <Button type="submit" disabled={busy || !text.trim()}>
-          <CanvasIcon name="send" size={14} /> {m.threads_send()}
-        </Button>
-      </div>
-      {forWhat === 'action' && (
-        <div className="flex flex-wrap items-center gap-2 text-body-sm">
-          <label className="inline-flex items-center gap-1">
-            {m.threads_who_acts()}
-            <select
-              value={to}
-              onChange={(event) => setTo(event.target.value)}
-              className="h-(--control-height) rounded-control border border-line-control bg-control px-2"
-            >
-              <option value="">{m.threads_holder_acts()}</option>
-              {members.map((mb) => (
-                <option key={mb.id} value={mb.id}>
-                  {view.names[mb.id] ?? mb.id}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="inline-flex items-center gap-1">
-            {m.threads_by_when()}
-            <input
-              type="date"
-              value={due}
-              onChange={(event) => setDue(event.target.value)}
-              className="h-(--control-height) rounded-control border border-line-control bg-control px-2"
-            />
-          </label>
-          <label className="inline-flex items-center gap-1">
-            {m.threads_how_urgent()}
-            <select
-              value={priority}
-              onChange={(event) => setPriority(event.target.value)}
-              className="h-(--control-height) rounded-control border border-line-control bg-control px-2"
-            >
-              {(['urgent', 'high', 'normal', 'low'] as const).map((p) => (
-                <option key={p} value={p}>
-                  {priorityWord[p]?.()}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+      {outside && (
+        <p className="flex items-start gap-1.5 px-3 pb-1.5 text-[12px] font-semibold text-state-verify-fg">
+          <CanvasIcon name="whatsapp" size={13} />
+          {m.threads_outside_line({ channels: channels.join(', ') })}
+        </p>
       )}
       {outside && !view.mailbox && contacts.some((c) => c.id.startsWith('mail:')) && (
-        <p className="text-body-sm text-state-verify-fg">{m.threads_no_mailbox()}</p>
+        <p className="px-3 pb-1.5 text-[12px] text-state-verify-fg">{m.threads_no_mailbox()}</p>
       )}
-      {note && <p className="text-body-sm text-fg-muted">{note}</p>}
-    </form>
+    </>
+  );
+
+  return (
+    <div className="flex-none border-t border-line bg-surface px-4 pt-2 pb-3 max-[860px]:px-2.5">
+      <MessageField
+        words={fieldWords(view.thread.title)}
+        draftKey={view.thread.id}
+        triggers={['@', '#']}
+        search={search}
+        emojis={['👍', '✅', '🙏', '👀', '😂', '❤️', '🎉', '⚠️']}
+        files={{
+          items: files,
+          onFiles: (list) => void attach(list),
+          onRemove: (id) => setFiles((f) => f.filter((x) => x.id !== id)),
+        }}
+        voice={{
+          onRecorded: (audio, durationMs) =>
+            void toBase64(audio).then((data) =>
+              sendVoice({
+                data: {
+                  threadId: view.thread.id,
+                  data,
+                  contentType: audio.type || 'audio/webm',
+                  durationMs,
+                  ...(replyTo ? { replyTo: replyTo.first } : {}),
+                },
+              }).then(async (answer) => {
+                if (!answer.ok) return setNote(m.threads_voice_failed());
+                onReplyDone();
+                await router.invalidate();
+              }),
+            ),
+        }}
+        reply={
+          replyTo
+            ? {
+                text: `${m.threads_replying({ name: view.names[replyTo.author.id] ?? '' })} — ${replyTo.text}`,
+                onCancel: onReplyDone,
+              }
+            : null
+        }
+        tone={outside ? 'alert' : 'plain'}
+        below={below}
+        toggles={
+          <>
+            {contacts.length > 0 && (
+              <FieldToggle
+                pressed={outside}
+                onToggle={() => setOutside((o) => !o)}
+                icon={outside ? 'whatsapp' : 'lock'}
+                title={m.threads_who_reads()}
+              >
+                {outside ? m.threads_to_client_short() : m.threads_internal()}
+              </FieldToggle>
+            )}
+            <FieldToggle
+              pressed={forAction}
+              onToggle={() => onForAction(!forAction)}
+              icon="ok"
+              title={m.threads_for_what()}
+            >
+              {forAction ? m.threads_for_action() : m.threads_for_information()}
+            </FieldToggle>
+          </>
+        }
+        onTyping={() => void typingIn({ data: { threadId: view.thread.id } })}
+        onEditLast={onEditLast}
+        onSend={send}
+        hint={note ?? m.threads_field_hint()}
+      />
+    </div>
   );
 }
 
@@ -1088,6 +933,18 @@ function StateBlock({ title, children }: { title: string; children: ReactNode })
       <h3 className="text-[11px] font-semibold tracking-wide text-fg-muted uppercase">{title}</h3>
       {children}
     </section>
+  );
+}
+
+function Avatar({ name, kind }: { name: string; kind: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      data-kind={kind}
+      className="inline-grid size-6 flex-none place-items-center rounded-full bg-surface-selected text-[10px] font-bold text-fg data-[kind=agent]:rounded-[5px] data-[kind=agent]:bg-agent data-[kind=agent]:text-on-agent data-[kind=contact]:bg-state-success-fg data-[kind=contact]:text-surface"
+    >
+      {kind === 'agent' ? <CanvasIcon name="bot" size={12} /> : initials(name) || '·'}
+    </span>
   );
 }
 
@@ -1166,49 +1023,126 @@ function Members({ view, me, people }: { view: ThreadView; me: string; people: P
   );
 }
 
+/** The thread's other gestures: import a conversation from elsewhere, merge into another thread. */
+function Elsewhere({
+  view,
+  threads,
+  me,
+}: {
+  view: ThreadView;
+  threads: ThreadSummary[];
+  me: string;
+}) {
+  const router = useRouter();
+  const picker = useRef<HTMLInputElement>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [merging, setMerging] = useState(false);
+  return (
+    <StateBlock title={m.threads_import()}>
+      <input
+        ref={picker}
+        type="file"
+        accept=".txt,.json,.eml,text/plain,application/json,message/rfc822"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (!file) return;
+          const kind = file.name.endsWith('.json')
+            ? 'telegram'
+            : file.name.endsWith('.eml')
+              ? 'eml'
+              : 'whatsapp';
+          void toBase64(file).then((data) =>
+            importIntoThread({ data: { threadId: view.thread.id, kind, data } }).then(
+              async (answer) => {
+                if (!answer.ok) return setNote(refusal(answer.error));
+                const done = answer.data;
+                setNote(
+                  [
+                    m.threads_imported_done({
+                      imported: String(done.imported),
+                      skipped: String(done.skipped),
+                      recognized: String(done.recognized),
+                    }),
+                    done.unknown.length > 0
+                      ? m.threads_imported_unknown({ names: done.unknown.join(', ') })
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' · '),
+                );
+                await router.invalidate();
+              },
+            ),
+          );
+        }}
+      />
+      <Button variant="secondary" onClick={() => picker.current?.click()}>
+        <CanvasIcon name="import" size={13} /> {m.threads_import()}
+      </Button>
+      <p className="text-[11.5px] text-fg-muted">{m.threads_import_hint()}</p>
+      {view.thread.holder.id === me &&
+        (merging ? (
+          <div className="grid gap-0.5">
+            {threads
+              .filter((t) => t.thread.id !== view.thread.id && t.thread.state === 'open')
+              .map((t) => (
+                <button
+                  key={t.thread.id}
+                  type="button"
+                  className="truncate rounded-control px-2 py-1 text-left text-body-sm hover:bg-surface-hover"
+                  onClick={() =>
+                    void mergeThreads({
+                      data: { threadId: view.thread.id, into: t.thread.id },
+                    }).then((answer) => {
+                      if (!answer.ok) return setNote(refusal(answer.error));
+                      window.location.href = `/fils?fil=${t.thread.id}`;
+                    })
+                  }
+                >
+                  {t.thread.title}
+                </button>
+              ))}
+          </div>
+        ) : (
+          <Button variant="secondary" onClick={() => setMerging(true)}>
+            <CanvasIcon name="merge" size={13} /> {m.threads_merge()}
+          </Button>
+        ))}
+      {note && <p className="text-body-sm text-fg-muted">{note}</p>}
+    </StateBlock>
+  );
+}
+
 function ThreadState({
   view,
   money,
   me,
   people,
-  shown,
-  onClose,
+  threads,
 }: {
   view: ThreadView;
   money: ProjectMoney | null;
   me: string;
   people: Person[];
-  shown: boolean;
-  onClose: () => void;
+  threads: ThreadSummary[];
 }) {
   const [proof, setProof] = useState<string | null>(null);
   return (
-    <aside
-      aria-label={m.threads_state()}
-      className={`flex min-h-0 flex-col gap-5 overflow-auto border-l border-line bg-surface p-4 ${
-        shown
-          ? 'max-[1200px]:fixed max-[1200px]:inset-y-0 max-[1200px]:right-0 max-[1200px]:z-30 max-[1200px]:w-[min(340px,100%)] max-[1200px]:shadow-xl'
-          : 'max-[1200px]:hidden'
-      }`}
-    >
-      <button
-        type="button"
-        onClick={onClose}
-        className="hidden items-center justify-self-end gap-1 self-end text-body-sm font-semibold text-link max-[1200px]:inline-flex"
-      >
-        <CanvasIcon name="x" size={14} />
-        {m.common_close()}
-      </button>
-      {view.link && (
-        <a
-          href={view.link}
-          target={view.link.startsWith('http') ? '_blank' : undefined}
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 font-semibold text-link"
-        >
-          <CanvasIcon name="ext" size={14} /> {m.threads_open_object()}
-        </a>
-      )}
+    <>
+      <span className="flex flex-wrap gap-1.5">
+        {view.link && (
+          <a
+            href={view.link}
+            target={view.link.startsWith('http') ? '_blank' : undefined}
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 self-center text-body-sm font-semibold text-link"
+          >
+            <CanvasIcon name="ext" size={13} /> {m.threads_open_object()}
+          </a>
+        )}
+      </span>
       {money && (
         <StateBlock title={m.threads_money()}>
           <dl className="grid grid-cols-2 gap-2 text-body-sm">
@@ -1309,6 +1243,7 @@ function ThreadState({
           <p className="font-mono text-body-sm break-all">{view.thread.address}</p>
         </StateBlock>
       )}
+      <Elsewhere view={view} threads={threads} me={me} />
       <StateBlock title={m.threads_proof()}>
         <Button
           variant="secondary"
@@ -1324,16 +1259,14 @@ function ThreadState({
         </Button>
         {proof && <p className="font-mono text-[11px] break-all text-fg-muted">{proof}</p>}
       </StateBlock>
-    </aside>
+    </>
   );
 }
-
-// --- The cards of its object ---------------------------------------------------------------------
 
 function Cards({ view, me }: { view: ThreadView; me: string }) {
   if (view.cards.length === 0) return null;
   return (
-    <div className="grid gap-2 border-b border-line bg-surface px-4 py-3">
+    <div className="grid flex-none gap-2 border-b border-line bg-surface px-4 py-3">
       {view.cards.map((card) => (
         <DecisionCard
           key={card.holdingId}
@@ -1356,7 +1289,7 @@ function Cards({ view, me }: { view: ThreadView; me: string }) {
 
 // --- The screen ---------------------------------------------------------------------------------
 
-/** The whole screen: the list, the thread, its state. */
+/** The whole screen: the list, the thread, its state or « Infos du fil ». */
 export function ThreadsScreen({
   threads,
   names,
@@ -1372,103 +1305,400 @@ export function ThreadsScreen({
   me: string;
   people: Person[];
 }) {
-  useLive();
-  const [stateShown, setStateShown] = useState(false);
+  const router = useRouter();
+  const words = useMemo(conversationWords, []);
+  const [asideShown, setAsideShown] = useState(false);
+  const [infos, setInfos] = useState(false);
+  const [media, setMedia] = useState<ThreadMedia | null>(null);
+  const [level, setLevel] = useState<NotifyLevel>(view?.level ?? 'all');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const end = useRef<HTMLLIElement>(null);
-  const count = view?.messages.length ?? 0;
+  const [forAction, setForAction] = useState(false);
+  const [open, setOpen] = useState<{ id: string; what: 'edit' | 'create' | 'move' } | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [older, setOlder] = useState<{ messages: Message[]; more: boolean } | null>(null);
+  const [extraNames, setExtraNames] = useState<Record<string, string>>({});
+  const [extraCited, setExtraCited] = useState<
+    Record<string, { label: string; state: string | null }>
+  >({});
+  const [typing, setTyping] = useState<Record<string, number>>({});
+  const current = view?.thread.id ?? null;
+
   useEffect(() => {
-    if (window.location.hash) {
-      document.getElementById(window.location.hash.slice(1))?.scrollIntoView();
-    } else {
-      end.current?.scrollIntoView({ block: 'end' });
-    }
-  }, [view?.thread.id, count]);
-  const byId = useMemo(
-    () =>
-      new Map(
-        (view?.messages ?? []).flatMap((msg) => [
-          [msg.first, msg] as const,
-          [msg.id, msg] as const,
-        ]),
-      ),
-    [view],
+    setOlder(null);
+    setMedia(null);
+    setInfos(false);
+    setReplyTo(null);
+    setOpen(null);
+    setLevel(view?.level ?? 'all');
+  }, [current]);
+  // What « Infos du fil » lists follows the thread: a message, a file, a pin.
+  const mediaKey = (view?.messages ?? [])
+    .map((msg) => `${msg.id}${msg.pinned ? '*' : ''}${msg.deleted ? '-' : ''}`)
+    .join();
+  useEffect(() => {
+    if (!infos || !current) return;
+    void fetchMedia({ data: { threadId: current } }).then((answer) => {
+      setMedia(answer.media);
+      setLevel(answer.level);
+    });
+  }, [infos, current, mediaKey]);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      setTyping((all) =>
+        Object.fromEntries(Object.entries(all).filter(([, at]) => now - at < 5000)),
+      );
+    }, 1500);
+    return () => clearInterval(timer);
+  }, []);
+  const onTyping = useCallback(
+    (who: string) => setTyping((all) => ({ ...all, [who]: Date.now() })),
+    [],
   );
-  const open = view
+  useLive(me, current, onTyping);
+
+  const allNames = { ...names, ...(view?.names ?? {}), ...extraNames };
+  const nameOf = (who: { id: string }) => (who.id === KETE ? 'Kete' : (allNames[who.id] ?? ''));
+  const messages = [...(older?.messages ?? []), ...(view?.messages ?? [])];
+  const byId = new Map(
+    messages.flatMap((msg) => [[msg.first, msg] as const, [msg.id, msg] as const]),
+  );
+  const cited = { ...(view?.cited ?? {}), ...extraCited };
+  const openActions = view
     ? Object.values(view.actions).filter((a) => a.state !== 'done' && !a.doneAt).length
     : 0;
-  let lastDay = '';
+  const pinned = messages.filter((msg) => msg.pinned && !msg.deleted);
+  const mine = (msg: Message) => msg.author.kind === 'person' && msg.author.id === me;
+
+  const loadOlder = async (before: string, so: Message[]) => {
+    if (!view) return { messages: so, more: false };
+    const page = await fetchPage({ data: { threadId: view.thread.id, before } });
+    setExtraNames((n) => ({ ...n, ...page.names }));
+    setExtraCited((c) => ({ ...c, ...page.cited }));
+    const next = { messages: [...page.messages, ...so], more: page.older };
+    setOlder(next);
+    return next;
+  };
+
+  /** « Chercher dans ce fil »: the first hit, its older pages loaded until it shows. */
+  async function findInThread(text: string) {
+    if (!view || text.trim().length < 2) return;
+    const hit = (await searchThreads({ data: { q: text } })).find(
+      (f) => f.thread === view.thread.id,
+    );
+    if (!hit) return;
+    let loaded = { messages: older?.messages ?? [], more: older ? older.more : view.older };
+    for (let pages = 0; pages < 20 && loaded.more; pages += 1) {
+      const all = [...loaded.messages, ...view.messages];
+      if (all.some((msg) => msg.id === hit.id || msg.first === hit.id)) break;
+      const first = all[0];
+      if (!first) break;
+      loaded = await loadOlder(first.first, loaded.messages);
+    }
+    setAsideShown(false);
+    window.location.hash = hit.id;
+  }
+
+  const menuOf = (msg: Message): MenuItem[] => {
+    const holder = view?.thread.holder.id === me;
+    const items: MenuItem[] = [
+      {
+        id: 'pin',
+        label: msg.pinned ? m.threads_unpin() : m.threads_pin(),
+        icon: 'pin',
+        onSelect: () =>
+          void pinInThread({ data: { messageId: msg.first, pinned: !msg.pinned } }).then(() =>
+            router.invalidate(),
+          ),
+      },
+      {
+        id: 'create',
+        label: m.threads_create_from(),
+        icon: 'spark',
+        onSelect: () => setOpen({ id: msg.first, what: 'create' }),
+      },
+      {
+        id: 'unread',
+        label: m.threads_mark_unread(),
+        icon: 'read',
+        onSelect: () =>
+          void markThreadUnread({ data: { threadId: msg.thread, from: msg.first } }).then(() => {
+            window.location.href = '/fils?liste=1';
+          }),
+      },
+    ];
+    if ((mine(msg) || holder) && !msg.movedTo) {
+      items.push({
+        id: 'move',
+        label: m.threads_move(),
+        icon: 'ext',
+        onSelect: () => setOpen({ id: msg.first, what: 'move' }),
+      });
+    }
+    if (mine(msg) && !msg.movedTo) {
+      items.push(
+        {
+          id: 'edit',
+          label: m.threads_edit(),
+          icon: 'pen',
+          onSelect: () => setOpen({ id: msg.first, what: 'edit' }),
+        },
+        {
+          id: 'delete',
+          label: m.threads_delete(),
+          icon: 'trash',
+          danger: true,
+          onSelect: () => {
+            if (!window.confirm(m.threads_delete_keeps())) return;
+            void deleteInThread({ data: { messageId: msg.first } }).then(() => router.invalidate());
+          },
+        },
+      );
+    }
+    return items;
+  };
+
   return (
-    <div className="grid h-full min-h-0 grid-cols-[280px_minmax(0,1fr)_320px] overflow-hidden max-[1200px]:grid-cols-[260px_minmax(0,1fr)] max-[1000px]:grid-cols-1">
-      <ThreadList
-        threads={threads}
-        names={names}
-        current={view?.thread.id ?? null}
-        people={people}
-        me={me}
-      />
+    <ConversationFrame
+      words={words}
+      asideShown={asideShown}
+      onAsideClose={() => setAsideShown(false)}
+      list={
+        <ThreadListPanel
+          words={words}
+          current={current}
+          hidden={Boolean(view)}
+          sections={sectionsOf(threads, allNames)}
+          top={<ListTop people={people} me={me} />}
+        />
+      }
+      aside={
+        view ? (
+          infos ? (
+            <ThreadInfo
+              words={words}
+              media={media}
+              fileHref={(id) => `/api/fils/fichiers/${id}`}
+              messageHref={(id) => `#${id}`}
+              level={level}
+              onLevel={(next) => {
+                setLevel(next);
+                void setNotifyLevel({ data: { threadId: view.thread.id, level: next } });
+              }}
+              onSearch={(text) => void findInThread(text)}
+              actions={{
+                count: `${openActions} / ${Object.keys(view.actions).length}`,
+                node: (
+                  <ul className="grid gap-1 text-body-sm">
+                    {Object.entries(view.actions).map(([message, a]) => (
+                      <li key={a.holdingId}>
+                        <a href={`#${message}`} className="hover:text-link">
+                          {a.what} · {allNames[a.holder.id] ?? ''}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ),
+              }}
+              decisions={{
+                count: String(view.done.length),
+                node: (
+                  <ul className="grid gap-1 text-body-sm text-fg-muted">
+                    {view.done.map((d) => (
+                      <li key={`${d.what}-${d.at}`}>{d.what}</li>
+                    ))}
+                  </ul>
+                ),
+              }}
+              members={{
+                count: String((view.thread.members ?? []).filter((mb) => !mb.until).length),
+                node: <Members view={view} me={me} people={people} />,
+              }}
+              onState={() => setInfos(false)}
+            />
+          ) : (
+            <ThreadState view={view} money={money} me={me} people={people} threads={threads} />
+          )
+        ) : undefined
+      }
+    >
       {view ? (
         <section aria-label={view.thread.title} className="flex min-h-0 min-w-0 flex-col bg-bg">
-          <header className="flex flex-none flex-wrap items-center gap-3 border-b border-line bg-surface px-4 py-3">
-            <a
-              href="/fils?liste=1"
-              aria-label={m.threads_back()}
-              className="hidden size-8 items-center justify-center rounded-control text-fg-muted hover:bg-surface-hover max-[1000px]:inline-flex"
-            >
-              <CanvasIcon name="left" size={16} />
-            </a>
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-[17px] font-semibold">{view.thread.title}</h1>
-              <p className="text-body-sm text-fg-muted">
+          <ThreadHeader
+            words={words}
+            title={view.thread.title}
+            backHref="/fils?liste=1"
+            onTitle={() => {
+              setInfos(true);
+              setAsideShown(true);
+            }}
+            subtitle={
+              <>
                 {m.threads_held_by({
-                  name: view.names[view.thread.holder.id] ?? m.threads_someone(),
+                  name: allNames[view.thread.holder.id] ?? m.threads_someone(),
                 })}
                 {' · '}
-                {open > 0
-                  ? m.threads_open_actions({ count: String(open) })
+                {openActions > 0
+                  ? m.threads_open_actions({ count: String(openActions) })
                   : m.threads_nothing_waits()}
                 {view.thread.state === 'closed' && ` · ${m.threads_closed()}`}
-              </p>
-            </div>
-            <button
-              type="button"
-              aria-pressed={stateShown}
-              onClick={() => setStateShown((o) => !o)}
-              className="hidden h-(--control-height) items-center gap-1.5 rounded-control border border-line-control px-2.5 text-body-sm font-semibold max-[1200px]:inline-flex"
-            >
-              <CanvasIcon name="layers" size={14} />
-              {m.threads_state()}
-            </button>
-          </header>
+              </>
+            }
+            actions={
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setInfos(true);
+                    setAsideShown(true);
+                  }}
+                >
+                  <CanvasIcon name="more" size={13} />
+                  <span className="max-[520px]:sr-only">{m.threads_infos()}</span>
+                </Button>
+                <button
+                  type="button"
+                  aria-pressed={asideShown}
+                  onClick={() => {
+                    setInfos(false);
+                    setAsideShown((o) => !o);
+                  }}
+                  className="hidden h-(--control-height) items-center gap-1.5 rounded-control border border-line-control px-2.5 text-body-sm font-semibold max-[1180px]:inline-flex"
+                >
+                  <CanvasIcon name="layers" size={14} />
+                  <span className="max-[520px]:sr-only">{m.threads_state()}</span>
+                </button>
+              </>
+            }
+          />
+          <PinBar
+            pins={pinned.map((msg) => ({
+              id: msg.first,
+              label: msg.text.slice(0, 60) || (msg.attachments?.[0]?.name ?? '📎'),
+              href: `#${msg.first}`,
+            }))}
+          />
           <Cards view={view} me={me} />
-          <ol className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4" aria-live="polite">
-            {view.messages.length === 0 && <li className="text-fg-muted">{m.threads_empty()}</li>}
-            {view.messages.map((message) => {
-              const day = dayOf(message.at);
-              const separator = day !== lastDay;
-              lastDay = day;
+          <MessageStream
+            label={view.thread.title}
+            words={words}
+            messages={messages as ShownMessage[]}
+            unreadFrom={view.unreadFrom}
+            typing={Object.keys(typing).map((id) => allNames[id] ?? m.threads_someone())}
+            older={older ? older.more : view.older}
+            onOlder={() => {
+              const first = messages[0];
+              if (first) void loadOlder(first.first, older?.messages ?? []);
+            }}
+            empty={m.threads_empty()}
+            renderMessage={(msg) => {
+              const message = msg as Message;
+              const action = view.actions[message.first];
+              const pending = view.pending[message.first];
+              const run = view.runs?.[message.id];
+              const panel = open?.id === message.first ? open.what : null;
               return (
-                <li key={message.first} className="grid gap-3">
-                  {separator && (
-                    <span className="justify-self-center rounded-full border border-line bg-surface px-3 py-0.5 text-[11.5px] font-semibold text-fg-muted first-letter:uppercase">
-                      {day}
-                    </span>
-                  )}
-                  <ul>
-                    <MessageItem
-                      message={message}
-                      view={view}
-                      me={me}
-                      threads={threads}
-                      quoted={message.reply_to ? byId.get(message.reply_to) : undefined}
-                      onReply={setReplyTo}
-                    />
-                  </ul>
-                </li>
+                <MessageItem
+                  key={message.first}
+                  message={msg}
+                  words={words}
+                  me={{ kind: 'person', id: me }}
+                  nameOf={nameOf}
+                  quoted={
+                    message.reply_to
+                      ? (byId.get(message.reply_to) as ShownMessage | undefined)
+                      : undefined
+                  }
+                  fileHref={(id) => `/api/fils/fichiers/${id}`}
+                  referenceLabel={(r) => cited[`${r.kind}:${r.id}`]?.label ?? r.id}
+                  renderReference={(r) => {
+                    const state = cited[`${r.kind}:${r.id}`];
+                    return (
+                      <span className="inline-flex h-[22px] items-center gap-1 rounded-[5px] bg-state-info-surface px-1.5 text-[12.5px] font-semibold text-state-info-fg">
+                        <CanvasIcon name="hash" size={12} />
+                        {state?.label ?? r.id}
+                        {state?.state && (
+                          <span className="font-normal text-fg-soft">
+                            {stateWord(r.kind, state.state)}
+                          </span>
+                        )}
+                      </span>
+                    );
+                  }}
+                  run={
+                    run
+                      ? {
+                          title: run.title,
+                          meta: run.seconds !== null ? `${run.seconds} s` : '',
+                          steps: run.steps,
+                        }
+                      : null
+                  }
+                  extras={
+                    <>
+                      {action && <ActionBlock action={action} names={allNames} me={me} />}
+                      {pending && (
+                        <PendingBlock
+                          message={message}
+                          pending={pending}
+                          names={allNames}
+                          me={me}
+                        />
+                      )}
+                      {panel === 'edit' && (
+                        <EditInPlace message={message} onDone={() => setOpen(null)} />
+                      )}
+                      {panel === 'create' && (
+                        <CreateFrom
+                          message={message}
+                          onDone={(note) => {
+                            setOpen(null);
+                            if (note) setNotes((all) => ({ ...all, [message.first]: note }));
+                          }}
+                        />
+                      )}
+                      {panel === 'move' && (
+                        <MoveTo
+                          message={message}
+                          threads={threads}
+                          onDone={(note) => {
+                            setOpen(null);
+                            if (note) setNotes((all) => ({ ...all, [message.first]: note }));
+                          }}
+                        />
+                      )}
+                      {notes[message.first] && (
+                        <p className="mt-1 text-body-sm text-fg-muted">{notes[message.first]}</p>
+                      )}
+                    </>
+                  }
+                  quickEmojis={['👍', '✅', '👀']}
+                  onReact={(emoji) => {
+                    const on = !message.reactions.some(
+                      (r) => r.emoji === emoji && r.by.some((who) => who.id === me),
+                    );
+                    void reactTo({ data: { messageId: message.first, emoji, on } }).then(() =>
+                      router.invalidate(),
+                    );
+                  }}
+                  onReply={() => setReplyTo(message)}
+                  onAction={() => {
+                    setReplyTo(message);
+                    setForAction(true);
+                  }}
+                  {...(message.only_for
+                    ? {
+                        onShare: () =>
+                          void shareInThread({ data: { messageId: message.first } }).then(() =>
+                            router.invalidate(),
+                          ),
+                      }
+                    : {})}
+                  menu={menuOf(message)}
+                />
               );
-            })}
-            <li ref={end} aria-hidden="true" />
-          </ol>
+            }}
+          />
           {view.thread.state === 'open' && (
             <Composer
               view={view}
@@ -1476,26 +1706,40 @@ export function ThreadsScreen({
               people={people}
               replyTo={replyTo}
               onReplyDone={() => setReplyTo(null)}
+              forAction={forAction}
+              onForAction={setForAction}
+              onEditLast={() => {
+                const last = [...messages]
+                  .reverse()
+                  .find((msg) => mine(msg) && !msg.deleted && !msg.movedTo);
+                if (last) setOpen({ id: last.first, what: 'edit' });
+              }}
             />
           )}
         </section>
       ) : (
-        <section className="grid place-items-center p-8 text-center text-fg-muted max-[1000px]:hidden">
+        <section className="grid place-items-center p-8 text-center text-fg-muted max-[860px]:hidden">
           <p>{threads.length === 0 ? m.threads_none_yet() : m.threads_pick()}</p>
         </section>
       )}
-      {view && (
-        <ThreadState
-          view={view}
-          money={money}
-          me={me}
-          people={people}
-          shown={stateShown}
-          onClose={() => setStateShown(false)}
-        />
-      )}
-    </div>
+    </ConversationFrame>
   );
 }
 
-export type { Thread };
+function ListTop({ people, me }: { people: Person[]; me: string }) {
+  const [creating, setCreating] = useState(false);
+  return (
+    <>
+      <Search />
+      {creating ? (
+        <NewGroup people={people.filter((p) => p.id !== me)} onClose={() => setCreating(false)} />
+      ) : (
+        <Button variant="secondary" onClick={() => setCreating(true)}>
+          <CanvasIcon name="plus" size={14} /> {m.threads_new_group()}
+        </Button>
+      )}
+    </>
+  );
+}
+
+export type { Thread } from '@/lib/threads';

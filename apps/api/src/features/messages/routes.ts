@@ -12,13 +12,15 @@ import {
   markUnread,
   MAX_THREAD_FILE_BYTES,
   messagesOf,
+  messagesPage,
+  notifyLevelOf,
   moveMessage,
   openThread,
   postMessage,
   saveThreadFile,
   searchMessages,
-  ThreadError,
   threadFile,
+  threadFileInfo,
   threadOf,
   threadSummariesOf,
 } from '@kete/threads';
@@ -31,7 +33,9 @@ import type { IdentityVariables } from '../../platform/identity.js';
 import { answerInThread } from '../assistant/index.js';
 import { tell } from '../notifications/index.js';
 import { isAdministrator } from '../rights/index.js';
+import { KETE, mayManage, me, readable, refuse } from './access.js';
 import { centerRouter, keteThreadOf } from './center.js';
+import { citedStates, comfortRoutes, threadStore } from './comfort.js';
 import { threadEvents } from './live.js';
 import { listMailboxes, mailboxInput, MailboxError, mailboxOf, saveMailbox } from './mailboxes.js';
 import { ensureObjectThreads } from './objects.js';
@@ -54,49 +58,6 @@ export function useThreadConverter(next: PdfConverter | null | undefined): void 
   converterOverride = next;
 }
 
-function refuse(error: unknown): never {
-  if (error instanceof ThreadError) {
-    const status = {
-      not_found: 404,
-      closed: 409,
-      already_edited: 409,
-      already_moved: 409,
-      not_the_author: 403,
-      not_a_member: 403,
-      invalid_thread: 422,
-      invalid_message: 422,
-      file_too_large: 422,
-    } as const;
-    throw new GestureRefusal(status[error.code], error.code, error.message);
-  }
-  throw error;
-}
-
-const me = (identity: Identity) => ({ kind: 'person' as const, id: identity.userId });
-/** Kete itself, as a member of a thread: the assistant acting for whoever asks it. */
-const KETE = { kind: 'agent' as const, id: 'agt_assistant' };
-
-/** A thread is read by its members now, and by the administrators. */
-async function readable(db: SqlExecutor, identity: Identity, threadId: string) {
-  const thread = await getThread(db, threadId);
-  if (!thread) throw new GestureRefusal(404, 'not_found', 'No such thread here.');
-  const member = (thread.members ?? []).some(
-    (m) => m.kind === 'person' && m.id === identity.userId && !m.until,
-  );
-  if (!member && !isAdministrator(identity)) {
-    throw new GestureRefusal(403, 'not_a_member', 'Only its members read a thread.');
-  }
-  return thread;
-}
-
-/** Its holder, or an administrator, changes who is in a thread. */
-function mayManage(identity: Identity, thread: Thread) {
-  const holds = thread.holder.kind === 'person' && thread.holder.id === identity.userId;
-  if (!holds && !isAdministrator(identity)) {
-    throw new GestureRefusal(403, 'not_the_holder', 'Its holder changes who is in a thread.');
-  }
-}
-
 const ref = z.object({ kind: z.string().min(1).max(60), id: z.string().min(1).max(200) });
 const who = z.object({ kind: z.enum(['person', 'agent']), id: z.string().min(1).max(100) });
 const messageId = z.string().regex(/^msg_[0-9A-Za-z_-]{8,70}$/);
@@ -116,6 +77,11 @@ const postInput = z.object({
   priority: z.enum(priorities as unknown as ['urgent', 'high', 'normal', 'low']).optional(),
   replyTo: messageId.optional(),
   mentions: z.array(who).max(50).default([]),
+  /** The objects cited with « # » (spec 099, FR-006). */
+  references: z
+    .array(ref.extend({ app: z.string().min(1).max(60).optional() }))
+    .max(20)
+    .default([]),
   files: z.array(fileId).max(20).default([]),
   /** `outside`: said to the thread's contacts, through their channels (FR-005, FR-015). */
   visibility: z.enum(['internal', 'outside']).default('internal'),
@@ -148,22 +114,43 @@ async function keteAnswers(identity: Identity, threadId: string, question: strin
     return { thread: found, context: await contextOf(db, identity, found) };
   });
   const said = await answerInThread(identity, { thread: thread.title, context, question });
+  const words = messageWords();
   const answer =
-    'text' in said
-      ? said.text
-      : said.failure === 'no_model'
-        ? messageWords().keteSilent
-        : messageWords().keteFailed;
+    'text' in said ? said.text : said.failure === 'no_model' ? words.keteSilent : words.keteFailed;
+  // Read beyond the thread with her rights, and others read the thread: hers alone, until she
+  // shares it (spec 099, FR-009).
+  const others = (thread.members ?? []).some(
+    (m) => !m.until && m.kind !== 'agent' && !(m.kind === 'person' && m.id === identity.userId),
+  );
+  const sources = 'text' in said ? said.sources : [];
+  const onlyHers = sources.length > 0 && others;
   await transaction(identity.organizationId, async (db) => {
     await joinThread(db, identity.organizationId, threadId, KETE);
-    await postMessage(db, identity.organizationId, {
+    const posted = await postMessage(db, identity.organizationId, {
       thread: threadId,
       author: KETE,
       text: answer.slice(0, 20000),
       for: 'information',
       via: 'kete',
       mentions: [me(identity)],
+      ...(onlyHers ? { only_for: me(identity) } : {}),
     });
+    if ('text' in said) {
+      await db.query(
+        `insert into thread_runs (organization_id, message_id, title, steps, seconds)
+         values ($1, $2, $3, $4, $5)`,
+        [
+          identity.organizationId,
+          posted.message.id,
+          words.keteRead(sources.length + 1),
+          JSON.stringify([
+            { state: 'done', label: words.readThread, tag: words.levelRead },
+            ...sources.map((name) => ({ state: 'done', label: name, tag: words.levelRead })),
+          ]),
+          said.seconds,
+        ],
+      );
+    }
   });
 }
 
@@ -185,6 +172,8 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
   })
   // What changes in her threads, as it happens (FR-004).
   .get('/events', (c: Ctx) => threadEvents(c))
+  // The threads at today's level: pages, media, reactions, voice, « # », imports (spec 099).
+  .route('/', comfortRoutes)
   // A group or a direct thread she opens and holds, with its members (FR-008).
   .post('/', async (c: Ctx) => {
     const identity = c.get('identity');
@@ -303,7 +292,8 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
     const id = fileId.safeParse(c.req.param('fileId'));
     if (!id.success) throw new GestureRefusal(404, 'not_found', 'No such file.');
     const file = await transaction(identity.organizationId, async (db) => {
-      const found = await threadFile(db, id.data);
+      const store = threadStore();
+      const found = await threadFile(db, id.data, store ? { store } : {});
       if (!found) throw new GestureRefusal(404, 'not_found', 'No such file.');
       await readable(db, identity, found.thread);
       return found;
@@ -322,8 +312,31 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
     return c.json(
       await transaction(identity.organizationId, async (db) => {
         const thread = await readable(db, identity, threadId);
+        // Where she stopped: the first message of someone else she had not read (FR-001).
+        const { rows: unread } = await db.query<{ message_id: string }>(
+          `select m.message_id from kete_messages m
+            where m.thread_id = $1 and m.edited_from is null
+              and not (m.author_kind = 'person' and m.author_id = $2)
+              and not exists (select 1 from kete_message_reads r
+                               where r.message_id = m.message_id and r.reader_kind = 'person'
+                                 and r.reader_id = $2)
+            order by m.at, m.message_id limit 1`,
+          [threadId, identity.userId],
+        );
         await markRead(db, identity.organizationId, { threadId, reader: me(identity) });
-        const messages = await messagesOf(db, threadId);
+        const page = await messagesPage(db, threadId, {
+          viewer: me(identity),
+          ...(unread[0] ? { around: unread[0].message_id, limit: 80 } : {}),
+        });
+        const messages = page.messages;
+        const { rows: runs } = await db.query<{
+          message_id: string;
+          title: string;
+          steps: unknown[];
+          seconds: number | null;
+        }>(`select message_id, title, steps, seconds from thread_runs where message_id = any($1)`, [
+          messages.map((m) => m.id),
+        ]);
         const state = await stateOf(db, thread);
         const actions = await actionsOf(db, threadId);
         const ids = [
@@ -341,6 +354,14 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
         return {
           thread,
           messages,
+          older: page.older,
+          unreadFrom: unread[0]?.message_id ?? null,
+          runs: Object.fromEntries(runs.map((r) => [r.message_id, r])),
+          cited: await citedStates(
+            db,
+            messages.flatMap((m) => m.references ?? []),
+          ),
+          level: await notifyLevelOf(db, threadId, me(identity)),
           actions,
           pending: await pendingOf(db, threadId),
           ...state,
@@ -409,17 +430,25 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
           .max(Math.ceil((MAX_THREAD_FILE_BYTES * 4) / 3) + 8),
       })
       .safeParse(await bodyOf(c));
-    if (!parsed.success) throw new GestureRefusal(422, 'invalid_input', 'A file of 10 MB at most.');
+    if (!parsed.success)
+      throw new GestureRefusal(422, 'invalid_input', 'A file of 100 MB at most.');
     const content = new Uint8Array(Buffer.from(parsed.data.data, 'base64'));
     const saved = await transaction(identity.organizationId, async (db) => {
       const thread = await readable(db, identity, c.req.param('threadId') ?? '');
-      return saveThreadFile(db, identity.organizationId, {
-        threadId: thread.id,
-        name: parsed.data.name,
-        mediaType: parsed.data.contentType,
-        content,
-        by: me(identity),
-      });
+      const store = threadStore();
+      return saveThreadFile(
+        db,
+        identity.organizationId,
+        {
+          threadId: thread.id,
+          name: parsed.data.name,
+          mediaType: parsed.data.contentType,
+          content,
+          by: me(identity),
+        },
+        new Date(),
+        store ? { store } : {},
+      );
     }).catch(refuse);
     return c.json({ file: saved }, 201);
   })
@@ -446,7 +475,7 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
         );
       }
       const files = new Map(
-        (await Promise.all(input.files.map((id) => threadFile(db, id))))
+        (await Promise.all(input.files.map((id) => threadFileInfo(db, id))))
           .filter((f): f is NonNullable<typeof f> => f !== null && f.thread === thread.id)
           .map((f) => [f.id, f]),
       );
@@ -462,6 +491,9 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
           ...(input.to ? { to: input.to } : {}),
           ...(input.replyTo ? { reply_to: input.replyTo } : {}),
           ...(input.mentions.length > 0 ? { mentions: input.mentions } : {}),
+          ...(input.references.length > 0
+            ? { references: input.references as NonNullable<Message['references']> }
+            : {}),
           ...(files.size > 0
             ? {
                 attachments: [...files.values()].map((f) => ({
@@ -489,20 +521,24 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
         input.to.id !== identity.userId
       ) {
         told.add(input.to.id);
-        await tell(db, identity.organizationId, input.to.id, {
-          kind: 'thread.action',
-          title: words.forYou(identity.name, thread.title),
-          href,
-        });
+        await tell(
+          db,
+          identity.organizationId,
+          input.to.id,
+          { kind: 'thread.action', title: words.forYou(identity.name, thread.title), href },
+          { push: false },
+        );
       }
       for (const mentioned of input.mentions) {
         if (mentioned.kind !== 'person' || mentioned.id === identity.userId) continue;
         if (told.has(mentioned.id)) continue;
-        await tell(db, identity.organizationId, mentioned.id, {
-          kind: 'thread.mentioned',
-          title: words.mentioned(identity.name, thread.title),
-          href,
-        });
+        await tell(
+          db,
+          identity.organizationId,
+          mentioned.id,
+          { kind: 'thread.mentioned', title: words.mentioned(identity.name, thread.title), href },
+          { push: false },
+        );
       }
       if (verdict?.effect === 'approve') {
         await waitForApproval(db, identity.organizationId, {
@@ -624,7 +660,17 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
       if (holding.holder.id !== identity.userId && !isAdministrator(identity)) {
         throw new GestureRefusal(403, 'not_yours', 'Its holder says it is done.');
       }
-      return finishHolding(db, identity.organizationId, id);
+      const finished = await finishHolding(db, identity.organizationId, id);
+      // Returned to whom it says, when it is someone else (spec 099, FR-012).
+      const back = finished?.returnTo;
+      if (finished && back?.kind === 'person' && back.id !== identity.userId) {
+        await tell(db, identity.organizationId, back.id, {
+          kind: 'holding.returned',
+          title: messageWords().returned(identity.name, finished.what),
+          href: '/pour-moi',
+        });
+      }
+      return finished;
     });
     return c.json({ holding: done });
   })

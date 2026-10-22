@@ -172,21 +172,27 @@ async function drafts(db: SqlExecutor): Promise<{ said: Said; forUser: string }[
   }));
 }
 
-/** An agent's task: held by the agent while it is queued or running. */
+/**
+ * An agent's task while it is queued or running: held by the person who gave it, the agent its
+ * delegate, the result returned to her (doctrine D-061, spec 099, FR-012).
+ */
 async function agentTasks(db: SqlExecutor): Promise<Said[]> {
   const { rows } = await db.query<{
     task_id: string;
     agent_id: string;
+    given_by: string;
     instruction: string;
     created_at: Date;
   }>(
-    `select task_id, agent_id, instruction, created_at from agent_tasks
+    `select task_id, agent_id, given_by, instruction, created_at from agent_tasks
       where status in ('queued', 'running')`,
   );
   return rows.map((r) =>
     said('agent_task', r.task_id, {
       what: r.instruction,
-      holder: { kind: 'agent', id: r.agent_id },
+      holder: { kind: 'person', id: r.given_by },
+      delegate: { kind: 'agent', id: r.agent_id },
+      return_to: { kind: 'person', id: r.given_by },
       state: 'held',
       since: iso(r.created_at),
     }),

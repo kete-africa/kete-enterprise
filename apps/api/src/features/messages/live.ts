@@ -78,7 +78,11 @@ export function threadEvents(c: Context<{ Variables: IdentityVariables }>) {
           if (yes && open) {
             void stream.writeSSE({
               event: 'thread',
-              data: JSON.stringify({ threadId: change.threadId, kind: change.kind }),
+              data: JSON.stringify({
+                threadId: change.threadId,
+                kind: change.kind,
+                ...(change.who ? { who: change.who } : {}),
+              }),
             });
           }
         });

@@ -3,6 +3,7 @@ export {
   listenForNotifications,
   notificationRoutes,
   notificationsTablesSql,
+  ring,
   tell,
   usePushSender,
   type Tell,

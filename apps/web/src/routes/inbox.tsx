@@ -165,10 +165,8 @@ function TodoPage() {
                           type="button"
                           aria-current={active ? 'true' : undefined}
                           onClick={() => select(keyOf(item))}
-                          className={`grid w-full gap-1 rounded-control border-l-[3px] px-3 py-2.5 text-left ${
-                            active
-                              ? 'border-accent bg-surface-selected'
-                              : 'border-transparent hover:bg-surface-hover'
+                          className={`grid w-full gap-1 rounded-control px-3 py-2.5 text-left ${
+                            active ? 'bg-surface-selected' : 'hover:bg-surface-hover'
                           }`}
                         >
                           <span className="flex items-center justify-between gap-2">

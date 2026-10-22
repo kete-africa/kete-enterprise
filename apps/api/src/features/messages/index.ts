@@ -2,7 +2,12 @@
 export { centerRouter, keteThreadOf, useRouterModel, writeToKete } from './center.js';
 export { hearFromOutside } from './inbound.js';
 export { readMailboxes, useMailboxes } from './mailboxes.js';
-export { messagesLiveMigrationSql, messagesMigrationSql } from './migration.js';
+export {
+  messagesComfortMigrationSql,
+  messagesLiveMigrationSql,
+  messagesMigrationSql,
+} from './migration.js';
+export { ringUnread } from './push.js';
 export { threadRoutes, useThreadConverter } from './routes.js';
 export { appObjectInput, ensureObjectThreads, openAppObjectThread } from './objects.js';
 export { sendDigests } from './digest.js';

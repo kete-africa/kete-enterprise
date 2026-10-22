@@ -10,7 +10,7 @@ import {
   runQueuedRoutines,
 } from './features/routines/index.js';
 import { relayRound, syncHoldings, workOrganizations } from './features/work/index.js';
-import { readMailboxes, sendDigests } from './features/messages/index.js';
+import { readMailboxes, ringUnread, sendDigests } from './features/messages/index.js';
 import { getPool, transaction } from './platform/db.js';
 import { env } from './platform/env.js';
 
@@ -113,6 +113,16 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const sent = await sendQueuedMail();
           if (sent > 0) console.log(`[worker] ${sent} e-mail(s) sent`);
+        },
+      }),
+      // A message still unread three minutes after it rings her phone, once (spec 099).
+      defineJob({
+        name: 'ring-threads',
+        schedule: '* * * * *',
+        retryLimit: 0,
+        async handle() {
+          const rung = await ringUnread();
+          if (rung > 0) console.log(`[worker] ${rung} phone(s) rung for threads`);
         },
       }),
       // The threads' summary by mail, once a day after 18 h, for who chose it (spec 098).

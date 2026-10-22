@@ -99,7 +99,7 @@ function DocumentPage() {
                 id={`passage-${item.passage}`}
                 className={
                   item.passage === passage
-                    ? 'whitespace-pre-wrap rounded-control border-s-4 border-state-verify bg-state-verify-surface px-3 py-2 text-fg'
+                    ? 'whitespace-pre-wrap rounded-control bg-state-verify-surface px-3 py-2 text-fg'
                     : 'whitespace-pre-wrap text-fg'
                 }
               >

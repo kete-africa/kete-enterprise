@@ -3,11 +3,12 @@ import {
   markRead,
   notificationsMigrationSql,
   notify,
+  type PushSender,
   pushSenderFromEnv,
+  pushSubscriptionsOf,
   removePushSubscription,
   savePushSubscription,
   unreadCount,
-  type PushSender,
 } from '@kete/notify';
 import type { SqlExecutor } from '@kete/tenancy';
 import { Hono } from 'hono';
@@ -65,7 +66,9 @@ export interface Tell {
     | 'holding.nudged'
     | 'thread.mentioned'
     | 'thread.action'
-    | 'thread.approval';
+    | 'thread.approval'
+    | 'thread.message'
+    | 'holding.returned';
   title: string;
   body?: string;
   href?: string;
@@ -80,10 +83,38 @@ export async function tell(
   organizationId: string,
   userId: string,
   what: Tell,
+  options: { push?: boolean } = {},
 ): Promise<void> {
-  await notify(db, { organizationId, userId, ...what }, push()).catch((error: unknown) => {
+  const sender = options.push === false ? null : push();
+  await notify(db, { organizationId, userId, ...what }, sender).catch((error: unknown) => {
     console.error('[notifications]', (error as Error).message);
   });
+}
+
+/**
+ * Rings her devices only, what she was already told in the app (spec 099, FR-005): a message of a
+ * thread she has not read three minutes after it.
+ */
+export async function ring(
+  db: SqlExecutor,
+  userId: string,
+  what: Pick<Tell, 'kind' | 'title' | 'body' | 'href'>,
+): Promise<number> {
+  const sender = push();
+  if (!sender) return 0;
+  let rung = 0;
+  for (const device of await pushSubscriptionsOf(db, userId)) {
+    const outcome = await sender
+      .send(device, {
+        title: what.title,
+        body: what.body ?? '',
+        href: what.href ?? '/',
+        tag: what.kind,
+      })
+      .catch(() => 'failed' as const);
+    if (outcome === 'sent') rung += 1;
+  }
+  return rung;
 }
 
 let listening = false;
