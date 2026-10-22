@@ -1641,6 +1641,7 @@ export function ThreadsScreen({
                   : undefined
               }
               fileHref={(id) => `/api/fils/fichiers/${id}`}
+              original={view.originals?.[message.first]}
               referenceLabel={(r) => cited[`${r.kind}:${r.id}`]?.label ?? r.id}
               renderReference={(r) => {
                 const state = cited[`${r.kind}:${r.id}`];

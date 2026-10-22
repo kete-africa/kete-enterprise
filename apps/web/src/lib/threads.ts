@@ -152,6 +152,8 @@ export interface ThreadView {
   pages: Record<string, { href: string; title: string }>;
   /** Kete's turn at work in this thread. */
   turn: Turn | null;
+  /** A mail as it came, by message: what « voir l’original » shows (spec 099, FR-018). */
+  originals: Record<string, string>;
   /** In her thread « Kete »: the parts her agents work for her. */
   handed: { agentId: string; name: string; part: string; state: AgentWorkState }[];
   /** In an agent's thread: its job description at work, beside it (spec 099, FR-016). */

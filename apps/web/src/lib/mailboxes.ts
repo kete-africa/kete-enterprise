@@ -40,14 +40,67 @@ export const connectMailbox = createServerFn({ method: 'POST' })
       smtpPort: port(v.smtpPort, 465),
       login: text(v.login, 320),
       password: typeof v.password === 'string' ? v.password.slice(0, 500) : '',
+      kind: (v.kind === 'shared' ? 'shared' : 'personal') as 'personal' | 'shared',
+      label: text(v.label, 120),
+      readSent: v.readSent !== false,
     };
   })
   .handler(async ({ data }): Promise<GestureAnswer<{ connected: string }>> => {
-    const { name, ...rest } = data;
+    const { name, label, ...rest } = data;
     return sendGesture(
       getRequest(),
       '/v1/threads/mailboxes',
-      { ...rest, ...(name ? { name } : {}) },
+      { ...rest, ...(name ? { name } : {}), ...(label ? { label } : {}) },
+      crypto.randomUUID(),
+    );
+  });
+
+// --- Mail as decided (spec 099, FR-018) --------------------------------------------------------------
+
+export type RoutingStep = 'reply' | 'address' | 'contact' | 'model' | 'classify';
+
+export interface MailOverview {
+  mailboxes: {
+    userId: string;
+    address: string;
+    kind: 'personal' | 'shared';
+    label: string | null;
+    readSent: boolean;
+    sentFolder: string;
+    keteFolder: string;
+    active: boolean;
+    week: number;
+  }[];
+  steps: Record<RoutingStep, number>;
+  /** The threads' own domain: none chosen yet. */
+  domain: string | null;
+  live: { whatsapp: boolean; telegram: boolean; form: boolean };
+}
+
+/** What Kete reads in each box and how it ranged this week. */
+export const fetchMailOverview = createServerFn({ method: 'GET' }).handler(() =>
+  callApi<MailOverview>(getRequest(), '/v1/threads/mailboxes/overview'),
+);
+
+/** A box shared and read whole, or personal and read by the three rules; its Sent folder too. */
+export const saveMailRules = createServerFn({ method: 'POST' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as Record<string, unknown>;
+    return {
+      userId: text(v.userId, 80),
+      kind: (v.kind === 'shared' ? 'shared' : 'personal') as 'personal' | 'shared',
+      label: text(v.label, 120),
+      readSent: v.readSent === true,
+      sentFolder: text(v.sentFolder, 200) || 'Sent',
+      keteFolder: text(v.keteFolder, 200) || 'Kete',
+    };
+  })
+  .handler(({ data }): Promise<GestureAnswer<{ rules: object }>> => {
+    const { userId, ...rules } = data;
+    return sendGesture(
+      getRequest(),
+      `/v1/threads/mailboxes/${encodeURIComponent(userId)}/rules`,
+      rules,
       crypto.randomUUID(),
     );
   });
