@@ -88,6 +88,7 @@ import { centerPoliciesMigrationSql } from '../src/features/policies/index.js';
 import {
   agentThreadsMigrationSql,
   doorMigrationSql,
+  mailSettingsMigrationSql,
   messagesComfortMigrationSql,
   messagesLiveMigrationSql,
   messagesMigrationSql,
@@ -285,4 +286,6 @@ export const migrations: Migration[] = [
   { name: '0072_kete_door', sql: (context) => doorMigrationSql(context) },
   // Agents as colleagues: their threads, job descriptions, routines, requests (spec 099).
   { name: '0073_agents_as_colleagues', sql: (context) => agentThreadsMigrationSql(context) },
+  // Mail as decided: what Kete reads in each box, its folders (spec 099, FR-018).
+  { name: '0074_mail_as_decided', sql: (context) => mailSettingsMigrationSql(context) },
 ];

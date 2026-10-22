@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { getPool, transaction } from '../../platform/db.js';
 import { open, seal, secretsOn } from '../../platform/secrets.js';
 import { centerRouter } from './center.js';
+import { touchesObjects } from './mail-settings.js';
 
 // A person's mailbox in the center (spec 089, FR-004): an administrator connects it — IMAP to
 // read, SMTP to answer from her own box —, its password sealed and never returned. The worker
@@ -22,6 +23,11 @@ export interface MailboxAccount {
   name: string | null;
   imap: MailAccount;
   smtp: MailAccount;
+  /** Shared, it is read whole; personal, only what touches the objects (spec 099, FR-018). */
+  kind: 'personal' | 'shared';
+  readSent: boolean;
+  sentFolder: string;
+  keteFolder: string;
 }
 
 let factory: {
@@ -50,6 +56,11 @@ export const mailboxInput = z.object({
   smtpPort: z.number().int().min(1).max(65535).default(465),
   login: z.string().trim().min(1).max(320),
   password: z.string().min(1).max(500),
+  kind: z.enum(['personal', 'shared']).default('personal'),
+  label: z.string().trim().max(120).optional(),
+  readSent: z.boolean().default(true),
+  sentFolder: z.string().trim().min(1).max(200).default('Sent'),
+  keteFolder: z.string().trim().min(1).max(200).default('Kete'),
 });
 
 export class MailboxError extends Error {
@@ -72,14 +83,17 @@ export async function saveMailbox(
   if (!secretsOn()) throw new MailboxError('secrets_off', 'This instance keeps no secret.');
   await db.query(
     `insert into mailbox_accounts (organization_id, user_id, address, display_name, imap_host,
-       imap_port, smtp_host, smtp_port, login, password_sealed, updated_by)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       imap_port, smtp_host, smtp_port, login, password_sealed, updated_by, kind, label,
+       read_sent, sent_folder, kete_folder)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
      on conflict (organization_id, user_id) do update set address = excluded.address,
        display_name = excluded.display_name, imap_host = excluded.imap_host,
        imap_port = excluded.imap_port, smtp_host = excluded.smtp_host,
        smtp_port = excluded.smtp_port, login = excluded.login,
        password_sealed = excluded.password_sealed, active = true,
-       updated_by = excluded.updated_by, updated_at = now()`,
+       updated_by = excluded.updated_by, kind = excluded.kind, label = excluded.label,
+       read_sent = excluded.read_sent, sent_folder = excluded.sent_folder,
+       kete_folder = excluded.kete_folder, updated_at = now()`,
     [
       organizationId,
       input.userId,
@@ -92,6 +106,11 @@ export async function saveMailbox(
       input.login,
       seal(input.password),
       by,
+      input.kind,
+      input.label || null,
+      input.readSent,
+      input.sentFolder,
+      input.keteFolder,
     ],
   );
 }
@@ -106,6 +125,10 @@ type AccountRow = {
   smtp_port: number;
   login: string;
   password_sealed: string;
+  kind: 'personal' | 'shared';
+  read_sent: boolean;
+  sent_folder: string;
+  kete_folder: string;
 };
 
 const accountOf = (row: AccountRow): MailboxAccount | null => {
@@ -119,11 +142,15 @@ const accountOf = (row: AccountRow): MailboxAccount | null => {
     name: row.display_name,
     imap: { host: row.imap_host, port: row.imap_port, secure: row.imap_port === 993, ...common },
     smtp: { host: row.smtp_host, port: row.smtp_port, secure: row.smtp_port === 465, ...common },
+    kind: row.kind,
+    readSent: row.read_sent,
+    sentFolder: row.sent_folder,
+    keteFolder: row.kete_folder,
   };
 };
 
 const COLUMNS = `user_id, address, display_name, imap_host, imap_port, smtp_host, smtp_port, login,
-  password_sealed`;
+  password_sealed, kind, read_sent, sent_folder, kete_folder`;
 
 /** Her mailbox, opened: null when none is connected or its seal no longer opens. */
 export async function mailboxOf(db: SqlExecutor, userId: string): Promise<MailboxAccount | null> {
@@ -172,16 +199,38 @@ export async function readMailboxesOf(db: SqlExecutor, organizationId: string): 
   for (const row of rows) {
     const account = accountOf(row);
     if (!account) continue;
-    try {
-      const done = await readMailbox(
-        db,
-        organizationId,
-        { key: account.userId, mailbox: factory.mailbox(account) },
-        options,
-      );
-      routed += done.length;
-    } catch (error) {
-      console.error(`[mailboxes] ${account.address}`, (error as Error).message);
+    const mailbox = factory.mailbox(account);
+    // Shared, read whole; personal, only what touches the objects — and the « Kete » folder
+    // she drops a mail in, whole. Its Sent folder by the same rule, when it is read (FR-018).
+    const accept = account.kind === 'shared' ? undefined : touchesObjects(db, options);
+    const reads = [
+      { key: account.userId, mailbox, ...(accept ? { accept } : {}) },
+      ...(account.kind === 'personal'
+        ? [{ key: account.userId, mailbox, folder: account.keteFolder }]
+        : []),
+      ...(account.readSent
+        ? [
+            {
+              key: account.userId,
+              mailbox,
+              folder: account.sentFolder,
+              direction: 'out' as const,
+              ...(accept ? { accept } : {}),
+            },
+          ]
+        : []),
+    ];
+    for (const read of reads) {
+      try {
+        const done = await readMailbox(db, organizationId, read, options);
+        routed += done.length;
+      } catch (error) {
+        // A folder the box does not have waits; the others are read.
+        console.error(
+          `[mailboxes] ${account.address}${read.folder ? ` ${read.folder}` : ''}`,
+          (error as Error).message,
+        );
+      }
     }
   }
   return routed;

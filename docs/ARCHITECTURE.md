@@ -141,6 +141,29 @@ flowchart LR
   Q -->|routine, 10 min passed| X[Refused · nothing leaves]
 ```
 
+### Mail as decided (spec 099, FR-018)
+
+Each box says what Kete reads (`mailbox_accounts.kind`, `read_sent`, `sent_folder`, `kete_folder`):
+a **shared** box is read whole; a **personal** box only for what touches the organization's objects
+— an answer to a mail a thread knows, a thread's address among its recipients, a contact the
+center knows —, its « Kete » folder whole (she drops a mail in from Outlook), and its Sent folder
+by the same rule, shown as hers. The rest never enters a thread without her gesture. A mail read in
+two boxes is one message (its Message-ID); it shows cleaned, its original one tap away (the router
+journals it at the same instant as the message). « Mails et conversations » says, for each box,
+what it reads and how many mails it placed this week, and how many each routing step placed.
+
+```mermaid
+flowchart LR
+  B{The box} -->|shared| ALL[Everything]
+  B -->|personal| R{Touches an object?}
+  R -->|an answer a thread knows · a thread's address · a known contact| IN[Read]
+  R -->|no| NO[Never]
+  K[Its « Kete » folder] --> IN
+  S[Its Sent folder] -->|same rule · shown as hers| R
+  ALL & IN --> RT[Router · reply → address → contact → model → à classer]
+  RT --> T[The object's thread · cleaned · original kept]
+```
+
 ## Where it runs
 
 - Any Postgres 16 or more (with pgvector) and any S3-compatible storage, or a disk for a single

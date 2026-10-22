@@ -126,3 +126,12 @@ flowchart LR
   never, a `takeon` proposal for the holder (`POST /proposals/:id/takeon`), or alone.
 - **Its job description at work** (`POST /agents/:agentId/job`, the command `set-agent-job`),
   its routine now (`POST /agents/:agentId/routine/now`), her agents by state (`GET /agents`).
+
+## Mail as decided (spec 099, FR-018)
+
+`mail-settings.ts`: what Kete reads in a box (`touchesObjects`, used by `readMailboxesOf` for a
+personal box, its INBOX and its Sent folder; its « Kete » folder is read whole; a shared box is read
+whole), `GET /mailboxes/overview` (each box, its week, the routing steps' counts, the threads'
+domain, the channels heard live), `POST /mailboxes/:userId/rules`, and `originalsOf` (a thread's
+mails as they came, in `GET /:threadId` as `originals`). A mail from a Sent folder is its person's
+(`centerRouter`'s `authorOf`).
