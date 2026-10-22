@@ -86,6 +86,7 @@ import { holdingsMigrationSql } from '../src/features/work/index.js';
 import { workLinksMigrationSql } from '@kete/work';
 import { centerPoliciesMigrationSql } from '../src/features/policies/index.js';
 import {
+  doorMigrationSql,
   messagesComfortMigrationSql,
   messagesLiveMigrationSql,
   messagesMigrationSql,
@@ -279,4 +280,6 @@ export const migrations: Migration[] = [
   { name: '0070_threads_live', sql: (context) => messagesLiveMigrationSql(context) },
   // The enterprise talks here: threads for everyone, delegates, mail refs, phones (spec 099).
   { name: '0071_threads_for_everyone', sql: (context) => messagesComfortMigrationSql(context) },
+  // Kete's door: its turns and what it proposes — gestures, policies, parts handed (spec 099).
+  { name: '0072_kete_door', sql: (context) => doorMigrationSql(context) },
 ];

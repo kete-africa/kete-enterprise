@@ -32,6 +32,7 @@ import { transcribeAudio, TranscriptionUnavailable } from '../../platform/transc
 import { usageStore } from '../../platform/usage.js';
 import { isAdministrator } from '../rights/index.js';
 import { mayManage, me, readable, refuse } from './access.js';
+import { startTurn } from './door.js';
 import { namesOf } from './state.js';
 import { messageWords } from './words.js';
 
@@ -173,6 +174,8 @@ async function transcribeLater(
   message: string,
   fileId: string,
   audio: Uint8Array,
+  /** In her thread « Kete »: once heard, Kete takes its turn on it (FR-010, case A). */
+  toKete?: string,
 ) {
   try {
     const said = await transcribeAudio(audio, {
@@ -188,6 +191,7 @@ async function transcribeLater(
     await transaction(identity.organizationId, (db) =>
       setTranscript(db, identity.organizationId, { messageId: message, fileId, text: said.text }),
     );
+    if (toKete) startTurn(identity, { threadId: toKete, question: said.text });
   } catch (error) {
     if (!(error instanceof TranscriptionUnavailable)) {
       console.error('[thread voice]', (error as Error).message);
@@ -321,9 +325,10 @@ export const comfortRoutes = new Hono<{ Variables: IdentityVariables }>()
           },
         ] as NonNullable<Message['attachments']>,
       });
-      return { message: said.message, file: file.id };
+      const toKete = thread.kind === 'kete' && thread.holder.id === identity.userId;
+      return { message: said.message, file: file.id, ...(toKete ? { kete: thread.id } : {}) };
     }).catch(refuse);
-    void transcribeLater(identity, posted.message.id, posted.file, audio);
+    void transcribeLater(identity, posted.message.id, posted.file, audio, posted.kete);
     return c.json(posted, 201);
   })
   // A reaction given or taken back (FR-001).

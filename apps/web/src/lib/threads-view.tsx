@@ -26,6 +26,7 @@ import {
 import { useRouter } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ageOf } from '@/lib/for-me-view';
+import { FromPage, InviteToKete, KeteSide, Proposals, TurnAtWork } from '@/lib/kete-door';
 import { refusal } from '@/lib/forms';
 import { shownMoney } from '@/lib/money';
 import type { ProjectMoney } from '@/lib/project-money';
@@ -172,10 +173,10 @@ function conversationWords(): ConversationWords {
   };
 }
 
-function fieldWords(title: string): MessageFieldWords {
+function fieldWords(title: string, kete = false): MessageFieldWords {
   return {
     field: m.threads_write(),
-    placeholder: m.threads_field_placeholder({ title }),
+    placeholder: kete ? m.door_placeholder() : m.threads_field_placeholder({ title }),
     send: m.threads_send(),
     stop: m.threads_stop(),
     add: m.threads_field_add(),
@@ -643,6 +644,7 @@ function Composer({
   onEditLast,
   forAction,
   onForAction,
+  onTurn,
 }: {
   view: ThreadView;
   me: string;
@@ -652,7 +654,10 @@ function Composer({
   onEditLast: () => void;
   forAction: boolean;
   onForAction: (on: boolean) => void;
+  /** Kete took its turn after her message. */
+  onTurn: (turnId: string) => void;
 }) {
+  const kete = view.thread.kind === 'kete';
   const router = useRouter();
   const [to, setTo] = useState('');
   const [due, setDue] = useState('');
@@ -797,7 +802,8 @@ function Composer({
               : m.threads_outside_nobody(),
       );
     }
-    if (mentions.includes(KETE)) setNote(m.threads_kete_thinking());
+    if (answer.data.turn) onTurn(answer.data.turn);
+    else if (mentions.includes(KETE)) setNote(m.threads_kete_thinking());
     await router.invalidate();
     return true;
   }
@@ -856,7 +862,7 @@ function Composer({
   return (
     <div className="flex-none border-t border-line bg-surface px-4 pt-2 pb-3 max-[860px]:px-2.5">
       <MessageField
-        words={fieldWords(view.thread.title)}
+        words={fieldWords(view.thread.title, kete)}
         draftKey={view.thread.id}
         triggers={['@', '#']}
         search={search}
@@ -895,26 +901,28 @@ function Composer({
         tone={outside ? 'alert' : 'plain'}
         below={below}
         toggles={
-          <>
-            {contacts.length > 0 && (
+          kete ? undefined : (
+            <>
+              {contacts.length > 0 && (
+                <FieldToggle
+                  pressed={outside}
+                  onToggle={() => setOutside((o) => !o)}
+                  icon={outside ? 'whatsapp' : 'lock'}
+                  title={m.threads_who_reads()}
+                >
+                  {outside ? m.threads_to_client_short() : m.threads_internal()}
+                </FieldToggle>
+              )}
               <FieldToggle
-                pressed={outside}
-                onToggle={() => setOutside((o) => !o)}
-                icon={outside ? 'whatsapp' : 'lock'}
-                title={m.threads_who_reads()}
+                pressed={forAction}
+                onToggle={() => onForAction(!forAction)}
+                icon="ok"
+                title={m.threads_for_what()}
               >
-                {outside ? m.threads_to_client_short() : m.threads_internal()}
+                {forAction ? m.threads_for_action() : m.threads_for_information()}
               </FieldToggle>
-            )}
-            <FieldToggle
-              pressed={forAction}
-              onToggle={() => onForAction(!forAction)}
-              icon="ok"
-              title={m.threads_for_what()}
-            >
-              {forAction ? m.threads_for_action() : m.threads_for_information()}
-            </FieldToggle>
-          </>
+            </>
+          )
         }
         onTyping={() => void typingIn({ data: { threadId: view.thread.id } })}
         onEditLast={onEditLast}
@@ -1297,6 +1305,7 @@ export function ThreadsScreen({
   money,
   me,
   people,
+  solo = false,
 }: {
   threads: ThreadSummary[];
   names: Record<string, string>;
@@ -1304,8 +1313,11 @@ export function ThreadsScreen({
   money: ProjectMoney | null;
   me: string;
   people: Person[];
+  /** Her thread « Kete » alone, without the list (canvas v6.2, « Fil Kete »). */
+  solo?: boolean;
 }) {
   const router = useRouter();
+  const [asked, setAsked] = useState<string | null>(null);
   const words = useMemo(conversationWords, []);
   const [asideShown, setAsideShown] = useState(false);
   const [infos, setInfos] = useState(false);
@@ -1324,6 +1336,7 @@ export function ThreadsScreen({
   const current = view?.thread.id ?? null;
 
   useEffect(() => {
+    setAsked(null);
     setOlder(null);
     setMedia(null);
     setInfos(false);
@@ -1458,6 +1471,294 @@ export function ThreadsScreen({
     return items;
   };
 
+  const kete = view?.thread.kind === 'kete';
+  const turn = asked ? { turnId: asked } : (view?.turn ?? null);
+  const aside = view ? (
+    infos ? (
+      <ThreadInfo
+        words={words}
+        media={media}
+        fileHref={(id) => `/api/fils/fichiers/${id}`}
+        messageHref={(id) => `#${id}`}
+        level={level}
+        onLevel={(next) => {
+          setLevel(next);
+          void setNotifyLevel({ data: { threadId: view.thread.id, level: next } });
+        }}
+        onSearch={(text) => void findInThread(text)}
+        actions={{
+          count: `${openActions} / ${Object.keys(view.actions).length}`,
+          node: (
+            <ul className="grid gap-1 text-body-sm">
+              {Object.entries(view.actions).map(([message, a]) => (
+                <li key={a.holdingId}>
+                  <a href={`#${message}`} className="hover:text-link">
+                    {a.what} · {allNames[a.holder.id] ?? ''}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ),
+        }}
+        decisions={{
+          count: String(view.done.length),
+          node: (
+            <ul className="grid gap-1 text-body-sm text-fg-muted">
+              {view.done.map((d) => (
+                <li key={`${d.what}-${d.at}`}>{d.what}</li>
+              ))}
+            </ul>
+          ),
+        }}
+        members={{
+          count: String((view.thread.members ?? []).filter((mb) => !mb.until).length),
+          node: <Members view={view} me={me} people={people} />,
+        }}
+        onState={() => setInfos(false)}
+      />
+    ) : kete ? (
+      <KeteSide handed={view.handed} />
+    ) : (
+      <ThreadState view={view} money={money} me={me} people={people} threads={threads} />
+    )
+  ) : undefined;
+  const conversation = view ? (
+    <section aria-label={view.thread.title} className="flex min-h-0 min-w-0 flex-col bg-bg">
+      <ThreadHeader
+        words={words}
+        title={view.thread.title}
+        backHref="/fils?liste=1"
+        onTitle={() => {
+          setInfos(true);
+          setAsideShown(true);
+        }}
+        subtitle={
+          kete ? (
+            m.door_subtitle()
+          ) : (
+            <>
+              {m.threads_held_by({
+                name: allNames[view.thread.holder.id] ?? m.threads_someone(),
+              })}
+              {' · '}
+              {openActions > 0
+                ? m.threads_open_actions({ count: String(openActions) })
+                : m.threads_nothing_waits()}
+              {view.thread.state === 'closed' && ` · ${m.threads_closed()}`}
+            </>
+          )
+        }
+        actions={
+          <>
+            {kete && <InviteToKete threadId={view.thread.id} people={people} me={me} />}
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setInfos(true);
+                setAsideShown(true);
+              }}
+            >
+              <CanvasIcon name="more" size={13} />
+              <span className="max-[520px]:sr-only">{m.threads_infos()}</span>
+            </Button>
+            <button
+              type="button"
+              aria-pressed={asideShown}
+              onClick={() => {
+                setInfos(false);
+                setAsideShown((o) => !o);
+              }}
+              className="hidden h-(--control-height) items-center gap-1.5 rounded-control border border-line-control px-2.5 text-body-sm font-semibold max-[1180px]:inline-flex"
+            >
+              <CanvasIcon name="layers" size={14} />
+              <span className="max-[520px]:sr-only">{m.threads_state()}</span>
+            </button>
+          </>
+        }
+      />
+      <PinBar
+        pins={pinned.map((msg) => ({
+          id: msg.first,
+          label: msg.text.slice(0, 60) || (msg.attachments?.[0]?.name ?? '📎'),
+          href: `#${msg.first}`,
+        }))}
+      />
+      <Cards view={view} me={me} />
+      <MessageStream
+        label={view.thread.title}
+        words={words}
+        messages={messages as ShownMessage[]}
+        unreadFrom={view.unreadFrom}
+        typing={Object.keys(typing).map((id) => allNames[id] ?? m.threads_someone())}
+        older={older ? older.more : view.older}
+        onOlder={() => {
+          const first = messages[0];
+          if (first) void loadOlder(first.first, older?.messages ?? []);
+        }}
+        empty={m.threads_empty()}
+        renderMessage={(msg) => {
+          const message = msg as Message;
+          const action = view.actions[message.first];
+          const pending = view.pending[message.first];
+          const run = view.runs?.[message.id];
+          const panel = open?.id === message.first ? open.what : null;
+          return (
+            <MessageItem
+              key={message.first}
+              message={msg}
+              words={words}
+              me={{ kind: 'person', id: me }}
+              nameOf={nameOf}
+              quoted={
+                message.reply_to
+                  ? (byId.get(message.reply_to) as ShownMessage | undefined)
+                  : undefined
+              }
+              fileHref={(id) => `/api/fils/fichiers/${id}`}
+              referenceLabel={(r) => cited[`${r.kind}:${r.id}`]?.label ?? r.id}
+              renderReference={(r) => {
+                const state = cited[`${r.kind}:${r.id}`];
+                return (
+                  <span className="inline-flex h-[22px] items-center gap-1 rounded-[5px] bg-state-info-surface px-1.5 text-[12.5px] font-semibold text-state-info-fg">
+                    <CanvasIcon name="hash" size={12} />
+                    {state?.label ?? r.id}
+                    {state?.state && (
+                      <span className="font-normal text-fg-soft">
+                        {stateWord(r.kind, state.state)}
+                      </span>
+                    )}
+                  </span>
+                );
+              }}
+              run={
+                run
+                  ? {
+                      title: run.title,
+                      meta: run.seconds !== null ? `${run.seconds} s` : '',
+                      steps: run.steps,
+                    }
+                  : null
+              }
+              extras={
+                <>
+                  {view.pages[message.first] && (
+                    <FromPage page={view.pages[message.first] as { href: string; title: string }} />
+                  )}
+                  {view.proposals[message.first] && (
+                    <Proposals
+                      list={view.proposals[message.first] ?? []}
+                      names={allNames}
+                      people={people}
+                    />
+                  )}
+                  {action && <ActionBlock action={action} names={allNames} me={me} />}
+                  {pending && (
+                    <PendingBlock message={message} pending={pending} names={allNames} me={me} />
+                  )}
+                  {panel === 'edit' && (
+                    <EditInPlace message={message} onDone={() => setOpen(null)} />
+                  )}
+                  {panel === 'create' && (
+                    <CreateFrom
+                      message={message}
+                      onDone={(note) => {
+                        setOpen(null);
+                        if (note) setNotes((all) => ({ ...all, [message.first]: note }));
+                      }}
+                    />
+                  )}
+                  {panel === 'move' && (
+                    <MoveTo
+                      message={message}
+                      threads={threads}
+                      onDone={(note) => {
+                        setOpen(null);
+                        if (note) setNotes((all) => ({ ...all, [message.first]: note }));
+                      }}
+                    />
+                  )}
+                  {notes[message.first] && (
+                    <p className="mt-1 text-body-sm text-fg-muted">{notes[message.first]}</p>
+                  )}
+                </>
+              }
+              quickEmojis={['👍', '✅', '👀']}
+              onReact={(emoji) => {
+                const on = !message.reactions.some(
+                  (r) => r.emoji === emoji && r.by.some((who) => who.id === me),
+                );
+                void reactTo({ data: { messageId: message.first, emoji, on } }).then(() =>
+                  router.invalidate(),
+                );
+              }}
+              onReply={() => setReplyTo(message)}
+              onAction={() => {
+                setReplyTo(message);
+                setForAction(true);
+              }}
+              {...(message.only_for
+                ? {
+                    onShare: () =>
+                      void shareInThread({ data: { messageId: message.first } }).then(() =>
+                        router.invalidate(),
+                      ),
+                  }
+                : {})}
+              menu={menuOf(message)}
+            />
+          );
+        }}
+      />
+      <TurnAtWork threadId={view.thread.id} turn={turn} me={me} words={words} />
+      {view.thread.state === 'open' && (
+        <Composer
+          view={view}
+          onTurn={setAsked}
+          me={me}
+          people={people}
+          replyTo={replyTo}
+          onReplyDone={() => setReplyTo(null)}
+          forAction={forAction}
+          onForAction={setForAction}
+          onEditLast={() => {
+            const last = [...messages]
+              .reverse()
+              .find((msg) => mine(msg) && !msg.deleted && !msg.movedTo);
+            if (last) setOpen({ id: last.first, what: 'edit' });
+          }}
+        />
+      )}
+    </section>
+  ) : (
+    <section className="grid place-items-center p-8 text-center text-fg-muted max-[860px]:hidden">
+      <p>{threads.length === 0 ? m.threads_none_yet() : m.threads_pick()}</p>
+    </section>
+  );
+  // Her thread « Kete » alone: the conversation and its side, the same aside as the frame's.
+  if (solo) {
+    return (
+      <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_320px] overflow-hidden max-[1180px]:grid-cols-1">
+        {conversation}
+        {aside && (
+          <aside
+            aria-label={words.state}
+            data-shown={asideShown || undefined}
+            className="flex min-h-0 flex-col gap-4 overflow-auto border-l border-line bg-surface p-3.5 pb-20 max-[1180px]:hidden max-[1180px]:data-[shown]:fixed max-[1180px]:data-[shown]:inset-y-0 max-[1180px]:data-[shown]:right-0 max-[1180px]:data-[shown]:z-30 max-[1180px]:data-[shown]:flex max-[1180px]:data-[shown]:w-[min(340px,100%)] max-[1180px]:data-[shown]:shadow-[-8px_0_30px_#0000001f]"
+          >
+            <button
+              type="button"
+              onClick={() => setAsideShown(false)}
+              className="hidden items-center gap-1 self-end text-[12.5px] font-semibold text-link max-[1180px]:inline-flex"
+            >
+              <CanvasIcon name="x" size={14} />
+              {words.close}
+            </button>
+            {aside}
+          </aside>
+        )}
+      </div>
+    );
+  }
   return (
     <ConversationFrame
       words={words}
@@ -1472,256 +1773,9 @@ export function ThreadsScreen({
           top={<ListTop people={people} me={me} />}
         />
       }
-      aside={
-        view ? (
-          infos ? (
-            <ThreadInfo
-              words={words}
-              media={media}
-              fileHref={(id) => `/api/fils/fichiers/${id}`}
-              messageHref={(id) => `#${id}`}
-              level={level}
-              onLevel={(next) => {
-                setLevel(next);
-                void setNotifyLevel({ data: { threadId: view.thread.id, level: next } });
-              }}
-              onSearch={(text) => void findInThread(text)}
-              actions={{
-                count: `${openActions} / ${Object.keys(view.actions).length}`,
-                node: (
-                  <ul className="grid gap-1 text-body-sm">
-                    {Object.entries(view.actions).map(([message, a]) => (
-                      <li key={a.holdingId}>
-                        <a href={`#${message}`} className="hover:text-link">
-                          {a.what} · {allNames[a.holder.id] ?? ''}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                ),
-              }}
-              decisions={{
-                count: String(view.done.length),
-                node: (
-                  <ul className="grid gap-1 text-body-sm text-fg-muted">
-                    {view.done.map((d) => (
-                      <li key={`${d.what}-${d.at}`}>{d.what}</li>
-                    ))}
-                  </ul>
-                ),
-              }}
-              members={{
-                count: String((view.thread.members ?? []).filter((mb) => !mb.until).length),
-                node: <Members view={view} me={me} people={people} />,
-              }}
-              onState={() => setInfos(false)}
-            />
-          ) : (
-            <ThreadState view={view} money={money} me={me} people={people} threads={threads} />
-          )
-        ) : undefined
-      }
+      aside={aside}
     >
-      {view ? (
-        <section aria-label={view.thread.title} className="flex min-h-0 min-w-0 flex-col bg-bg">
-          <ThreadHeader
-            words={words}
-            title={view.thread.title}
-            backHref="/fils?liste=1"
-            onTitle={() => {
-              setInfos(true);
-              setAsideShown(true);
-            }}
-            subtitle={
-              <>
-                {m.threads_held_by({
-                  name: allNames[view.thread.holder.id] ?? m.threads_someone(),
-                })}
-                {' · '}
-                {openActions > 0
-                  ? m.threads_open_actions({ count: String(openActions) })
-                  : m.threads_nothing_waits()}
-                {view.thread.state === 'closed' && ` · ${m.threads_closed()}`}
-              </>
-            }
-            actions={
-              <>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setInfos(true);
-                    setAsideShown(true);
-                  }}
-                >
-                  <CanvasIcon name="more" size={13} />
-                  <span className="max-[520px]:sr-only">{m.threads_infos()}</span>
-                </Button>
-                <button
-                  type="button"
-                  aria-pressed={asideShown}
-                  onClick={() => {
-                    setInfos(false);
-                    setAsideShown((o) => !o);
-                  }}
-                  className="hidden h-(--control-height) items-center gap-1.5 rounded-control border border-line-control px-2.5 text-body-sm font-semibold max-[1180px]:inline-flex"
-                >
-                  <CanvasIcon name="layers" size={14} />
-                  <span className="max-[520px]:sr-only">{m.threads_state()}</span>
-                </button>
-              </>
-            }
-          />
-          <PinBar
-            pins={pinned.map((msg) => ({
-              id: msg.first,
-              label: msg.text.slice(0, 60) || (msg.attachments?.[0]?.name ?? '📎'),
-              href: `#${msg.first}`,
-            }))}
-          />
-          <Cards view={view} me={me} />
-          <MessageStream
-            label={view.thread.title}
-            words={words}
-            messages={messages as ShownMessage[]}
-            unreadFrom={view.unreadFrom}
-            typing={Object.keys(typing).map((id) => allNames[id] ?? m.threads_someone())}
-            older={older ? older.more : view.older}
-            onOlder={() => {
-              const first = messages[0];
-              if (first) void loadOlder(first.first, older?.messages ?? []);
-            }}
-            empty={m.threads_empty()}
-            renderMessage={(msg) => {
-              const message = msg as Message;
-              const action = view.actions[message.first];
-              const pending = view.pending[message.first];
-              const run = view.runs?.[message.id];
-              const panel = open?.id === message.first ? open.what : null;
-              return (
-                <MessageItem
-                  key={message.first}
-                  message={msg}
-                  words={words}
-                  me={{ kind: 'person', id: me }}
-                  nameOf={nameOf}
-                  quoted={
-                    message.reply_to
-                      ? (byId.get(message.reply_to) as ShownMessage | undefined)
-                      : undefined
-                  }
-                  fileHref={(id) => `/api/fils/fichiers/${id}`}
-                  referenceLabel={(r) => cited[`${r.kind}:${r.id}`]?.label ?? r.id}
-                  renderReference={(r) => {
-                    const state = cited[`${r.kind}:${r.id}`];
-                    return (
-                      <span className="inline-flex h-[22px] items-center gap-1 rounded-[5px] bg-state-info-surface px-1.5 text-[12.5px] font-semibold text-state-info-fg">
-                        <CanvasIcon name="hash" size={12} />
-                        {state?.label ?? r.id}
-                        {state?.state && (
-                          <span className="font-normal text-fg-soft">
-                            {stateWord(r.kind, state.state)}
-                          </span>
-                        )}
-                      </span>
-                    );
-                  }}
-                  run={
-                    run
-                      ? {
-                          title: run.title,
-                          meta: run.seconds !== null ? `${run.seconds} s` : '',
-                          steps: run.steps,
-                        }
-                      : null
-                  }
-                  extras={
-                    <>
-                      {action && <ActionBlock action={action} names={allNames} me={me} />}
-                      {pending && (
-                        <PendingBlock
-                          message={message}
-                          pending={pending}
-                          names={allNames}
-                          me={me}
-                        />
-                      )}
-                      {panel === 'edit' && (
-                        <EditInPlace message={message} onDone={() => setOpen(null)} />
-                      )}
-                      {panel === 'create' && (
-                        <CreateFrom
-                          message={message}
-                          onDone={(note) => {
-                            setOpen(null);
-                            if (note) setNotes((all) => ({ ...all, [message.first]: note }));
-                          }}
-                        />
-                      )}
-                      {panel === 'move' && (
-                        <MoveTo
-                          message={message}
-                          threads={threads}
-                          onDone={(note) => {
-                            setOpen(null);
-                            if (note) setNotes((all) => ({ ...all, [message.first]: note }));
-                          }}
-                        />
-                      )}
-                      {notes[message.first] && (
-                        <p className="mt-1 text-body-sm text-fg-muted">{notes[message.first]}</p>
-                      )}
-                    </>
-                  }
-                  quickEmojis={['👍', '✅', '👀']}
-                  onReact={(emoji) => {
-                    const on = !message.reactions.some(
-                      (r) => r.emoji === emoji && r.by.some((who) => who.id === me),
-                    );
-                    void reactTo({ data: { messageId: message.first, emoji, on } }).then(() =>
-                      router.invalidate(),
-                    );
-                  }}
-                  onReply={() => setReplyTo(message)}
-                  onAction={() => {
-                    setReplyTo(message);
-                    setForAction(true);
-                  }}
-                  {...(message.only_for
-                    ? {
-                        onShare: () =>
-                          void shareInThread({ data: { messageId: message.first } }).then(() =>
-                            router.invalidate(),
-                          ),
-                      }
-                    : {})}
-                  menu={menuOf(message)}
-                />
-              );
-            }}
-          />
-          {view.thread.state === 'open' && (
-            <Composer
-              view={view}
-              me={me}
-              people={people}
-              replyTo={replyTo}
-              onReplyDone={() => setReplyTo(null)}
-              forAction={forAction}
-              onForAction={setForAction}
-              onEditLast={() => {
-                const last = [...messages]
-                  .reverse()
-                  .find((msg) => mine(msg) && !msg.deleted && !msg.movedTo);
-                if (last) setOpen({ id: last.first, what: 'edit' });
-              }}
-            />
-          )}
-        </section>
-      ) : (
-        <section className="grid place-items-center p-8 text-center text-fg-muted max-[860px]:hidden">
-          <p>{threads.length === 0 ? m.threads_none_yet() : m.threads_pick()}</p>
-        </section>
-      )}
+      {conversation}
     </ConversationFrame>
   );
 }

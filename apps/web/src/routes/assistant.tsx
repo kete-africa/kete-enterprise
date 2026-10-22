@@ -1,5 +1,5 @@
 import { CanvasIcon } from '@kete/design';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { ChatCanvas } from '@/lib/chat/canvas';
 import { PayWith, rememberedPayer } from '@/lib/chat/pay-with';
@@ -8,26 +8,59 @@ import { CenterIntelligence } from '@/lib/intelligence';
 import { keepConversationAsSkill } from '@/lib/skills';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
-import { fetchKeteThread, fetchThread } from '@/lib/threads';
+import {
+  fetchKeteThread,
+  fetchPeopleToAdd,
+  fetchThread,
+  fetchThreads,
+  postToThread,
+  type ThreadSummary,
+  type ThreadView,
+} from '@/lib/threads';
+import { ThreadsScreen } from '@/lib/threads-view';
 import { fetchAssistant, fetchConversation, fetchConversations, type Payer } from '@/lib/workspace';
 import { PinToSidebar } from '@/lib/sidebar-nav';
 import * as m from '@/paraglide/messages.js';
 import { getLocale } from '@/paraglide/runtime.js';
 
+interface Solo {
+  view: ThreadView | null;
+  threads: ThreadSummary[];
+  names: Record<string, string>;
+  people: Awaited<ReturnType<typeof fetchPeopleToAdd>>;
+}
+
 const isConversation = (value: unknown): value is string =>
   typeof value === 'string' && /^cnv_[0-9a-f-]{8,64}$/.test(value);
 
 export const Route = createFileRoute('/assistant')({
-  validateSearch: (search: Record<string, unknown>): { c?: string; q?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { c?: string; q?: string; avant?: boolean } => ({
     ...(isConversation(search['c']) ? { c: search['c'] } : {}),
+    // The conversations kept before her thread « Kete » (spec 099, FR-007): still readable.
+    ...(search['avant'] === 1 || search['avant'] === '1' || search['avant'] === true
+      ? { avant: true }
+      : {}),
     // A question asked from Ctrl K (spec 046), sent once the page runs.
     ...(typeof search['q'] === 'string' && search['q'].trim()
       ? { q: search['q'].slice(0, 4000) }
       : {}),
   }),
   beforeLoad: ({ location }) => requirePerson(location.href),
-  loaderDeps: ({ search }) => ({ c: search.c }),
+  loaderDeps: ({ search }) => ({ c: search.c, avant: search.avant }),
   loader: async ({ deps }) => {
+    // Her thread « Kete » (canvas v6.2): the same conversation as the drawer of every page.
+    if (!deps.c && !deps.avant) {
+      const [thread, { threads, names }, people] = await Promise.all([
+        fetchKeteThread(),
+        fetchThreads(),
+        fetchPeopleToAdd(),
+      ]);
+      const view = await fetchThread({ data: { threadId: thread.id } });
+      const solo: Solo = { view, threads, names, people };
+      return { solo, assistant: null, conversations: [], current: null, kete: null };
+    }
     const [assistant, list, current, kete] = await Promise.all([
       fetchAssistant(),
       fetchConversations(),
@@ -37,10 +70,49 @@ export const Route = createFileRoute('/assistant')({
         .then((thread) => fetchThread({ data: { threadId: thread.id } }))
         .catch(() => null),
     ]);
-    return { assistant, conversations: list.conversations, current, kete };
+    return {
+      assistant,
+      conversations: list.conversations,
+      current,
+      kete,
+      solo: null as Solo | null,
+    };
   },
-  component: AssistantPage,
+  component: KetePage,
 });
+
+/** Her thread « Kete » alone; the conversations kept before, through « Conversations d’avant ». */
+function KetePage() {
+  const data = Route.useLoaderData();
+  return data.solo ? <KeteThread {...data.solo} /> : <AssistantPage />;
+}
+
+function KeteThread({ view, threads, names, people }: Solo) {
+  const { me } = Route.useRouteContext();
+  const { q } = Route.useSearch();
+  const router = useRouter();
+  // The question from Ctrl K is asked once, in her thread; the address keeps only the page.
+  useEffect(() => {
+    if (!q || !view) return;
+    window.history.replaceState(null, '', '/assistant');
+    void postToThread({
+      data: { threadId: view.thread.id, text: q, mentions: [], references: [], files: [] },
+    }).then(() => router.invalidate());
+  }, [q, view, router]);
+  return (
+    <AppShell me={me} current="assistant" bleed>
+      <ThreadsScreen
+        threads={threads.filter((t) => t.thread.kind !== 'kete')}
+        names={names}
+        view={view}
+        money={null}
+        me={me.userId}
+        people={people}
+        solo
+      />
+    </AppShell>
+  );
+}
 
 /** When a thread last moved: « il y a 2 min », « hier », « lun. », a date. */
 function movedAt(at: string): string {
@@ -70,7 +142,9 @@ const footClass =
  */
 function AssistantPage() {
   const { me } = Route.useRouteContext();
-  const { assistant, conversations, current, kete } = Route.useLoaderData();
+  const data = Route.useLoaderData();
+  const { conversations, current, kete } = data;
+  const assistant = data.assistant as NonNullable<typeof data.assistant>;
   const said = kete?.messages ?? [];
   // Her thread « Kete » (D-057): today's morning point, and what she told Kete from her phone.
   const morning = [...said].reverse().find((m) => m.author.id === 'agt_briefing') ?? null;

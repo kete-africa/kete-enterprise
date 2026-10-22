@@ -23,7 +23,85 @@ const usage = {
 const SAID =
   'Voici les factures impayées depuis plus de 30 jours, de la plus élevée à la plus faible. Le tableau vient du jeu de données « Factures impayées » : triez-le, filtrez-le, ou choisissez des lignes pour me dire quoi en faire.';
 
-export function scriptedAnswers(datasetId: string) {
+/** What Kete's door proposes in the demo (spec 099, cases A and B), on the demo's own project. */
+export interface DemoDoor {
+  projectId: string | null;
+  /** The colleague who holds what is entrusted, by name. */
+  colleague: string;
+}
+
+const inDays = (days: number) =>
+  new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+
+/** Case A (a word from a client visit) or case B (a rule and an order), as Kete would understand them. */
+function doorCalls(said: string, door: DemoDoor): { toolName: string; input: object }[] {
+  if (/passe par moi/i.test(said)) {
+    return [
+      {
+        toolName: 'propose_policy',
+        input: {
+          rule: 'Tout achat au-delà de 50 000 F passe par moi.',
+          template: 'spending.above',
+          amount: 50_000,
+          approver: 'me',
+        },
+      },
+      {
+        toolName: 'propose_gestures',
+        input: {
+          summary: said,
+          holdings: [
+            {
+              what: 'Préparer le planning de novembre',
+              holder: door.colleague,
+              due: inDays(3),
+              source: 'votre message',
+            },
+          ],
+        },
+      },
+    ];
+  }
+  if (/sors de|vocal|rendez-vous/i.test(said)) {
+    return [
+      {
+        toolName: 'propose_gestures',
+        input: {
+          summary: said,
+          ...(door.projectId ? { object: { kind: 'project', id: door.projectId } } : {}),
+          holdings: [
+            {
+              what: 'Mettre à jour le devis : +2 prises, salle 3',
+              holder: door.colleague,
+              due: inDays(2),
+              source: 'de votre message',
+            },
+          ],
+          dates: [
+            { label: 'Solde promis : 462 000 F', day: inDays(3), source: 'de votre message' },
+          ],
+          routines: [
+            {
+              title: 'Relancer le solde s’il n’est pas reçu',
+              prompt: 'Le solde promis est-il reçu ? Sinon, prépare la relance.',
+              cadence: 'weekdays',
+              time: '18:00',
+              source: 'proposé par Kete',
+            },
+          ],
+        },
+      },
+    ];
+  }
+  return [];
+}
+
+const DOOR_SAID: Record<string, string> = {
+  policy: 'Votre message contient une règle et une consigne. Je propose :',
+  gestures: 'Compte rendu posté dans le fil du projet, signé par vous. Je propose trois gestes :',
+};
+
+export function scriptedAnswers(datasetId: string, door?: DemoDoor) {
   const reads = {
     type: 'tool-call' as const,
     toolCallId: 'call_demo',
@@ -42,6 +120,50 @@ export function scriptedAnswers(datasetId: string) {
       warnings: [],
     },
     doStream: async (options) => {
+      // At Kete's door, it proposes what cases A and B show, one tool after the other.
+      const offeredDoor = (options.tools ?? []).some((tool) => tool.name === 'propose_gestures');
+      if (door && offeredDoor) {
+        const lastUser = options.prompt.findLastIndex((message) => message.role === 'user');
+        const asked = options.prompt[lastUser];
+        const said =
+          asked && Array.isArray(asked.content)
+            ? asked.content.map((part) => ('text' in part ? part.text : '')).join(' ')
+            : '';
+        const calls = doorCalls(said, door);
+        const done = options.prompt.slice(lastUser + 1).filter((m) => m.role === 'tool').length;
+        const next = calls[done];
+        if (calls.length > 0) {
+          const chunks: object[] = next
+            ? [
+                { type: 'stream-start', warnings: [] },
+                {
+                  type: 'tool-call',
+                  toolCallId: `call_door_${done}`,
+                  toolName: next.toolName,
+                  input: JSON.stringify(next.input),
+                },
+                {
+                  type: 'finish',
+                  finishReason: { unified: 'tool-calls', raw: 'tool_calls' },
+                  usage,
+                },
+              ]
+            : [
+                { type: 'stream-start', warnings: [] },
+                { type: 'text-start', id: 't1' },
+                {
+                  type: 'text-delta',
+                  id: 't1',
+                  delta: calls.some((c) => c.toolName === 'propose_policy')
+                    ? DOOR_SAID.policy
+                    : DOOR_SAID.gestures,
+                },
+                { type: 'text-end', id: 't1' },
+                { type: 'finish', finishReason: { unified: 'stop', raw: 'stop' }, usage },
+              ];
+          return { stream: simulateReadableStream({ chunks, chunkDelayInMs: 120 }) as never };
+        }
+      }
       // Once its tool has answered, it says what the table shows; before, it reads.
       const read = options.prompt.at(-1)?.role === 'tool';
       const offered = (options.tools ?? []).some((tool) => tool.name === 'team_data_rows');

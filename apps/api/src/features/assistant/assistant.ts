@@ -838,6 +838,13 @@ async function streamChat(c: Ctx): Promise<Response> {
     answerer.kind === 'model' && !c.get('viewedBy')
       ? await transaction(organizationId, (db) => abilitiesIn(db, organizationId)).catch(() => [])
       : [];
+  // Kete's door from the drawer (spec 099, FR-007): the same tools as in her thread « Kete », and
+  // what is said here is kept there — never while another views her space.
+  const keteDoor =
+    answerer.kind === 'model' && !c.get('viewedBy')
+      ? (await import('../messages/index.js')).drawerDoor(identity)
+      : null;
+  const started = Date.now();
   const appTools = (apps?.tools ?? []).filter(
     (t) => named.length === 0 || named.some((n) => t.description.startsWith(n)),
   );
@@ -968,6 +975,7 @@ ${skills.prompt}`
                   ...(dashboards ? dashboardTools(identity) : []),
                   ...appTools,
                   ...beyond,
+                  ...(keteDoor?.tools ?? []),
                 ],
                 { outside: OUTSIDE_ABILITIES },
               ),
@@ -1057,6 +1065,19 @@ ${skills.prompt}`
               tables,
             }),
           ).catch(() => undefined);
+        }
+        if (!c.get('viewedBy')) {
+          const { keepInKete } = await import('../messages/index.js');
+          await keepInKete(identity, {
+            question: mentioned.plain || parsed.data.message,
+            ...(parsed.data.page
+              ? { page: { href: parsed.data.page.href, title: parsed.data.page.title } }
+              : {}),
+            answer: text,
+            tools,
+            seconds: Math.round((Date.now() - started) / 1000),
+            collected: keteDoor?.collected ?? { gestures: [], policies: [], handovers: [] },
+          }).catch((error: unknown) => console.error('[kete drawer]', (error as Error).message));
         }
         await apps?.close();
         controller.close();
