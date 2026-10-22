@@ -33,6 +33,14 @@ import { isAdministrator } from '../rights/index.js';
 import { KETE, mayManage, me, readable, refuse } from './access.js';
 import { centerRouter, keteThreadOf } from './center.js';
 import { citedStates, comfortRoutes, threadStore } from './comfort.js';
+import { agentThreadRoutes } from './agent-routes.js';
+import {
+  agentRequests,
+  agentSide,
+  mentionedAgents,
+  offerHolding,
+  speakToAgent,
+} from './agent-threads.js';
 import { doorRoutes } from './door-routes.js';
 import { handedNow, pagesOf, proposalsOf, startTurn, workingTurn } from './door.js';
 import { threadEvents } from './live.js';
@@ -107,6 +115,8 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
   .route('/', comfortRoutes)
   // Kete's door: its turn, what it proposes, her invitation (FR-007 to FR-011).
   .route('/', doorRoutes)
+  // Her agents as colleagues: their threads, their job, what they ask (FR-013 to FR-016).
+  .route('/', agentThreadRoutes)
   // A group or a direct thread she opens and holds, with its members (FR-008).
   .post('/', async (c: Ctx) => {
     const identity = c.get('identity');
@@ -242,82 +252,86 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
   .get('/:threadId', async (c: Ctx) => {
     const identity = c.get('identity');
     const threadId = c.req.param('threadId') ?? '';
-    return c.json(
-      await transaction(identity.organizationId, async (db) => {
-        const thread = await readable(db, identity, threadId);
-        // Where she stopped: the first message of someone else she had not read (FR-001).
-        const { rows: unread } = await db.query<{ message_id: string }>(
-          `select m.message_id from kete_messages m
+    const view = await transaction(identity.organizationId, async (db) => {
+      const thread = await readable(db, identity, threadId);
+      // Where she stopped: the first message of someone else she had not read (FR-001).
+      const { rows: unread } = await db.query<{ message_id: string }>(
+        `select m.message_id from kete_messages m
             where m.thread_id = $1 and m.edited_from is null
               and not (m.author_kind = 'person' and m.author_id = $2)
               and not exists (select 1 from kete_message_reads r
                                where r.message_id = m.message_id and r.reader_kind = 'person'
                                  and r.reader_id = $2)
             order by m.at, m.message_id limit 1`,
-          [threadId, identity.userId],
-        );
-        await markRead(db, identity.organizationId, { threadId, reader: me(identity) });
-        const page = await messagesPage(db, threadId, {
-          viewer: me(identity),
-          ...(unread[0] ? { around: unread[0].message_id, limit: 80 } : {}),
-        });
-        const messages = page.messages;
-        const { rows: runs } = await db.query<{
-          message_id: string;
-          title: string;
-          steps: unknown[];
-          seconds: number | null;
-        }>(`select message_id, title, steps, seconds from thread_runs where message_id = any($1)`, [
-          messages.map((m) => m.id),
-        ]);
-        const state = await stateOf(db, thread);
-        const actions = await actionsOf(db, threadId);
-        // What Kete proposed her here, the turn at work, and in her own thread what she handed.
-        const proposals = await proposalsOf(db, threadId, identity.userId);
-        const handed = thread.kind === 'kete' ? await handedNow(db, identity.userId) : [];
-        const ids = [
-          ...Object.values(proposals).flatMap((list) =>
-            list.flatMap((p) =>
-              'holdings' in p.body ? p.body.holdings.flatMap((h) => [h.holder, h.returnTo]) : [],
-            ),
+        [threadId, identity.userId],
+      );
+      await markRead(db, identity.organizationId, { threadId, reader: me(identity) });
+      const page = await messagesPage(db, threadId, {
+        viewer: me(identity),
+        ...(unread[0] ? { around: unread[0].message_id, limit: 80 } : {}),
+      });
+      const messages = page.messages;
+      const { rows: runs } = await db.query<{
+        message_id: string;
+        title: string;
+        steps: unknown[];
+        seconds: number | null;
+      }>(`select message_id, title, steps, seconds from thread_runs where message_id = any($1)`, [
+        messages.map((m) => m.id),
+      ]);
+      const state = await stateOf(db, thread);
+      const actions = await actionsOf(db, threadId);
+      // What Kete proposed her here, the turn at work, and in her own thread what she handed.
+      const proposals = await proposalsOf(db, threadId, identity.userId);
+      const handed = thread.kind === 'kete' ? await handedNow(db, identity.userId) : [];
+      const ids = [
+        ...Object.values(proposals).flatMap((list) =>
+          list.flatMap((p) =>
+            'holdings' in p.body ? p.body.holdings.flatMap((h) => [h.holder, h.returnTo]) : [],
           ),
-          ...(thread.members ?? []).map((m) => m.id),
-          ...messages.flatMap((m) => [
-            m.author.id,
-            ...m.readBy.map((r) => r.id),
-            ...(m.mentions ?? []).map((x) => x.id),
-          ]),
-          ...Object.values(actions).map((a) => a.holder.id),
-          ...state.holdings.map((h) => h.holder.id),
-          ...state.cards.map((h) => h.holder.id),
-          ...state.files.flatMap((f) => f.versions.map((v) => v.by)),
-        ];
-        return {
-          thread,
-          messages,
-          older: page.older,
-          unreadFrom: unread[0]?.message_id ?? null,
-          runs: Object.fromEntries(runs.map((r) => [r.message_id, r])),
-          cited: await citedStates(
-            db,
-            messages.flatMap((m) => m.references ?? []),
-          ),
-          level: await notifyLevelOf(db, threadId, me(identity)),
-          proposals,
-          pages: await pagesOf(
-            db,
-            messages.map((m) => m.first),
-          ),
-          turn: await workingTurn(db, threadId),
-          handed,
-          actions,
-          pending: await pendingOf(db, threadId),
-          ...state,
-          names: await namesOf(db, ids, identity, messageWords().outsider),
-          mailbox: (await mailboxOf(db, identity.userId)) !== null,
-        };
-      }),
-    );
+        ),
+        ...(thread.members ?? []).map((m) => m.id),
+        ...messages.flatMap((m) => [
+          m.author.id,
+          ...m.readBy.map((r) => r.id),
+          ...(m.mentions ?? []).map((x) => x.id),
+        ]),
+        ...Object.values(actions).map((a) => a.holder.id),
+        ...state.holdings.map((h) => h.holder.id),
+        ...state.cards.map((h) => h.holder.id),
+        ...state.files.flatMap((f) => f.versions.map((v) => v.by)),
+      ];
+      return {
+        thread,
+        messages,
+        older: page.older,
+        unreadFrom: unread[0]?.message_id ?? null,
+        runs: Object.fromEntries(runs.map((r) => [r.message_id, r])),
+        cited: await citedStates(
+          db,
+          messages.flatMap((m) => m.references ?? []),
+        ),
+        level: await notifyLevelOf(db, threadId, me(identity)),
+        proposals,
+        pages: await pagesOf(
+          db,
+          messages.map((m) => m.first),
+        ),
+        turn: await workingTurn(db, threadId),
+        agent: await agentSide(db, identity, thread),
+        handed,
+        actions,
+        pending: await pendingOf(db, threadId),
+        ...state,
+        names: await namesOf(db, ids, identity, messageWords().outsider),
+        mailbox: (await mailboxOf(db, identity.userId)) !== null,
+      };
+    });
+    // What its agent asks, under its answers: read as she may decide it (FR-015).
+    return c.json({
+      ...view,
+      requests: view.agent ? await agentRequests(identity, threadId) : {},
+    });
   })
   // She marks it unread from a message on (FR-003).
   .post('/:threadId/unread', async (c: Ctx) => {
@@ -464,6 +478,16 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
           ...(input.priority ? { priority: input.priority } : {}),
         },
       ).catch(refuse);
+      // A holding given to someone: her agent proposes to take it on, or takes it (FR-016).
+      if (posted.holdingId && input.to?.kind === 'person') {
+        await offerHolding(db, identity.organizationId, {
+          holdingId: posted.holdingId,
+          holder: input.to.id,
+          what: input.text,
+          threadId: thread.id,
+          messageId: posted.message.id,
+        });
+      }
       // Who is mentioned, and who must act, is told (FR-014).
       const told = new Set<string>();
       const href = `/fils?fil=${thread.id}#${posted.message.id}`;
@@ -527,10 +551,25 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
       place.kind !== 'kete' &&
       input.visibility === 'internal' &&
       input.mentions.some((m) => m.kind === 'person' && m.id !== identity.userId);
+    // In an agent's thread, her words are its work; mentioned elsewhere, it sets to work there
+    // unless its job description says never (FR-013, FR-016).
+    const agentWork = await transaction(identity.organizationId, async (db) => {
+      const said = await speakToAgent(db, identity, threadId, input.text);
+      if (said) return said;
+      const mentioned = input.mentions
+        .filter((m) => m.kind === 'agent' && m.id !== KETE.id)
+        .map((m) => m.id);
+      return (
+        (
+          await mentionedAgents(db, identity, { threadId, text: input.text, agents: mentioned })
+        )[0] ?? null
+      );
+    });
     const turn =
-      asked || orders
+      agentWork ??
+      (asked || orders
         ? startTurn(identity, { threadId, question: input.text, review: !asked })
-        : null;
+        : null);
     return c.json({ ...answer, turn }, 201);
   })
   // « Créer… »: Kete prepares, from a message, the draft she asks for (FR-013).

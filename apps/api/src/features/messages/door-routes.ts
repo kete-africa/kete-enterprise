@@ -25,7 +25,7 @@ import {
 type Ctx = Context<{ Variables: IdentityVariables }>;
 
 const proposalId = z.string().regex(/^prp_[0-9A-Za-z_-]{8,70}$/);
-const turnId = z.string().regex(/^trn_[0-9A-Za-z_-]{8,70}$/);
+const turnId = z.string().regex(/^(trn|tsk)_[0-9A-Za-z_-]{8,70}$/);
 
 function refused(error: unknown): never {
   if (error instanceof ProposalError) {
@@ -92,12 +92,13 @@ export const doorRoutes = new Hono<{ Variables: IdentityVariables }>()
     if (!id.success || !how.success) {
       throw new GestureRefusal(422, 'invalid_input', 'Which proposal, adopted or tried.');
     }
-    if (!isAdministrator(identity)) {
-      throw new GestureRefusal(403, 'forbidden', 'An administrator adopts a policy.');
-    }
     const policy = await transaction(identity.organizationId, (db) =>
       policyToDecide(db, identity.userId, id.data),
     ).catch(refused);
+    // Her own agent's « Toujours… » is hers (FR-015); any other policy, an administrator's.
+    if (!isAdministrator(identity) && !policy.id.startsWith('agent.')) {
+      throw new GestureRefusal(403, 'forbidden', 'An administrator adopts a policy.');
+    }
     const key = c.req.header('idempotency-key') ?? `${id.data}:${how.data.how}`;
     await runCommand(identity.organizationId, actorOf(c), `${key}:save`, savePolicyCommand, {
       id: policy.id,

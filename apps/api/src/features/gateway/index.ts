@@ -8,6 +8,7 @@ export {
   DRAFT_BUDGET,
   draftsFor,
   preparedDraftCount,
+  reviewDrafts,
   gatewayResourceMetadata,
   handleGateway,
   toolPermissions,

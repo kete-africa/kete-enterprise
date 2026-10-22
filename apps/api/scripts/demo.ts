@@ -9,7 +9,12 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import pg from 'pg';
-import { scriptedAnswers, scriptedEvening, scriptedProposal } from '../db/demo/answers.js';
+import {
+  scriptedAnswers,
+  scriptedEvening,
+  scriptedProposal,
+  scriptedTask,
+} from '../db/demo/answers.js';
 import { useClosureModel } from '../src/features/closure/index.js';
 import { seedDay } from '../db/demo/day.js';
 import { seedErp } from '../db/demo/erp.js';
@@ -20,7 +25,8 @@ import { seedLibrary } from '../db/demo/library.js';
 import { seedThreads } from '../db/demo/threads.js';
 import { seedDemo } from '../db/demo/seed.js';
 import { migrations } from '../db/migrations.js';
-import { useAgentModel } from '../src/features/agents/index.js';
+import { runQueuedTasks, useAgentModel, useTaskModel } from '../src/features/agents/index.js';
+import { runDueRoutines } from '../src/features/messages/index.js';
 import { useModel } from '../src/features/assistant/index.js';
 
 // Kete Enterprise on this machine, to look at its screens: `pnpm demo` from the repository's root.
@@ -269,6 +275,14 @@ if (manager && colleague) {
   // No model here: the assistant's answers are written in advance, on the demo's own data.
   // « Créer un agent en une phrase » proposes the same job description, to show its dry run.
   if (!realModel) useAgentModel(scriptedProposal());
+  // Its agents at work (spec 099, part C): what they are given runs every few seconds, their
+  // routines at their time — the worker's two jobs, in the demo's own process.
+  if (!realModel) useTaskModel(scriptedTask());
+  setInterval(() => {
+    void runQueuedTasks()
+      .then(() => runDueRoutines())
+      .catch((error: unknown) => console.error('[demo agents]', (error as Error).message));
+  }, 5000);
   // « Ce soir » (spec 083): gestures proposed on her To do, written in advance.
   if (!realModel) useClosureModel(scriptedEvening());
   if (realModel) {

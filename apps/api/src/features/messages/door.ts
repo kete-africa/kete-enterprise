@@ -10,8 +10,7 @@ import { z } from 'zod';
 import { asPerson } from '../../platform/acting.js';
 import { transaction } from '../../platform/db.js';
 import type { IdentityVariables } from '../../platform/identity.js';
-import { findAgent, personOfAgent, queueTask, stateOfAgent } from '../agents/index.js';
-import type { Agent } from '../agents/index.js';
+import { findAgent, getTask, stateOfAgent, stopTask } from '../agents/index.js';
 import {
   createSchedule,
   meteringStore,
@@ -23,10 +22,10 @@ import {
 import { toolsForPerson } from '../gateway/index.js';
 import { readModules } from '../organization/index.js';
 import { engine, entitiesFor } from '../policies/index.js';
-import { unitsOfPersonAndAbove } from '../rights/index.js';
 import { personOfAccount } from '../structure/index.js';
 import { sayTimeFact } from '../time/index.js';
 import { KETE, me, readable } from './access.js';
+import { agentsOfHers, giveToAgent, offerHolding } from './agent-threads.js';
 import { keteThreadOf } from './center.js';
 import { namesOf, stateOf } from './state.js';
 import { messageWords } from './words.js';
@@ -239,27 +238,6 @@ async function objectNamed(db: SqlExecutor, object: z.infer<typeof objectRef>) {
   return { kind: object.kind, id: found.id, title: found.name, thread: thread?.id ?? null };
 }
 
-/** The agents she may hand work to: those that act for her, and those shared with her. */
-export async function agentsOfHers(db: SqlExecutor, identity: Identity): Promise<Agent[]> {
-  const { rows } = await db.query<{ agent_id: string }>(
-    `select agent_id from agents where status = 'active' order by name`,
-  );
-  const units = await unitsOfPersonAndAbove(db, identity);
-  const hers: Agent[] = [];
-  for (const { agent_id } of rows) {
-    const agent = await findAgent(db, agent_id);
-    if (!agent) continue;
-    if ((await personOfAgent(db, agent)) === identity.userId) hers.push(agent);
-    else if (
-      agent.visibility === 'shared' &&
-      (agent.sharedWith.length === 0 || agent.sharedWith.some((u) => units.has(u)))
-    ) {
-      hers.push(agent);
-    }
-  }
-  return hers;
-}
-
 /** Kete's three door tools: each one collects what is proposed; nothing is written by them. */
 function doorTools(identity: Identity, collected: Collected): CapabilityTool[] {
   const tool = (
@@ -463,7 +441,10 @@ export async function stopTurn(db: SqlExecutor, turnId: string, userId: string) 
     [turnId, userId],
   );
   running.get(turnId)?.abort();
-  return rows.length > 0;
+  if (rows.length > 0) return true;
+  // An agent's task, stopped by whom gave it (FR-014).
+  const task = await getTask(db, turnId);
+  return task?.givenBy === userId ? stopTask(db, turnId, { userId, name: userId }) : false;
 }
 
 /** The turn working in a thread, if any. */
@@ -481,15 +462,43 @@ export async function workingTurn(db: SqlExecutor, threadId: string) {
     [threadId],
   );
   const turn = rows[0];
-  return turn
-    ? {
-        turnId: turn.turn_id,
-        askedBy: turn.asked_by,
-        steps: turn.steps,
-        live: turn.live,
-        startedAt: turn.started_at.toISOString(),
-      }
-    : null;
+  if (turn) {
+    return {
+      turnId: turn.turn_id,
+      askedBy: turn.asked_by,
+      steps: turn.steps,
+      live: turn.live,
+      startedAt: turn.started_at.toISOString(),
+    };
+  }
+  // Or an agent at work on what was given in this thread (FR-013, FR-014).
+  const { rows: tasks } = await db.query<{
+    task_id: string;
+    given_by: string;
+    status: string;
+    steps: { tool: string; status: string; level?: number }[];
+    created_at: Date;
+  }>(
+    `select t.task_id, t.given_by, t.status, t.steps, t.created_at
+       from agent_task_threads x join agent_tasks t on t.task_id = x.task_id
+      where x.thread_id = $1 and t.status in ('queued', 'running', 'paused')
+      order by t.created_at desc limit 1`,
+    [threadId],
+  );
+  const task = tasks[0];
+  if (!task) return null;
+  const words = messageWords();
+  return {
+    turnId: task.task_id,
+    askedBy: task.given_by,
+    steps: task.steps.map((s): Step => ({
+      state: s.status === 'draft' ? 'ask' : 'done',
+      label: s.tool,
+      tag: levelWord(s.level ?? 1),
+    })),
+    live: task.status === 'queued' ? words.agentQueued : '',
+    startedAt: task.created_at.toISOString(),
+  };
 }
 
 async function runTurn(
@@ -730,11 +739,14 @@ async function keepProposals(
   }
   for (const policy of collected.policies) await keep('policy', policy);
   for (const handover of collected.handovers) {
-    const task = await queueTask(db, {
-      organizationId,
-      agentId: handover.agentId,
+    // Its part is said in its own thread, where it answers (FR-008, FR-013).
+    const agent = await findAgent(db, handover.agentId);
+    if (!agent) continue;
+    const { task } = await giveToAgent(db, organizationId, {
+      agent,
       givenBy: identity.userId,
       instruction: handover.part,
+      post: true,
     });
     await keep('handover', { ...handover, taskId: task.taskId }, 'handed');
   }
@@ -990,6 +1002,13 @@ export async function confirmGestures(
         to: { kind: 'person', id: proposed.returnTo },
       });
       made.holdings.push(posted.holdingId);
+      await offerHolding(db, identity.organizationId, {
+        holdingId: posted.holdingId,
+        holder,
+        what: edit.what ?? proposed.what,
+        threadId: where,
+        messageId: posted.message.id,
+      });
     }
   }
   for (const date of set.dates) {

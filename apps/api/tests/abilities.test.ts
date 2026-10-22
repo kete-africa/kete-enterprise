@@ -229,7 +229,7 @@ describe('her assistant beyond Kete', () => {
 });
 
 describe('an agent at work', () => {
-  it('is given the web, a computer of the task’s own, and a researcher to hand a question to', async () => {
+  it('is given the web, a computer of the task’s own when its job gives it one, and a researcher', async () => {
     await post(t.admin, '/structure/people', { name: 'Kofi', accountUserId: 'usr_kofi' });
     const agentId = String(
       (
@@ -241,6 +241,8 @@ describe('an agent at work', () => {
         })
       ).body.agentId,
     );
+    // Its own computer comes with its job description (spec 099, FR-016).
+    await post(t.kofi, `/threads/agents/${agentId}/job`, { computerMinutes: 30 });
     const taskId = String(
       (
         (await post(t.kofi, `/agents/${agentId}/tasks`, { instruction: 'Le tarif du kWh ?' })).body

@@ -187,6 +187,26 @@ export function scriptedAnswers(datasetId: string, door?: DemoDoor) {
 }
 
 /**
+ * What an agent says once its task is done (spec 099, part C): written in advance, so that its
+ * thread shows an answer with its steps — never what a model would have done.
+ */
+export function scriptedTask() {
+  return new MockLanguageModelV4({
+    doGenerate: {
+      content: [
+        {
+          type: 'text',
+          text: 'C’est fait : j’ai lu ce qu’il fallait et préparé la suite. Rien ne part sans vous.',
+        },
+      ],
+      finishReason: { unified: 'stop', raw: 'stop' },
+      usage,
+      warnings: [],
+    },
+  });
+}
+
+/**
  * The job description the demo proposes for any sentence (step C7): an agent that watches her
  * late decisions. Written in advance, like the answers: it shows the dry run, not a model.
  */
