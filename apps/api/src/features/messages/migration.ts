@@ -1,7 +1,11 @@
-import { channelsMigrationSql } from '@kete/channels';
+import { channelsMailRefsMigrationSql, channelsMigrationSql } from '@kete/channels';
 import { organizationPolicySql } from '@kete/tenancy';
-import { threadsLiveMigrationSql, threadsMigrationSql } from '@kete/threads';
-import { workPrioritiesMigrationSql } from '@kete/work';
+import {
+  threadsComfortMigrationSql,
+  threadsLiveMigrationSql,
+  threadsMigrationSql,
+} from '@kete/threads';
+import { workDelegatesMigrationSql, workPrioritiesMigrationSql } from '@kete/work';
 
 /**
  * Threads and the router (kete-core `@kete/threads`, `@kete/channels`, with their RLS in the same
@@ -95,5 +99,45 @@ grant execute on function ${s}.agenda_feed_owner(text) to ${app};
 alter table ${s}.people
   add column threads_digest text not null default 'none' check (threads_digest in ('none', 'daily')),
   add column digest_sent_on date;
+`;
+}
+
+/**
+ * The enterprise talks here (spec 099; kete-core spec 140): the threads for everyone of
+ * `@kete/threads` (reactions, pins, deletions, transcripts, citations, levels, imports, merging),
+ * the holdings' delegates and returns, the mails a thread sent or received, and the center's own
+ * table of who was told on her phone of which message — once, three minutes after it, if she had
+ * not read it.
+ */
+export function messagesComfortMigrationSql(options: { schema: string; appRole: string }): string {
+  const s = options.schema;
+  const app = options.appRole;
+  return `${workDelegatesMigrationSql(options)}
+${threadsComfortMigrationSql(options)}
+${channelsMailRefsMigrationSql(options)}
+create table ${s}.thread_pushes (
+  organization_id text not null,
+  message_id text not null references ${s}.kete_messages (message_id),
+  user_id text not null,
+  pushed_at timestamptz not null default now(),
+  primary key (message_id, user_id)
+);
+${organizationPolicySql({ schema: s, table: 'thread_pushes', appRole: app })}
+grant select, insert on ${s}.thread_pushes to ${app};
+
+-- The turn of Kete or an agent that wrote a message: its steps, folded under it (FR-009, FR-014).
+create table ${s}.thread_runs (
+  organization_id text not null,
+  message_id text primary key references ${s}.kete_messages (message_id),
+  title text not null check (length(title) between 1 and 200),
+  steps jsonb not null default '[]',
+  seconds integer check (seconds >= 0)
+);
+${organizationPolicySql({ schema: s, table: 'thread_runs', appRole: app })}
+grant select, insert on ${s}.thread_runs to ${app};
+
+alter table ${s}.mailbox_accounts
+  add column kind text not null default 'personal' check (kind in ('personal', 'shared')),
+  add column read_sent boolean not null default true;
 `;
 }

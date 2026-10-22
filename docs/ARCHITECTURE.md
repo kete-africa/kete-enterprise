@@ -47,9 +47,43 @@ and the relay, spec 087), `@kete/policies` (one policy engine at the gesture, on
 agents' rules and the circuits are its policies, spec 088), `@kete/threads` and `@kete/channels`
 (a thread per object, the router, mail bridged, spec 089).
 
+## The threads (spec 099)
+
+The enterprise talks in its threads (doctrine D-061). `@kete/threads` keeps every message once —
+the thread of an object, a group, a direct one, her thread « Kete » —, `@kete/conversation` draws
+them on the canvas v6.2, and the API (`features/messages`) adds what a center needs around them:
+
+- **Files and voice notes** go to the storage (`platform/storage.ts`: S3 when `KETE_STORAGE_*` is
+  set, a disk otherwise), 100 MB at most, served to the thread's members only; a voice note is
+  transcribed after, by the organization's model, metered.
+- **Pages**: a thread opens at her first unread message (80 around it), older pages on demand.
+- **Live**: every change reaches her screens by the stream (`/api/fils/flux`); « écrit… » is told,
+  never kept.
+- **The phone** rings only for a message she has not seen in three minutes, once, by her level
+  (all, mentions, none) — the worker's job `ring-threads`.
+- **Kete in a thread** answers « seulement pour vous » when it read beyond the thread and others
+  read it; she may share the answer. Its turn is kept with its steps (`thread_runs`).
+- **Elsewhere**: a WhatsApp or Telegram export, or a mail, is imported once (each message keyed);
+  two threads merge by the holder of the first.
+- **An agent** is never a holder: a task given to it is held by the person who gave it, the agent
+  its delegate, and the result returns to her (`holding.returned`).
+
+```mermaid
+flowchart LR
+  F[The composer] -->|text, @, #, files, voice| A[API · messages]
+  A --> T[(kete_messages and their marks)]
+  A --> S[(Storage · S3 or disk)]
+  A -->|@Kete| K[Kete] -->|only for her when it read beyond| T
+  T -->|announce| L[Stream · her screens]
+  T -->|unseen 3 min| P[Push · her phone]
+  M[Mail, WhatsApp, Telegram] -->|reply headers → address → contact → model → à classer| A
+  I[An export .txt, .json, .eml] -->|once per message| A
+```
+
 ## Where it runs
 
-- Any Postgres 16 or more (with pgvector) and any S3-compatible storage; Docker Compose
+- Any Postgres 16 or more (with pgvector) and any S3-compatible storage, or a disk for a single
+  server; Docker Compose
   (`deploy/`) or Coolify; never a call to Kete to work (D-029).
 - Two images: `apps/api` (it applies its migrations at start-up) and `apps/web`.
 - Kete's own instances use the Neon project `kete-enterprise` (`docs/OPERATIONS.md`).

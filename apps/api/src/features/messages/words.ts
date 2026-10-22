@@ -18,6 +18,12 @@ const catalog = {
     digestIntro: 'Ce qui vous attend dans vos fils Kete :',
     digestLine: (thread: string, unread: number) => `${thread} — ${unread} message(s) non lu(s)`,
     digestOpen: 'Ouvrir mes fils',
+    keteRead: (sources: number) => `A lu ${sources} source${sources > 1 ? 's' : ''}`,
+    readThread: 'Lire ce fil et l’état de son objet',
+    levelRead: 'lire',
+    pushed: (who: string, thread: string) => `${who} dans « ${thread} »`,
+    voiceNote: 'Vocal',
+    returned: (who: string, what: string) => `${who} vous rend « ${what} » : c’est fait`,
   },
   en: {
     keteThread: 'Kete',
@@ -34,6 +40,12 @@ const catalog = {
     digestIntro: 'What waits for you in your Kete threads:',
     digestLine: (thread: string, unread: number) => `${thread} — ${unread} unread message(s)`,
     digestOpen: 'Open my threads',
+    keteRead: (sources: number) => `Read ${sources} source${sources > 1 ? 's' : ''}`,
+    readThread: 'Read this thread and its object’s state',
+    levelRead: 'read',
+    pushed: (who: string, thread: string) => `${who} in “${thread}”`,
+    voiceNote: 'Voice note',
+    returned: (who: string, what: string) => `${who} returns “${what}” to you: done`,
   },
 } as const;
 

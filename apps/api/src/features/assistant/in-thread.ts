@@ -15,7 +15,10 @@ type Identity = IdentityVariables['identity'];
 export async function answerInThread(
   identity: Identity,
   input: { thread: string; context: string; question: string },
-): Promise<{ text: string } | { failure: 'no_model' | 'failed' }> {
+): Promise<
+  { text: string; sources: string[]; seconds: number } | { failure: 'no_model' | 'failed' }
+> {
+  const started = Date.now();
   const choice = await modelFor(identity);
   if (!choice) return { failure: 'no_model' };
   const organization = await transaction(identity.organizationId, (db) => organizationName(db));
@@ -49,7 +52,10 @@ export async function answerInThread(
       }),
     );
     const text = answer.text.trim();
-    return text ? { text } : { failure: 'failed' };
+    const sources = [...new Set(answer.toolResults.map((result) => result.name))];
+    return text
+      ? { text, sources, seconds: Math.round((Date.now() - started) / 1000) }
+      : { failure: 'failed' };
   } catch (error) {
     if (error instanceof BudgetExceededError) return { failure: 'no_model' };
     console.error('[thread]', (error as Error).message);
