@@ -19,6 +19,8 @@ import { readModules } from '../organization/index.js';
 import { putTask, spaceHref } from '../workspace/index.js';
 import type { Agent } from './agents.record.js';
 import { findAgent, personOfAgent } from './infrastructure/agents.tables.js';
+import { objectContextFor } from './context.js';
+import { agentToolSets } from './toolsets.js';
 
 // Tasks given to agents (spec 036): a person gives one of her agents an instruction; the worker
 // runs it in the background — her capabilities narrowed to its job description, every commitment
@@ -633,6 +635,17 @@ function delegationTools(
 }
 
 /** What the agent is told to do: her instruction, what it already did, what she wrote since. */
+/** The person an agent acts for, as Kete's features read an identity: her rights, no role. */
+const identityOf = (person: { organizationId: string; userId: string }) => ({
+  ...person,
+  email: '',
+  name: '',
+  role: null,
+  apps: {},
+  twoFactor: false,
+  expiresAt: new Date(Date.now() + 60 * 60_000),
+});
+
 function promptOf(task: AgentTask): string {
   return [
     task.instruction,
@@ -787,8 +800,21 @@ export async function runTask(
           abilityTools({ abilities, config: organizationModelConfig(), metering, computer }),
         );
         const researcher = researcherOf(beyond);
+        // Kete's own sets its job description names (spec 104): the library, a team's tables, forms,
+        // documents, dashboards — each reading with her rights, never above its level.
+        const keteOwn = await agentToolSets(identityOf(person), {
+          sources: agent.sources,
+          autonomyMax: onTrial ? Math.min(agent.autonomyMax, 2) : agent.autonomyMax,
+        });
+        for (const tool of keteOwn)
+          facts.set(tool.name, { permission: undefined, level: tool.autonomy });
+        // What it works on, when the task is about an object: its card, links, last words.
+        const context = await transaction(organizationId, (db) =>
+          objectContextFor(db, identityOf(person), taskId),
+        ).catch(() => '');
         const tools = [
-          ...own,
+          ...(agent.sources.includes('kete') ? own : []),
+          ...keteOwn,
           ...beyond,
           ...delegationTools(organizationId, userId, task, agent),
         ].map((tool): CapabilityTool => ({
@@ -823,7 +849,9 @@ export async function runTask(
             'Tu agis pour une personne et jamais au-delà de ses droits. Ce qui engage passe par un ' +
             'brouillon qu’elle valide. Réponds en français, brièvement : ce que tu as fait, ce qui ' +
             'attend sa décision, ce que tu n’as pas pu faire.',
-          messages: [{ role: 'user', content: promptOf(task) }],
+          messages: [
+            { role: 'user', content: [context, promptOf(task)].filter(Boolean).join('\n\n') },
+          ],
           tools,
           maxSteps: 8,
           metering,

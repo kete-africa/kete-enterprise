@@ -188,6 +188,10 @@ export interface AgentSide {
   wakeEveryMinutes: number;
   watches: string[];
   draftBudget: number;
+  /** Its sources of tools (spec 104): « kete » and Kete's own sets. */
+  sources: string[];
+  /** The events that set it to work. */
+  follows: { type: string; objectKind: string | null; state: string | null }[];
 }
 
 export interface AgentRequest {
@@ -877,6 +881,13 @@ export const setAgentJob = createServerFn({ method: 'POST' })
           ? { computerMinutes: Math.max(1, Math.min(10000, Math.round(v.computerMinutes))) }
           : {}),
       ...(v.returnTo === 'giver' || v.returnTo === 'owner' ? { returnTo: v.returnTo } : {}),
+      ...(Array.isArray(v.sources)
+        ? {
+            sources: v.sources
+              .filter((w): w is string => typeof w === 'string' && /^[a-z][a-z0-9_]{1,60}$/.test(w))
+              .slice(0, 12),
+          }
+        : {}),
       ...(routine === null
         ? { routine: null }
         : routine && typeof routine === 'object'

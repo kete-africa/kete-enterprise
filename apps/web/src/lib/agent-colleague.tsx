@@ -1,6 +1,6 @@
 import { Button, CanvasIcon, Tag } from '@kete/design';
 import { useRouter } from '@tanstack/react-router';
-import { useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { changeAgents } from '@/lib/agents';
 import { refusal } from '@/lib/forms';
 import {
@@ -246,6 +246,16 @@ function Segmented<T extends string>({
   );
 }
 
+/** Its sources of tools, in words: what its job description may draw on (spec 104). */
+const SOURCES: [string, () => string][] = [
+  ['kete', m.colleague_source_kete],
+  ['knowledge', m.colleague_source_knowledge],
+  ['team_data', m.colleague_source_team_data],
+  ['forms', m.colleague_source_forms],
+  ['documents', m.colleague_source_documents],
+  ['dashboards', m.colleague_source_dashboards],
+];
+
 /** Beside its thread: its state, what it may do, what it takes on, its computer, its return. */
 export function AgentSidePanel({ agent }: { agent: AgentSide }) {
   const router = useRouter();
@@ -371,6 +381,33 @@ export function AgentSidePanel({ agent }: { agent: AgentSide }) {
         </label>
         <p className="m-0 text-[12px] text-fg-muted">{m.colleague_take_hint()}</p>
       </Block>
+      <Block title={m.colleague_sources()}>
+        <ul aria-label={m.colleague_sources()} className="m-0 flex list-none flex-wrap gap-1.5 p-0">
+          {SOURCES.map(([source, word]) => {
+            const on = agent.sources.includes(source);
+            return (
+              <li key={source}>
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  disabled={!agent.mine || (on && agent.sources.length === 1)}
+                  onClick={() =>
+                    job({
+                      sources: on
+                        ? agent.sources.filter((s) => s !== source)
+                        : [...agent.sources, source],
+                    })
+                  }
+                  className="h-[26px] rounded-full border border-line-control px-2.5 text-[12px] font-semibold text-fg-soft aria-pressed:bg-surface-selected aria-pressed:text-fg disabled:opacity-60"
+                >
+                  {word()}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="m-0 text-[12px] text-fg-muted">{m.colleague_sources_hint()}</p>
+      </Block>
       <Block title={m.colleague_computer()}>
         <p className="m-0 text-[12.5px]">
           {agent.computerMinutes === null
@@ -410,6 +447,16 @@ export function AgentSidePanel({ agent }: { agent: AgentSide }) {
           <dd className="m-0 text-fg-muted">✓</dd>
           <dt>{m.colleague_when_mention()}</dt>
           <dd className="m-0 text-fg-muted">{agent.takeOn.mention === 'never' ? '—' : '✓'}</dd>
+          {agent.follows.map((f) => (
+            <Fragment key={`${f.type}-${f.objectKind ?? ''}-${f.state ?? ''}`}>
+              <dt>
+                {m.colleague_when_event({
+                  what: [f.type, f.objectKind, f.state].filter(Boolean).join(' · '),
+                })}
+              </dt>
+              <dd className="m-0 text-fg-muted">✓</dd>
+            </Fragment>
+          ))}
           <dt>{m.colleague_when_watch()}</dt>
           <dd className="m-0 text-fg-muted">
             {m.colleague_when_every({ minutes: String(agent.wakeEveryMinutes) })}

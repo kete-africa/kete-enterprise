@@ -112,6 +112,13 @@ export interface Agent {
   trialUntil: string | null;
   /** When it sets to work by itself: every day or every working day, at a time. */
   routine: { time: string; cadence: 'daily' | 'weekdays'; instruction: string } | null;
+  /**
+   * The sources of tools its job description draws from (spec 104; D-062, R5): « kete » (the
+   * center's gestures) and Kete's own sets — nothing else reaches it.
+   */
+  sources: string[];
+  /** The template it was taken from, « product:name », if one. */
+  template: string | null;
   createdAt: string;
 }
 
@@ -132,6 +139,11 @@ export const jobInput = z.object({
   covers: z.array(z.string().trim().min(2).max(40)).max(20).optional(),
   computerMinutes: z.number().int().min(1).max(10000).nullable().optional(),
   returnTo: z.enum(['giver', 'owner']).optional(),
+  sources: z
+    .array(z.string().regex(/^[a-z][a-z0-9_]{1,60}$/))
+    .min(1)
+    .max(12)
+    .optional(),
   routine: z
     .object({
       time: z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/),

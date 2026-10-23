@@ -2912,5 +2912,21 @@
   "views_unit": "Unit",
   "views_unit_all": "All",
   "views_restore": "Back to the shared board",
-  "views_restore_failed": "Could not go back to the shared board."
+  "views_restore_failed": "Could not go back to the shared board.",
+  "colleague_sources": "Its sources",
+  "colleague_sources_hint": "It receives only these sources’ tools: better choices, lower cost.",
+  "colleague_source_kete": "Kete’s gestures",
+  "colleague_source_knowledge": "Library",
+  "colleague_source_team_data": "Teams’ data",
+  "colleague_source_forms": "Forms",
+  "colleague_source_documents": "Document templates",
+  "colleague_source_dashboards": "Dashboards",
+  "colleague_when_event": "When this happens: {what}",
+  "catalogue_title": "Agents ready to take",
+  "catalogue_by_kete": "Kete",
+  "catalogue_open": "open to all",
+  "catalogue_closed": "closed",
+  "catalogue_take": "Take it",
+  "catalogue_close": "Close it",
+  "catalogue_open_to_all": "Open it to all"
 }

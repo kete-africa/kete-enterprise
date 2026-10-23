@@ -872,5 +872,14 @@ export async function agentSide(db: SqlExecutor, identity: Identity, thread: Thr
     wakeEveryMinutes: agent.wakeEveryMinutes,
     watches: agent.watches,
     draftBudget: agent.draftBudget,
+    // What it draws on, and the events that set it to work (spec 104).
+    sources: agent.sources,
+    follows: (
+      await db.query<{ type_pattern: string; object_kind: string | null; state: string | null }>(
+        `select type_pattern, object_kind, state from event_subscriptions
+          where consumer = 'agent' and consumer_id = $1 and active order by created_at`,
+        [agent.agentId],
+      )
+    ).rows.map((r) => ({ type: r.type_pattern, objectKind: r.object_kind, state: r.state })),
   };
 }

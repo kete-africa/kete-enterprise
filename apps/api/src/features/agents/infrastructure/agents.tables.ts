@@ -95,6 +95,8 @@ type AgentRow = {
   routine_time: string | null;
   routine_cadence: 'daily' | 'weekdays' | null;
   routine_instruction: string | null;
+  sources: string[];
+  template: string | null;
   created_at: Date;
 };
 
@@ -126,6 +128,8 @@ const toAgent = (r: AgentRow): Agent => ({
     r.routine_time && r.routine_cadence && r.routine_instruction
       ? { time: r.routine_time, cadence: r.routine_cadence, instruction: r.routine_instruction }
       : null,
+  sources: r.sources,
+  template: r.template,
   createdAt: new Date(r.created_at).toISOString(),
 });
 
@@ -139,7 +143,8 @@ export const defaultTakeOn: Agent['takeOn'] = {
 const agentColumns = `agent_id, name, kind, mission, responsible_user_id, position_id, scope_unit_id,
   permissions, autonomy_max, autonomy_by_permission, draft_budget, wake_every_minutes, watches,
   status, visibility, shared_with, next_wake_at, last_run_at, take_on, covers, computer_minutes,
-  return_to, trial_until, routine_time, routine_cadence, routine_instruction, created_at`;
+  return_to, trial_until, routine_time, routine_cadence, routine_instruction, sources, template,
+  created_at`;
 
 export async function insertAgent(
   db: SqlExecutor,
@@ -198,6 +203,7 @@ export async function setJob(
     computerMinutes?: number | null | undefined;
     returnTo?: Agent['returnTo'] | undefined;
     routine?: Agent['routine'] | undefined;
+    sources?: string[] | undefined;
   },
 ): Promise<Agent | null> {
   const current = await findAgent(db, agentId);
@@ -205,7 +211,7 @@ export async function setJob(
   const routine = job.routine === undefined ? current.routine : job.routine;
   const { rows } = await db.query<AgentRow>(
     `update agents set take_on = $2, covers = $3, computer_minutes = $4, return_to = $5,
-            routine_time = $6, routine_cadence = $7, routine_instruction = $8,
+            routine_time = $6, routine_cadence = $7, routine_instruction = $8, sources = $9,
             next_routine_at = case when $6::text is null then null
                                    when $6 is distinct from routine_time
                                      or $7 is distinct from routine_cadence then null
@@ -223,9 +229,35 @@ export async function setJob(
       routine?.time ?? null,
       routine?.cadence ?? null,
       routine?.instruction ?? null,
+      job.sources ? [...new Set(job.sources)] : current.sources,
     ],
   );
   return rows[0] ? toAgent(rows[0]) : null;
+}
+
+/**
+ * An agent's sources of tools and the template it came from (spec 104): « kete » by default, what
+ * every agent had before.
+ */
+export function agentSourcesMigrationSql(options: { schema: string; appRole: string }): string {
+  const s = options.schema;
+  return `
+alter table ${s}.agents
+  add column sources text[] not null default '{kete}' check (cardinality(sources) between 1 and 12),
+  add column template text;
+
+-- The templates an administrator enabled for the organization's people (the catalogue).
+create table ${s}.agent_templates_enabled (
+  organization_id text not null,
+  product text not null,
+  name text not null,
+  enabled_by text not null,
+  enabled_at timestamptz not null default now(),
+  primary key (organization_id, product, name)
+);
+${organizationPolicySql({ schema: s, table: 'agent_templates_enabled', appRole: options.appRole })}
+grant select, insert, delete on ${s}.agent_templates_enabled to ${options.appRole};
+`;
 }
 
 /** An agent's level per permission (spec 052): what it may do alone, kind of task by kind. */
