@@ -65,6 +65,7 @@ export type Page =
   | 'modules'
   | 'rules'
   | 'connectors'
+  | 'connections'
   | 'tools'
   | 'circuits'
   | 'registry'
@@ -84,6 +85,7 @@ const adminPages: Page[] = [
   'policies',
   'mailboxes',
   'connectors',
+  'connections',
   'tools',
   'circuits',
   'registry',

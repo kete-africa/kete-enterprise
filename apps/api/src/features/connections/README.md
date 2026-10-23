@@ -23,7 +23,9 @@ flowchart LR
   as drafts. `importedCapabilities` offers a read only when it may read, an act only when granted.
   `set-connection-grants`, journaled with what they were.
 - **One view** (`connectionsOf`): each set, and each connector on the same address as one more use
-  (signal); its health — off, on trial, « à reconnecter » with the connector's last error.
+  — a connector **reads** on its schedule (`readings`), it does not signal; a connection signals
+  once its webhook is open. Its health — off, on trial, « à reconnecter » with the connector's last
+  error. The screen says each use in words and is marked in the Administration menu (spec 110).
 - **A webhook** per connection: its secret made and sealed by the route, said once to the
   administrator — the journal keeps the sealed form only. `POST /public/connections/:id/webhook`
   checks `kete-signature` (HMAC-SHA256 of the exact body), refuses alike an unknown connection and a

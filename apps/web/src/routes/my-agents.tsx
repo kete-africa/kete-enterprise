@@ -138,7 +138,11 @@ function MyAgentsPage() {
               <p className="mb-3 text-fg-muted">{m.colleague_none()}</p>
             )}
             <div className="grid gap-3">
-              <AgentCatalogue entries={catalogue.entries} administrator={catalogue.administrator} />
+              <AgentCatalogue
+                entries={catalogue.entries}
+                apps={catalogue.apps}
+                administrator={catalogue.administrator}
+              />
               <NewAgent />
             </div>
           </div>

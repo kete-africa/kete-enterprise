@@ -64,6 +64,8 @@ export interface ConnectionView {
     read: boolean;
     act: { tool: string; description: string; level: number | null }[];
     signal: string[];
+    /** What a connector reads on its schedule: reading, never signalling. */
+    readings: string[];
   };
   health: Health;
   lastError: string | null;
@@ -102,6 +104,7 @@ export async function connectionsOf(db: SqlExecutor): Promise<ConnectionView[]> 
             };
           }),
         signal: [],
+        readings: [],
       },
       health: set.status === 'off' ? 'off' : 'ok',
       lastError: null,
@@ -120,7 +123,8 @@ export async function connectionsOf(db: SqlExecutor): Promise<ConnectionView[]> 
             ? 'reconnect'
             : 'ok';
     if (same) {
-      same.uses.signal.push(connector.reading.tool);
+      same.uses.read = true;
+      same.uses.readings.push(connector.reading.tool);
       if (health === 'reconnect') {
         same.health = 'reconnect';
         same.lastError = connector.lastError;
@@ -132,7 +136,7 @@ export async function connectionsOf(db: SqlExecutor): Promise<ConnectionView[]> 
       label: connector.name,
       address: connector.address,
       adapter: 'mcp',
-      uses: { read: false, act: [], signal: [connector.reading.tool] },
+      uses: { read: true, act: [], signal: [], readings: [connector.reading.tool] },
       health,
       lastError: connector.lastError,
       webhook: hooked.has(connector.connectorId),

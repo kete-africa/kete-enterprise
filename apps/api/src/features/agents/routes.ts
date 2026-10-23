@@ -10,7 +10,13 @@ import { readModules } from '../organization/index.js';
 import { isAdministrator, reach, reachesAnything, unitsOfPersonAndAbove } from '../rights/index.js';
 import { giveAgentAway, takeAgentAway } from './away.js';
 import { budgetOf, setAgentBudget } from './budget.js';
-import { catalogueOf, enableAgentTemplate, takeAgentTemplate } from './catalogue.js';
+import {
+  appNamesOf,
+  catalogueOf,
+  enableAgentTemplate,
+  takeAgentTemplate,
+  wakesOf,
+} from './catalogue.js';
 import { askEvaluation, evaluationsOf, THRESHOLD, writeEvalCase } from './evaluations.js';
 import { dryRunInput, type Agent } from './agents.record.js';
 import {
@@ -175,9 +181,12 @@ export function agentsRoutes(permissions: readonly string[]) {
         return c.json(
           await transaction(identity.organizationId, async (db) => {
             const admin = isAdministrator(identity);
-            const entries = await catalogueOf(db);
+            const entries = (await catalogueOf(db)).filter((e) => admin || e.enabled);
             return {
-              entries: entries.filter((e) => admin || e.enabled),
+              entries: await Promise.all(
+                entries.map(async (e) => ({ ...e, wakes: await wakesOf(db, e.template) })),
+              ),
+              apps: await appNamesOf(db),
               administrator: admin,
             };
           }),

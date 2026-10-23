@@ -22,6 +22,7 @@ interface Connection {
     read: boolean;
     act: { tool: string; description: string; level: number | null }[];
     signal: string[];
+    readings: string[];
   };
   health: 'ok' | 'reconnect' | 'off' | 'trial';
   lastError: string | null;
@@ -106,7 +107,7 @@ function ConnectionsPage() {
   const [note, setNote] = useState<string | null>(null);
   const [secret, setSecret] = useState<{ id: string; value: string } | null>(null);
   return (
-    <AppShell me={me} current="admin">
+    <AppShell me={me} current="connections">
       <PageHeader title={m.connections_title()} description={m.connections_explain()} />
       {!connections ? (
         <EmptyState title={m.connections_forbidden()} />
@@ -123,7 +124,13 @@ function ConnectionsPage() {
               {c.lastError && <p className="m-0 text-state-error-fg">{c.lastError}</p>}
               <dl className="m-0 grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] gap-x-3 gap-y-2">
                 <dt className="font-semibold">{m.connections_read()}</dt>
-                <dd className="m-0">{c.uses.read ? m.connections_yes() : m.connections_no()}</dd>
+                <dd className="m-0">
+                  {!c.uses.read
+                    ? m.connections_no()
+                    : c.uses.readings.length
+                      ? m.connections_read_scheduled()
+                      : m.connections_yes()}
+                </dd>
                 <dt className="font-semibold">{m.connections_act()}</dt>
                 <dd className="m-0">
                   {c.uses.act.length === 0 ? (
@@ -167,7 +174,7 @@ function ConnectionsPage() {
                 </dd>
                 <dt className="font-semibold">{m.connections_signal()}</dt>
                 <dd className="m-0">
-                  {c.uses.signal.length ? c.uses.signal.join(', ') : m.connections_nothing()}
+                  {c.webhook ? m.connections_signal_webhook() : m.connections_nothing()}
                 </dd>
               </dl>
               <div className="flex flex-wrap items-center gap-2">
