@@ -87,11 +87,17 @@ export async function wakeAgent(organizationId: string, agentId: string): Promis
         idempotencyKey: `raise-${randomUUID()}`,
         input: { agentId, watch, ...finding },
       });
-      await tell(db, organizationId, userId, {
-        kind: 'agent.signal',
-        title: notificationWords().agentSignal(finding.subject),
-        href: '/mes-agents',
-      });
+      await tell(
+        db,
+        organizationId,
+        userId,
+        {
+          kind: 'agent.signal',
+          title: notificationWords().agentSignal(finding.subject),
+          href: '/mes-agents',
+        },
+        { key: `signal:${agentId}:${key}` },
+      );
       raised += 1;
     }
     let closed = 0;

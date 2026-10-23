@@ -4,24 +4,37 @@ import { getPool, transaction } from '../../platform/db.js';
 import { env } from '../../platform/env.js';
 import { organizationName } from '../assistant/index.js';
 import { queueMail, renderMail } from '../mail/index.js';
+import { hourIn, timeZoneIn } from '../settings/index.js';
 import { messageWords } from './words.js';
 
 // The threads' summary by mail (spec 098, FR-014): who chose it in « Réglages »
 // (`kete.threads_digest`, kept on her person when she opens « Pour moi ») receives, once a day
-// after 18 h, the threads where something waits unread for her. Nothing unread, nothing sent.
+// after 18 h at her own hour (spec 109) — her time zone, or her organization's — the threads where
+// something waits unread for her. Nothing unread, nothing sent.
 
 const EVENING_HOUR = 18;
 
-async function digestsOf(db: SqlExecutor, organizationId: string, today: string) {
-  const { rows } = await db.query<{ account_user_id: string; name: string; email: string }>(
-    `select account_user_id, name, email from people
-      where threads_digest = 'daily' and email is not null and account_user_id is not null
-        and (digest_sent_on is null or digest_sent_on < $1::date)`,
-    [today],
+async function digestsOf(db: SqlExecutor, organizationId: string, now: Date) {
+  const { rows } = await db.query<{
+    account_user_id: string;
+    name: string;
+    email: string;
+    zone: string | null;
+    sent_on: string | null;
+  }>(
+    `select account_user_id, name, email, attention->>'timeZone' as zone,
+            to_char(digest_sent_on, 'YYYY-MM-DD') as sent_on from people
+      where threads_digest = 'daily' and email is not null and account_user_id is not null`,
   );
   const words = messageWords();
+  const organizationZone = await timeZoneIn(db, organizationId);
   let sent = 0;
   for (const person of rows) {
+    const zone = person.zone ?? organizationZone;
+    if (hourIn(now, zone) < EVENING_HOUR) continue;
+    // Her own date: once a day where she lives.
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(now);
+    if (person.sent_on && person.sent_on >= today) continue;
     const unread = (
       await threadSummariesOf(db, { kind: 'person', id: person.account_user_id })
     ).filter((t) => t.unread > 0);
@@ -54,16 +67,14 @@ async function digestsOf(db: SqlExecutor, organizationId: string, today: string)
   return sent;
 }
 
-/** The worker's round: each organization, after 18 h in Lomé's time (UTC), once a day. */
+/** The worker's round: each organization, each person after 18 h at her own hour, once a day. */
 export async function sendDigests(now = new Date()): Promise<number> {
-  if (now.getUTCHours() < EVENING_HOUR) return 0;
-  const today = now.toISOString().slice(0, 10);
   const { rows } = await getPool().query<{ organization_id: string }>(
     `select organization_id from work_organizations()`,
   );
   let sent = 0;
   for (const { organization_id } of rows) {
-    sent += await transaction(organization_id, (db) => digestsOf(db, organization_id, today)).catch(
+    sent += await transaction(organization_id, (db) => digestsOf(db, organization_id, now)).catch(
       (error: unknown) => {
         console.error('[digest]', (error as Error).message);
         return 0;

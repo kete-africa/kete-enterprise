@@ -15,7 +15,7 @@ import {
 import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
-import { notificationWords, tell } from '../notifications/index.js';
+import { keepAttention, notificationWords, tell } from '../notifications/index.js';
 import { isAdministrator } from '../rights/index.js';
 import { settingsFor } from '../settings/index.js';
 import { hrefOf } from './links.js';
@@ -49,10 +49,18 @@ export const forMeRoutes = new Hono<{ Variables: IdentityVariables }>()
       // Her choice of a threads' summary by mail, kept for the worker (spec 098, FR-014).
       if (token && !c.get('viewedBy')) {
         const settings = await settingsFor(db, { token });
+        const digest = settings.value('kete.threads_digest') === 'daily' ? 'daily' : 'none';
         await db.query(`update people set threads_digest = $2 where account_user_id = $1`, [
           userId,
-          settings.value('kete.threads_digest') === 'daily' ? 'daily' : 'none',
+          digest,
         ]);
+        // Her choices for her attention, for the worker that has no token of hers (spec 109).
+        await keepAttention(db, userId, {
+          quietHours: settings.value<{ from: string; to: string } | null>('kete.quiet_hours'),
+          timeZone: settings.value<string>('kete.time_zone'),
+          channels: settings.value<string[]>('kete.notification_channels'),
+          digest,
+        });
       }
       return forMe(db, userId);
     });

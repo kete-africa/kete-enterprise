@@ -37,25 +37,38 @@ export async function relayRound(
     structure: center.structure,
     now,
   });
+  const day = now.toISOString().slice(0, 10);
   const told = async (move: Move) =>
-    tell(db, organizationId, move.to.id, {
-      kind: 'holding.taken_over',
-      title:
-        move.because === 'absence'
-          ? words.holdingTakenOver(center.nameOf(move.from.id), move.holding.what)
-          : words.holdingReclaimed(move.holding.what),
-      href: hrefOf(move.holding),
-    });
+    tell(
+      db,
+      organizationId,
+      move.to.id,
+      {
+        kind: 'holding.taken_over',
+        title:
+          move.because === 'absence'
+            ? words.holdingTakenOver(center.nameOf(move.from.id), move.holding.what)
+            : words.holdingReclaimed(move.holding.what),
+        href: hrefOf(move.holding),
+      },
+      { key: `holding:${move.holding.holdingId}:to:${move.to.id}` },
+    );
   for (const move of [...away.moved, ...gone.moved]) await told(move);
   const stuck = [...away.stuck, ...gone.stuck];
   if (center.head) {
     for (const holding of stuck) {
       if (holding.holder.id === center.head) continue;
-      await tell(db, organizationId, center.head, {
-        kind: 'holding.stuck',
-        title: words.holdingStuck(holding.what),
-        href: hrefOf(holding),
-      });
+      await tell(
+        db,
+        organizationId,
+        center.head,
+        {
+          kind: 'holding.stuck',
+          title: words.holdingStuck(holding.what),
+          href: hrefOf(holding),
+        },
+        { key: `holding:${holding.holdingId}:stuck:${day}` },
+      );
     }
   }
   // The delays the organization set, by priority, and for a party (spec 098, FR-017).
@@ -75,13 +88,23 @@ export async function relayRound(
     const person = nudge.to.kind === 'person' ? nudge.to.id : null;
     const to = person ?? (nudge.holding.holder.kind === 'person' ? nudge.holding.holder.id : null);
     if (!to) continue;
-    await tell(db, organizationId, to, {
-      kind: 'holding.nudged',
-      title: person
-        ? words.holdingNudge(nudge.holding.what)
-        : words.holdingNudgeParty(nudge.holding.what),
-      href: hrefOf(nudge.holding),
-    });
+    // Once a day at most for the same holding; what is urgent rings at any hour.
+    await tell(
+      db,
+      organizationId,
+      to,
+      {
+        kind: 'holding.nudged',
+        title: person
+          ? words.holdingNudge(nudge.holding.what)
+          : words.holdingNudgeParty(nudge.holding.what),
+        href: hrefOf(nudge.holding),
+      },
+      {
+        key: `holding:${nudge.holding.holdingId}:nudge:${day}`,
+        weight: nudge.holding.priority === 'urgent' ? 'urgent' : 'act',
+      },
+    );
   }
   return {
     said,

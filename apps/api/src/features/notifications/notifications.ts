@@ -1,8 +1,16 @@
+import { randomUUID } from 'node:crypto';
 import {
+  attend,
+  attentionMigrationSql,
+  attentionOrganizationsWaiting,
+  DEFAULT_ATTENTION,
   listNotifications,
   markRead,
   notificationsMigrationSql,
-  notify,
+  quietUntil,
+  ringPostponed,
+  type AttentionPrefs,
+  type AttentionWeight,
   type PushSender,
   pushSenderFromEnv,
   pushSubscriptionsOf,
@@ -13,7 +21,7 @@ import {
 import type { SqlExecutor } from '@kete/tenancy';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { transaction } from '../../platform/db.js';
+import { getPool, transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { onTold, onWaiting } from '../decisions/index.js';
@@ -21,10 +29,19 @@ import { notificationWords } from './words.js';
 
 // What a person is told (spec 030), on @kete/notify: her notifications in Kete Enterprise, and on
 // her phone or computer by Web Push when she asked for it. A notification informs; what asks for
-// an action stays in « À faire ».
+// an action stays in « À faire ». One attention model decides (spec 109; kete-core spec 151; doctrine
+// D-062, R14): every path that tells someone goes through `tell`, which weighs the signal, keeps it
+// once, and rings her devices at once or after her quiet hours — her own choices, kept when she
+// opens « Pour moi ».
 
 export function notificationsTablesSql(options: { schema: string; appRole: string }): string {
   return notificationsMigrationSql(options);
+}
+
+/** One attention model (spec 109): what each person was told, once; her choices, kept. */
+export function attentionTablesSql(options: { schema: string; appRole: string }): string {
+  return `${attentionMigrationSql(options)}
+alter table ${options.schema}.people add column attention jsonb;`;
 }
 
 let sender: PushSender | null | undefined;
@@ -74,21 +91,95 @@ export interface Tell {
   href?: string;
 }
 
+/** What asks her to act rings her; what she only needs to know waits in her list. */
+const TO_ACT = new Set<Tell['kind']>([
+  'task.added',
+  'routine.watch',
+  'holding.handed_back',
+  'decision.waiting',
+  'decision.returned',
+  'request.received',
+  'request.waiting',
+  'request.reminded',
+  'request.returned',
+  'holding.taken_over',
+  'holding.stuck',
+  'holding.nudged',
+  'holding.returned',
+  'thread.mentioned',
+  'thread.action',
+  'thread.approval',
+  'exchange.asked',
+  'agent.signal',
+]);
+
+export const weightOf = (kind: Tell['kind']): AttentionWeight =>
+  TO_ACT.has(kind) ? 'act' : 'know';
+
+/** Her choices for her attention, as she last opened « Pour moi »; Kete's defaults before. */
+export async function attentionOf(db: SqlExecutor, userId: string): Promise<AttentionPrefs> {
+  const { rows } = await db.query<{ attention: Partial<AttentionPrefs> | null }>(
+    `select attention from people where account_user_id = $1 limit 1`,
+    [userId],
+  );
+  return { ...DEFAULT_ATTENTION, ...(rows[0]?.attention ?? {}) };
+}
+
+/** Keeps her choices for the worker, which has no token of hers (spec 109). */
+export async function keepAttention(
+  db: SqlExecutor,
+  userId: string,
+  prefs: AttentionPrefs,
+): Promise<void> {
+  await db.query(`update people set attention = $2 where account_user_id = $1`, [
+    userId,
+    JSON.stringify(prefs),
+  ]);
+}
+
 /**
- * Tells a person, in the caller's transaction: kept in her notifications, pushed to her devices.
- * Telling never fails the gesture it follows.
+ * Tells a person, in the caller's transaction, through the one attention model (spec 109): kept
+ * once in her notifications — by `key`, when what is told has one — and on her devices as its
+ * weight and her quiet hours say. Telling never fails the gesture it follows.
  */
 export async function tell(
   db: SqlExecutor,
   organizationId: string,
   userId: string,
   what: Tell,
-  options: { push?: boolean } = {},
+  options: { push?: boolean; key?: string; weight?: AttentionWeight } = {},
 ): Promise<void> {
   const sender = options.push === false ? null : push();
-  await notify(db, { organizationId, userId, ...what }, sender).catch((error: unknown) => {
+  try {
+    await attend(
+      db,
+      {
+        organizationId,
+        userId,
+        ...what,
+        weight: options.weight ?? weightOf(what.kind),
+        key: options.key ?? `${what.kind}:${randomUUID()}`,
+      },
+      { prefs: await attentionOf(db, userId), push: sender },
+    );
+  } catch (error) {
     console.error('[notifications]', (error as Error).message);
-  });
+  }
+}
+
+/** The worker's round: what her quiet hours held back rings once they end, unless read since. */
+export async function ringAfterQuiet(): Promise<number> {
+  const sender = push();
+  let rung = 0;
+  for (const organizationId of await attentionOrganizationsWaiting(getPool())) {
+    rung += await transaction(organizationId, (db) => ringPostponed(db, sender)).catch(
+      (error: unknown) => {
+        console.error(`[notifications] ringing ${organizationId}`, (error as Error).message);
+        return 0;
+      },
+    );
+  }
+  return rung;
 }
 
 /**
@@ -102,6 +193,8 @@ export async function ring(
 ): Promise<number> {
   const sender = push();
   if (!sender) return 0;
+  // In her quiet hours a thread does not ring: it waits, unread, where she will read it.
+  if (quietUntil(await attentionOf(db, userId), new Date())) return 0;
   let rung = 0;
   for (const device of await pushSubscriptionsOf(db, userId)) {
     const outcome = await sender
@@ -125,12 +218,19 @@ export function listenForNotifications(): void {
   listening = true;
   // A request reaches a step: its approvers are told, in its transaction.
   onWaiting(async (db, organizationId, request, approvers) => {
+    const step = request.steps.find((s) => s.status === 'pending')?.position ?? 0;
     for (const userId of approvers) {
-      await tell(db, organizationId, userId, {
-        kind: 'decision.waiting',
-        title: notificationWords().decisionWaiting(request.title),
-        href: '/a-faire',
-      });
+      await tell(
+        db,
+        organizationId,
+        userId,
+        {
+          kind: 'decision.waiting',
+          title: notificationWords().decisionWaiting(request.title),
+          href: '/a-faire',
+        },
+        { key: `decision:${request.requestId}:${step}` },
+      );
     }
   });
   // A step only informs its people; a request comes back to who asked (spec 075).

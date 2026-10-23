@@ -27,7 +27,10 @@ import { formsMigrationSql } from '../src/features/forms/index.js';
 import { dossiersMigrationSql } from '../src/features/dossiers/index.js';
 import { todoMigrationSql } from '../src/features/todo/index.js';
 import { knowledgeTablesSql } from '../src/features/knowledge/index.js';
-import { notificationsTablesSql } from '../src/features/notifications/index.js';
+import {
+  attentionTablesSql,
+  notificationsTablesSql,
+} from '../src/features/notifications/index.js';
 import { appDecisionsMigrationSql, appEventsMigrationSql } from '../src/features/apps/index.js';
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
@@ -321,4 +324,6 @@ export const migrations: Migration[] = [
   { name: '0083_agent_faces', sql: (context) => agentFacesMigrationSql(context) },
   // An agent acts while its person is away, with the mandate she gave it (spec 108).
   { name: '0084_agents_away', sql: (context) => agentAwayMigrationSql(context) },
+  // One attention model: who is told, of what, on which channel, once (spec 109, R14).
+  { name: '0085_one_attention', sql: (context) => attentionTablesSql(context) },
 ];
