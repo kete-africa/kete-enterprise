@@ -46,7 +46,12 @@ const isAppSubject = (subject: string) => /^prd_[a-z0-9_]+\.[a-z][a-z0-9_]*$/.te
 /** The subjects the organization's active apps declare, with their words. */
 async function appSubjects(db: SqlExecutor) {
   const seen = new Set<string>();
-  const found: { subject: string; label: { fr: string; en: string }; product: string }[] = [];
+  const found: {
+    subject: string;
+    label: { fr: string; en: string };
+    measure?: { label: { fr: string; en: string } };
+    product: string;
+  }[] = [];
   for (const r of await listResources(db)) {
     if (r.kind !== 'app' || r.status !== 'active' || !r.card?.subjects) continue;
     for (const s of r.card.subjects) {
@@ -57,6 +62,8 @@ async function appSubjects(db: SqlExecutor) {
         subject: key,
         product: r.card.product,
         label: { fr: `${r.name} · ${s.label.fr}`, en: `${r.name} · ${s.label.en}` },
+        // What its measure is, in the app's own words (kete-core spec 049).
+        ...(s.measure ? { measure: { label: s.measure } } : {}),
       });
     }
   }

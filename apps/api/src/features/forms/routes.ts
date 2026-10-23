@@ -48,6 +48,8 @@ export function listenForForms(): void {
       (await listCollections(db)).map((c) => ({
         subject: c.subject,
         label: { fr: c.name, en: c.name },
+        // An answer's reference is its own id.
+        internalReference: true,
       })),
   );
 }

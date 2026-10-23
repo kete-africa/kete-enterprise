@@ -182,7 +182,8 @@ export async function namesOf(
   db: SqlExecutor,
   ids: string[],
   signedIn: { userId: string; name: string },
-  outsider: string,
+  /** The word for a member known by her account only, not yet in the structure. */
+  teammate: string,
 ): Promise<Record<string, string>> {
   const unique = [...new Set(ids)];
   const { rows } = await db.query<{ id: string; name: string }>(
@@ -205,7 +206,7 @@ export async function namesOf(
     }
     const at = id.indexOf(':');
     if (at <= 0) {
-      names[id] = outsider;
+      names[id] = teammate;
       continue;
     }
     // A contact through its channel: the third party the center knows by it, else its address.

@@ -9,7 +9,7 @@ import type { IdentityVariables } from '../../platform/identity.js';
 import { isAdministrator, reach } from '../rights/index.js';
 import { decideRequest, resubmitRequest, DecisionRuleError, defineCircuit } from './commands.js';
 import { currentStep, type DecisionRequest } from './decisions.record.js';
-import { announceDecided, mayDecide, subjectsOf } from './engine.js';
+import { announceDecided, mayDecide, subjectsOf, type SubjectEntry } from './engine.js';
 import {
   findCircuit,
   findRequest,
@@ -50,14 +50,21 @@ async function run<Input extends z.ZodType, Output>(
 function forInbox(
   request: DecisionRequest,
   remindAfterHours: number,
-  labels: Map<string, { fr: string; en: string }>,
+  entries: Map<string, SubjectEntry>,
 ) {
   const step = currentStep(request);
   const since = step?.enteredAt ? new Date(step.enteredAt).getTime() : null;
+  const entry = entries.get(request.subject);
+  const level = request.measure !== null ? entry?.measure?.levels?.[String(request.measure)] : null;
   return {
     ...request,
+    // Kete's own id is never shown as a reference; an app's reference is its own words.
+    reference: entry?.internalReference ? null : request.reference,
     // An app's subject comes with its words, from its card (spec 023).
-    subjectLabel: labels.get(request.subject) ?? null,
+    subjectLabel: entry?.label ?? null,
+    // What its measure is — « Risque · moyen », not a bare number.
+    measureLabel: entry?.measure?.label ?? null,
+    measureWords: level ?? null,
     currentStep: step?.position ?? null,
     overdue: since !== null && Date.now() - since > remindAfterHours * 3_600_000,
   };
@@ -137,9 +144,7 @@ export async function inboxFor(db: SqlExecutor, identity: Pick<KeteIdentity, 'ro
     }
     return reminders.get(circuitId) ?? 48;
   };
-  const labels = new Map(
-    (await subjectsOf(db)).flatMap((s) => (s.label ? [[s.subject, s.label] as const] : [])),
-  );
+  const labels = new Map((await subjectsOf(db)).map((s) => [s.subject, s] as const));
   const toDecide = [];
   for (const id of await pendingRequestIds(db)) {
     const request = await findRequest(db, id);
@@ -177,9 +182,7 @@ export async function requestFor(
     request.steps.some((s) => s.decidedBy === identity.userId);
   if (!involved) return null;
   const circuit = await findCircuit(db, request.circuitId);
-  const labels = new Map(
-    (await subjectsOf(db)).flatMap((s) => (s.label ? [[s.subject, s.label] as const] : [])),
-  );
+  const labels = new Map((await subjectsOf(db)).map((s) => [s.subject, s] as const));
   return {
     request: forInbox(request, circuit?.remindAfterHours ?? 48, labels),
     mayDecide: decides,

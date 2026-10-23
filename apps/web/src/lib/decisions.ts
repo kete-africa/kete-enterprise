@@ -19,6 +19,9 @@ export interface InboxRequest {
   subject: string;
   /** An app's subject, in its card's words (spec 023). */
   subjectLabel: { fr: string; en: string } | null;
+  /** What its measure is, and the words of its level when it has some (null: a plain amount). */
+  measureLabel?: { fr: string; en: string } | null;
+  measureWords?: { fr: string; en: string } | null;
   title: string;
   status: 'pending' | 'approved' | 'refused' | 'returned';
   /** Who sent it back to her and why, while it waits for her correction (spec 075). */

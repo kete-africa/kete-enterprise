@@ -141,3 +141,9 @@ alter table ${s}.mailbox_accounts
   add column read_sent boolean not null default true;
 `;
 }
+
+/** The tables a turn's tools read, kept with its run and drawn under its answer (spec 111). */
+export function runTablesMigrationSql(options: { schema: string }): string {
+  return `alter table ${options.schema}.thread_runs
+  add column tables jsonb not null default '[]' check (jsonb_typeof(tables) = 'array');`;
+}

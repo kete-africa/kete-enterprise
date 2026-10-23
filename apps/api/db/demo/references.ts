@@ -5,7 +5,13 @@ import type { Hono } from 'hono';
 // merge can be seen. Fictitious companies, fictitious numbers.
 
 const parties = [
-  { name: 'Garage Bè', roles: ['client'], phone: '+228 90 00 41 12', channel: 'whatsapp' },
+  {
+    name: 'Garage Bè',
+    roles: ['client'],
+    phone: '+228 90 00 41 12',
+    email: 'garage.be@demo.kya.tg',
+    channel: 'whatsapp',
+  },
   { name: 'Hôtel du Golfe', roles: ['client'], phone: '+228 90 12 34 56', channel: 'whatsapp' },
   { name: 'Hotel du Golf SARL', roles: ['supplier'], phone: '90123456' },
   { name: 'Solartech', roles: ['supplier'], email: 'ventes@solartech.example' },

@@ -7,6 +7,8 @@ const catalog = {
     received: 'Message reçu, merci. Nous revenons vers vous.',
     noted: 'C’est noté dans votre fil Kete.',
     outsider: 'Quelqu’un hors de l’organisation',
+    // A member known by her account only, not yet in the structure: one of the team all the same.
+    teammate: 'Un membre de l’équipe',
     mentioned: (who: string, thread: string) => `${who} vous mentionne dans « ${thread} »`,
     forYou: (who: string, thread: string) => `${who} vous demande d’agir dans « ${thread} »`,
     toApprove: (who: string, thread: string) =>
@@ -64,6 +66,7 @@ const catalog = {
     received: 'Message received, thank you. We will come back to you.',
     noted: 'Noted in your Kete thread.',
     outsider: 'Someone outside the organization',
+    teammate: 'A team member',
     mentioned: (who: string, thread: string) => `${who} mentions you in “${thread}”`,
     forYou: (who: string, thread: string) => `${who} asks you to act in “${thread}”`,
     toApprove: (who: string, thread: string) =>

@@ -8,6 +8,10 @@ overrides:
   vitest>tinypool: ^2.1.2
   '@modelcontextprotocol/sdk@>=1.3.0 <1.32.0': ^1.32.1
   vite@>=7.0.0 <7.3.7: ^7.3.7
+  zod@>=4.0.0 <4.6.6: ^4.6.6
+  '@modelcontextprotocol/sdk>zod': ^4.6.6
+  '@modelcontextprotocol/ext-apps>zod': ^4.6.6
+  body-parser@>=2.0.0 <2.4.0: ^2.4.0
 
 importers:
 
@@ -48,7 +52,7 @@ importers:
         version: 2.1.3(hono@4.13.12)
       '@kete/agents':
         specifier: npm:@kete-africa/agents@^0.5.8
-        version: '@kete-africa/agents@0.5.8(@grpc/grpc-js@1.14.5)(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))'
+        version: '@kete-africa/agents@0.5.8(@grpc/grpc-js@1.14.5)(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))'
       '@kete/ai':
         specifier: npm:@kete-africa/ai@^0.6.8
         version: '@kete-africa/ai@0.6.8(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
@@ -126,7 +130,7 @@ importers:
         version: 2.3.0
       ai:
         specifier: ^7.0.122
-        version: 7.0.126(zod@4.6.5)
+        version: 7.0.126(zod@4.6.7)
       croner:
         specifier: ^10.0.1
         version: 10.0.1
@@ -140,8 +144,8 @@ importers:
         specifier: ^4.23.15
         version: 4.23.15
       zod:
-        specifier: ^4.6.5
-        version: 4.6.5
+        specifier: ^4.6.6
+        version: 4.6.7
     devDependencies:
       '@kete/testing':
         specifier: npm:@kete-africa/testing@^0.1.1
@@ -174,20 +178,20 @@ importers:
         specifier: npm:@kete-africa/auth@^0.6.0
         version: '@kete-africa/auth@0.6.0'
       '@kete/conversation':
-        specifier: npm:@kete-africa/conversation@^0.3.0
-        version: '@kete-africa/conversation@0.3.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
+        specifier: npm:@kete-africa/conversation@^0.3.1
+        version: '@kete-africa/conversation@0.3.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
       '@kete/design':
-        specifier: npm:@kete-africa/design@^0.16.0
-        version: '@kete-africa/design@0.16.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
+        specifier: npm:@kete-africa/design@^0.16.1
+        version: '@kete-africa/design@0.16.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
       '@kete/intelligence':
-        specifier: npm:@kete-africa/intelligence@^0.4.6
-        version: '@kete-africa/intelligence@0.4.6(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(express@5.2.1(supports-color@7.2.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
+        specifier: npm:@kete-africa/intelligence@^0.4.7
+        version: '@kete-africa/intelligence@0.4.7(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(express@5.2.1(supports-color@7.2.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
       '@kete/sdk':
         specifier: npm:@kete-africa/sdk@^0.23.0
         version: '@kete-africa/sdk@0.23.0'
       '@kete/shell':
-        specifier: npm:@kete-africa/shell@^0.4.9
-        version: '@kete-africa/shell@0.4.9(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
+        specifier: npm:@kete-africa/shell@^0.4.10
+        version: '@kete-africa/shell@0.4.10(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
       '@kete/time':
         specifier: npm:@kete-africa/time@^0.4.7
         version: '@kete-africa/time@0.4.7(@types/node@22.20.4)(luxon@3.7.2)'
@@ -295,43 +299,43 @@ packages:
     resolution: {integrity: sha512-wiv3jhUH0RrvGzSolJMZfZ2cI9As45LhwYmcAoWvNivXjC7wzJ4W/Udq9/u7EGnGsT8lpmFKEKBrMXVeUO97Dg==}
     engines: {node: '>=22'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   '@ai-sdk/deepseek@3.0.58':
     resolution: {integrity: sha512-tOafL69mHQGJH3g/mu4k0evkP/cRLSHCWe7L9rcVV4b0S1zI2rpWDZbToZO7D4X/uox9baVmgRQ5AoUTeaDs0A==}
     engines: {node: '>=22'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   '@ai-sdk/gateway@4.0.100':
     resolution: {integrity: sha512-diJXVW2D1/NUW2JSg99b8yTpN8eW9AK5ntXSW4B7NrsW5STqwcGJAAOFlfOrQBzYHJlWReyy11WefWetdx4Qsw==}
     engines: {node: '>=22'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   '@ai-sdk/gateway@4.0.102':
     resolution: {integrity: sha512-kAVldt8D2AVSs7BjBZTRWHcFF71lPH8ouS6/QVlFCnKcUsShjXMdRwW6es5BfxyGewHbXfSirSc8j6efKSkIdA==}
     engines: {node: '>=22'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   '@ai-sdk/mistral@4.0.56':
     resolution: {integrity: sha512-Kppa/gmT0/W9eYwm3ihbrsXR8R8D/OCnTnKTQS/+L4Ssd3AYOdwRbRUnYcEL/HzoWNwd/pfVD5dof1a5c8hKnQ==}
     engines: {node: '>=22'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   '@ai-sdk/openai-compatible@3.0.62':
     resolution: {integrity: sha512-IAz1xv8zot4KLGa8kN7UfAA6H5+ARzAgAKLsoKxHPBzZuOc2E3ohaELg0x/JR9HVTbMbiftb0dPyCb8cT2KBRg==}
     engines: {node: '>=22'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   '@ai-sdk/openai@4.0.83':
     resolution: {integrity: sha512-NgqZVWoya7hfmtLkWyIjX9THbyYMLfxFqpShdAmvMnkoT+R9AZbdULGan8+4BiBWIZ1aHiAsc90l3SL8QU/0+Q==}
     engines: {node: '>=22'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   '@ai-sdk/otel@1.0.122':
     resolution: {integrity: sha512-HW7RblsOCa90AosnDLe1nWWuHUREl/UCuqueu1yZof0sQ9J7tig2bxb8wBMRKtdMurVvaRUwrf/OZvRa5X455A==}
@@ -341,25 +345,25 @@ packages:
     resolution: {integrity: sha512-OL5IrpUm9Y8Dwy+w/vvFwPotS6m52O9W0op2oXgXdCROMJIBalBI0oro6OIBYkPxvm5Xg02GSkoQN25RlR0bnw==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   '@ai-sdk/provider-utils@5.0.51':
     resolution: {integrity: sha512-z0IsEsDx+dxlZqyCtDjMbBj16NGmxFVTgQcP3+n3EFm9ttNU6wjOgL/kgvaPwtmZM6F7JbtRuLyzr6WOfo5DMw==}
     engines: {node: '>=22'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   '@ai-sdk/provider-utils@5.0.53':
     resolution: {integrity: sha512-VVe6UDd0y0/B4TfauuKKzcppqvhTmSluwwUVT4WG2/8h7gFbyFm7PM4UGM+ZXe3/RI6bv+Vl1cw/7aiBoQqdxg==}
     engines: {node: '>=22'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   '@ai-sdk/provider-utils@5.0.54':
     resolution: {integrity: sha512-amqDxFnw9+dpVrDACRDGmExUUNOH9C1D2bhg/DqWJnamEOieDTXBBXLHujSby/0MqHdAFksnpE8Pzfqx6ABMBw==}
     engines: {node: '>=22'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   '@ai-sdk/provider@2.0.3':
     resolution: {integrity: sha512-h88OPkavHTiN9tMn2l5awAznGB0lXzjcLhgR1/rvjB2zlLprsNxbM2tt6OJsHUxduLC3klq0/eqaSf6fX5XVww==}
@@ -1102,13 +1106,13 @@ packages:
   '@kete-africa/connections@0.2.1':
     resolution: {integrity: sha512-Tez9fzsHb62tkqcjvXpWwLFhbsK1Pt02hrQBJQrq2r6MVQ7RE5pYzZzMNCrvhIcAtkwbyHGH2qOOwzFYfCsMUw==, tarball: https://npm.pkg.github.com/download/@kete-africa/connections/0.2.1/43edacda2e4fe632fe56c3988bfad0a41f0a6541}
 
-  '@kete-africa/conversation@0.3.0':
-    resolution: {integrity: sha512-9owmI4N6SsaE5cbj9QvLpt+CvfrWcebO0BqITi+FTsy9qTgVoA43bDaQl7oZSLUdL7KlxhkkUHeGqt6GNHGx4w==, tarball: https://npm.pkg.github.com/download/@kete-africa/conversation/0.3.0/349008b9dd6a9d870b38e3596054721359e596fe}
+  '@kete-africa/conversation@0.3.1':
+    resolution: {integrity: sha512-dlJKm8p6ANqUFgcXZoXEG3RpHL2OBPqLAF1W95CAa0KAEeNxzCLllmXHzD312mV5cFTrO9ugJ8rPXV7BK0qCzg==, tarball: https://npm.pkg.github.com/download/@kete-africa/conversation/0.3.1/a9a8c9b1c99aae928f45343a01ada72353bdb2c6}
     peerDependencies:
       react: ^19.3.0
 
-  '@kete-africa/design@0.16.0':
-    resolution: {integrity: sha512-KPnzGZyueZDabPlx+WmretrK7FqaMqLqrjIL4jpo8uNIlyOUoOU0mcRRbCwl2g22uWbEA35d7ojJt0dlJpv2iw==, tarball: https://npm.pkg.github.com/download/@kete-africa/design/0.16.0/bc62c18c14c312ae2ab3a2b32b39a6dd60f2b35f}
+  '@kete-africa/design@0.16.1':
+    resolution: {integrity: sha512-OZjzDH28WVjQ/ze7y1TUydpO1iONASmdVgkrpC2EksnmlohFChSPlgPucE8o8UCed5EtKCKr8EowKg1jrhQj+A==, tarball: https://npm.pkg.github.com/download/@kete-africa/design/0.16.1/13adbb9b41f8fc2cf2af5832aadf3b06e6786f8f}
     peerDependencies:
       react: ^19
 
@@ -1118,8 +1122,8 @@ packages:
   '@kete-africa/files@0.5.0':
     resolution: {integrity: sha512-jO3Zi5Oj4UGet+sqsfPdnSRVjbLQ6d8slFWOlMpNplXxqBsmkpAVDFB+9T0VaHXOj/gTO5CpZGjLMFAQkVtcBQ==, tarball: https://npm.pkg.github.com/download/@kete-africa/files/0.5.0/76f58d4ceee9000ce18656414cf83343b3c51002}
 
-  '@kete-africa/intelligence@0.4.6':
-    resolution: {integrity: sha512-dTX7P97JRXj/d4U/oCTDt1rrurzbMKVK9Gq8BR153fdhcTSiyy0dfo46RsFM5RDXvX1kzg1eNmHx3gr4HvRsLw==, tarball: https://npm.pkg.github.com/download/@kete-africa/intelligence/0.4.6/356918e23cef24e49824bea2d56e70917bdd1856}
+  '@kete-africa/intelligence@0.4.7':
+    resolution: {integrity: sha512-76KymvKncE0phDKmC77JcjIOqDw61VHKdO5gKMSlIR70SAoZFbB1HUKwZQGExoZSfYi2PtUrcIqDyhvwajdPLw==, tarball: https://npm.pkg.github.com/download/@kete-africa/intelligence/0.4.7/5e739d2a80983fa732ab96af9312a577690f78de}
     peerDependencies:
       react: ^19.3.0
 
@@ -1155,8 +1159,8 @@ packages:
   '@kete-africa/settings@0.4.7':
     resolution: {integrity: sha512-SJ9pk8yeJK8L+WZshsaD4r2afZqj0trzzuD6A2NU1UKb4UbNRhIM8lotW5xE0nfxhWymtCC/A4Dd7xct9o0pug==, tarball: https://npm.pkg.github.com/download/@kete-africa/settings/0.4.7/9939a9e6d4db8dbaf4d0aee7003aa59ebd02974e}
 
-  '@kete-africa/shell@0.4.9':
-    resolution: {integrity: sha512-WnnUTk17NIkbYTHT/M/D+x3TiJa+XdogtrKeY5CQd+YN6T5QqjnLpqU1PNLPcDkrsk6PlzFv9iPQFd8Q30gQYQ==, tarball: https://npm.pkg.github.com/download/@kete-africa/shell/0.4.9/bcad6b4a3d1900127d43a2f12e94de3a1aac1382}
+  '@kete-africa/shell@0.4.10':
+    resolution: {integrity: sha512-VtMV0y6MEXyynSx3LDUYXtUH3S6p3DuPb6zD7dVtNv/5SAalyytV4SojHk4I4YPmBCfGsJ8xU9UVTjPLBXksGA==, tarball: https://npm.pkg.github.com/download/@kete-africa/shell/0.4.10/b8b73ded505ae1fa59020035fd1724c69ea16826}
     peerDependencies:
       react: ^19.3.0
 
@@ -1250,7 +1254,7 @@ packages:
     resolution: {integrity: sha512-bTI7KlNduiu1ym8WqZ+PLwM7jRVxnKzUy69TC7pmRzXWEjGsvZ0qPjpIzEygCHpoqK+gSqW6VHuhwsfjSMbadQ==}
     engines: {node: '>=22.13.0'}
     peerDependencies:
-      zod: ^3.25.0 || ^4.0.0
+      zod: ^4.6.6
 
   '@mastra/memory@1.37.0':
     resolution: {integrity: sha512-IyQgv1LB8nMKjnq0VGBf4gO78D1JVQ0mHT+BnEQFTbjPe9qIewheftrSGcUCaq9VgTTIu8T/Zlk+U+NaRpwvrw==}
@@ -1268,7 +1272,7 @@ packages:
     resolution: {integrity: sha512-L3AkWcujcCC9qKYiGOxjRN0NrNMIxLAwn/ayjNlD3zhFSUBDI45LmlFxAYHLeAz315uogKb+9tZA/TjHnjb95w==}
     engines: {node: '>=22.13.0'}
     peerDependencies:
-      zod: ^3.25.0 || ^4.0.0
+      zod: ^4.6.6
 
   '@mcp-ui/client@7.1.1':
     resolution: {integrity: sha512-Yy0q3YFl6WmcHRW0pRwD2F+Fs9Y/TFm1xpBpkuqvS1IRBaGGgc7PvkB0nvrKTqO6QZm+MufObfQM+oxo8mmLFw==}
@@ -1291,7 +1295,7 @@ packages:
       '@modelcontextprotocol/sdk': ^1.32.1
       react: ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
-      zod: ^3.25.0 || ^4.0.0
+      zod: ^4.6.6
     peerDependenciesMeta:
       react:
         optional: true
@@ -1303,7 +1307,7 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
-      zod: ^3.25 || ^4.0
+      zod: ^4.6.6
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
@@ -2113,7 +2117,7 @@ packages:
       sury: ^10.0.0
       typebox: ^1.0.17
       valibot: ^1.4.2
-      zod: ^3.25.0 || ^4.0.0
+      zod: ^4.6.6
       zod-to-json-schema: ^3.24.5
     peerDependenciesMeta:
       '@valibot/to-json-schema':
@@ -2144,7 +2148,7 @@ packages:
       sury: ^10.0.0
       typebox: ^1.0.0
       valibot: ^1.4.2
-      zod: ^3.25.0 || ^4.0.0
+      zod: ^4.6.6
       zod-openapi: ^4
     peerDependenciesMeta:
       arktype:
@@ -2627,13 +2631,13 @@ packages:
     resolution: {integrity: sha512-Un4yVROG+BMd6Q62xUxb9yV+wlTrUGeXhRtg5ltEFDV0p3lOYQaQHK9ozB6rdPdqlH3LyaszfbFdUkZ1p00nIQ==}
     engines: {node: '>=22'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   ai@7.0.126:
     resolution: {integrity: sha512-7egcwpnVR2xn3YlJYEX2y15X7Bv7Rc8U2h4YjCOnj5KZL6Pr/BQFzJuF+9fkm3SefmpgkaYRXzrvhafVjxGZww==}
     engines: {node: '>=22'}
     peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
+      zod: ^4.6.6
 
   ajv-formats@3.0.1:
     resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
@@ -2795,8 +2799,8 @@ packages:
   bn.js@4.12.5:
     resolution: {integrity: sha512-3aRg6/JxfffFD+OlOjOFR3Vo79l39ooBTFucxx+MT3dhCtzn3EmiUPQo+6/OZuI2jbXi3YKgmiTFBgChQMwIRQ==}
 
-  body-parser@2.3.0:
-    resolution: {integrity: sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==}
+  body-parser@2.4.0:
+    resolution: {integrity: sha512-Ifk1KcLrxaGt1occQagQNFNNOqRt1LFuehEnHHzB8Z6cRgIxRU1TBaiIsUiCdA+gy5PL7Y1IX31DNKkRmxtXjQ==}
     engines: {node: '>=18'}
 
   bowser@2.14.1:
@@ -2890,7 +2894,7 @@ packages:
     peerDependencies:
       ai: ^6.0.182 || ^7.0.0
       workflow: ^5.0.0-beta.35
-      zod: ^3.0.0 || ^4.0.0
+      zod: ^4.6.6
     peerDependenciesMeta:
       ai:
         optional: true
@@ -4671,6 +4675,10 @@ packages:
     resolution: {integrity: sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==}
     engines: {node: '>=0.6'}
 
+  qs@6.16.1:
+    resolution: {integrity: sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==}
+    engines: {node: '>=0.6'}
+
   quansync@0.2.11:
     resolution: {integrity: sha512-AifT7QEbW9Nri4tAwR5M/uzpBuqfZf+zwaEM/QkzEjj7NBuFD2rBuy0K3dE+8wltbezDV7JMA0WfnCPYRSYbXA==}
 
@@ -5587,13 +5595,13 @@ packages:
   zod-to-json-schema@3.25.2:
     resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
     peerDependencies:
-      zod: ^3.25.28 || ^4
+      zod: ^4.6.6
 
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.6.5:
-    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
   zrender@6.1.0:
     resolution: {integrity: sha512-oEGMDB6pOP2S6OwRR4PdVv610zrjnA3Bh+JnSG12fYJlBKjtNAoEb5fSUoCOOINlH96I2fU38/A2UpRKs67xYQ==}
@@ -5618,91 +5626,91 @@ snapshots:
       '@grpc/grpc-js': 1.14.5
       express: 5.2.1(supports-color@7.2.0)
 
-  '@ai-sdk/anthropic@4.0.71(zod@4.6.5)':
+  '@ai-sdk/anthropic@4.0.71(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.21
-      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.5)
-      zod: 4.6.5
+      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.7)
+      zod: 4.6.7
 
-  '@ai-sdk/deepseek@3.0.58(zod@4.6.5)':
+  '@ai-sdk/deepseek@3.0.58(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.21
-      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.5)
-      zod: 4.6.5
+      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.7)
+      zod: 4.6.7
 
-  '@ai-sdk/gateway@4.0.100(zod@4.6.5)':
+  '@ai-sdk/gateway@4.0.100(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.19
-      '@ai-sdk/provider-utils': 5.0.51(zod@4.6.5)
+      '@ai-sdk/provider-utils': 5.0.51(zod@4.6.7)
       '@vercel/oidc': 3.2.0
-      zod: 4.6.5
+      zod: 4.6.7
 
-  '@ai-sdk/gateway@4.0.102(zod@4.6.5)':
+  '@ai-sdk/gateway@4.0.102(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.21
-      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.5)
+      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.7)
       '@vercel/oidc': 3.2.0
-      zod: 4.6.5
+      zod: 4.6.7
 
-  '@ai-sdk/mistral@4.0.56(zod@4.6.5)':
+  '@ai-sdk/mistral@4.0.56(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.21
-      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.5)
-      zod: 4.6.5
+      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.7)
+      zod: 4.6.7
 
-  '@ai-sdk/openai-compatible@3.0.62(zod@4.6.5)':
+  '@ai-sdk/openai-compatible@3.0.62(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.21
-      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.5)
-      zod: 4.6.5
+      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.7)
+      zod: 4.6.7
 
-  '@ai-sdk/openai@4.0.83(zod@4.6.5)':
+  '@ai-sdk/openai@4.0.83(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.21
-      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.5)
-      zod: 4.6.5
+      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.7)
+      zod: 4.6.7
 
-  '@ai-sdk/otel@1.0.122(zod@4.6.5)':
+  '@ai-sdk/otel@1.0.122(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.19
       '@opentelemetry/api': 1.9.1
-      ai: 7.0.122(zod@4.6.5)
+      ai: 7.0.122(zod@4.6.7)
     transitivePeerDependencies:
       - zod
 
-  '@ai-sdk/provider-utils@4.0.40(zod@4.6.5)':
+  '@ai-sdk/provider-utils@4.0.40(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.14
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.1.1
-      zod: 4.6.5
+      zod: 4.6.7
 
-  '@ai-sdk/provider-utils@5.0.51(zod@4.6.5)':
+  '@ai-sdk/provider-utils@5.0.51(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.19
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.1
       undici: 7.30.0
-      zod: 4.6.5
+      zod: 4.6.7
 
-  '@ai-sdk/provider-utils@5.0.53(zod@4.6.5)':
+  '@ai-sdk/provider-utils@5.0.53(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.21
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.1
       undici: 7.30.0
-      zod: 4.6.5
+      zod: 4.6.7
 
-  '@ai-sdk/provider-utils@5.0.54(zod@4.6.5)':
+  '@ai-sdk/provider-utils@5.0.54(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.22
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.1
       undici: 7.30.0
-      zod: 4.6.5
+      zod: 4.6.7
 
   '@ai-sdk/provider@2.0.3':
     dependencies:
@@ -6436,7 +6444,7 @@ snapshots:
 
   '@js-sdsl/ordered-map@4.4.2': {}
 
-  '@kete-africa/agents@0.5.8(@grpc/grpc-js@1.14.5)(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))':
+  '@kete-africa/agents@0.5.8(@grpc/grpc-js@1.14.5)(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))':
     dependencies:
       '@kete/ai': '@kete-africa/ai@0.6.8(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/capabilities': '@kete-africa/capabilities@0.6.3(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
@@ -6444,12 +6452,12 @@ snapshots:
       '@kete/sandbox': '@kete-africa/sandbox@0.3.1'
       '@kete/tenancy': '@kete-africa/tenancy@0.1.10(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/tools': '@kete-africa/tools@0.2.9(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
-      '@mastra/core': 1.76.0(@grpc/grpc-js@1.14.5)(ai@7.0.126(zod@4.6.5))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5)
-      '@mastra/memory': 1.37.0(@mastra/core@1.76.0(ai@7.0.126(zod@4.6.5))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)
-      '@mastra/pg': 1.31.0(@mastra/core@1.76.0(ai@7.0.126(zod@4.6.5))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(zod@4.6.5))
-      ai: 7.0.126(zod@4.6.5)
+      '@mastra/core': 1.76.0(@grpc/grpc-js@1.14.5)(ai@7.0.126(zod@4.6.7))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@mastra/memory': 1.37.0(@mastra/core@1.76.0(ai@7.0.126(zod@4.6.7))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(zod@4.6.7))(supports-color@7.2.0)
+      '@mastra/pg': 1.31.0(@mastra/core@1.76.0(ai@7.0.126(zod@4.6.7))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(zod@4.6.7))
+      ai: 7.0.126(zod@4.6.7)
       pg: 8.23.1
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@bufbuild/protobuf'
       - '@grpc/grpc-js'
@@ -6472,12 +6480,12 @@ snapshots:
 
   '@kete-africa/ai@0.6.8(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))':
     dependencies:
-      '@ai-sdk/anthropic': 4.0.71(zod@4.6.5)
-      '@ai-sdk/deepseek': 3.0.58(zod@4.6.5)
-      '@ai-sdk/mistral': 4.0.56(zod@4.6.5)
-      '@ai-sdk/openai': 4.0.83(zod@4.6.5)
-      '@ai-sdk/openai-compatible': 3.0.62(zod@4.6.5)
-      '@ai-sdk/otel': 1.0.122(zod@4.6.5)
+      '@ai-sdk/anthropic': 4.0.71(zod@4.6.7)
+      '@ai-sdk/deepseek': 3.0.58(zod@4.6.7)
+      '@ai-sdk/mistral': 4.0.56(zod@4.6.7)
+      '@ai-sdk/openai': 4.0.83(zod@4.6.7)
+      '@ai-sdk/openai-compatible': 3.0.62(zod@4.6.7)
+      '@ai-sdk/otel': 1.0.122(zod@4.6.7)
       '@kete/capabilities': '@kete-africa/capabilities@0.6.3(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/commands': '@kete-africa/commands@0.3.9(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/tenancy': '@kete-africa/tenancy@0.1.10(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
@@ -6486,8 +6494,8 @@ snapshots:
       '@opentelemetry/core': 2.11.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/exporter-trace-otlp-http': 0.222.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-base': 2.11.0(@opentelemetry/api@1.9.1)
-      ai: 7.0.126(zod@4.6.5)
-      zod: 4.6.5
+      ai: 7.0.126(zod@4.6.7)
+      zod: 4.6.7
     transitivePeerDependencies:
       - drizzle-orm
       - pg-native
@@ -6505,7 +6513,7 @@ snapshots:
       '@kete/sdk': '@kete-africa/sdk@0.23.0'
       '@kete/tenancy': '@kete-africa/tenancy@0.1.10(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@modelcontextprotocol/server': 2.3.0
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - drizzle-orm
       - pg-native
@@ -6543,7 +6551,7 @@ snapshots:
     dependencies:
       '@kete/sdk': '@kete-africa/sdk@0.23.0'
       '@kete/tenancy': '@kete-africa/tenancy@0.1.10(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - drizzle-orm
       - pg-native
@@ -6557,9 +6565,9 @@ snapshots:
       - drizzle-orm
       - pg-native
 
-  '@kete-africa/conversation@0.3.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
+  '@kete-africa/conversation@0.3.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
     dependencies:
-      '@kete/design': '@kete-africa/design@0.16.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
+      '@kete/design': '@kete-africa/design@0.16.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
       '@kete/sdk': '@kete-africa/sdk@0.23.0'
       react: 19.3.0
     transitivePeerDependencies:
@@ -6569,7 +6577,7 @@ snapshots:
       - react-dom
       - supports-color
 
-  '@kete-africa/design@0.16.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
+  '@kete-africa/design@0.16.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
     dependencies:
       '@fontsource-variable/archivo': 5.3.0
       '@fontsource-variable/instrument-sans': 5.3.0
@@ -6590,7 +6598,7 @@ snapshots:
       '@kete/records': '@kete-africa/records@0.1.10'
       '@kete/sdk': '@kete-africa/sdk@0.23.0'
       '@kete/tenancy': '@kete-africa/tenancy@0.1.10(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - drizzle-orm
       - pg-native
@@ -6612,10 +6620,10 @@ snapshots:
       - puppeteer
       - supports-color
 
-  '@kete-africa/intelligence@0.4.6(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(express@5.2.1(supports-color@7.2.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
+  '@kete-africa/intelligence@0.4.7(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(express@5.2.1(supports-color@7.2.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
     dependencies:
-      '@kete/agents': '@kete-africa/agents@0.5.8(@grpc/grpc-js@1.14.5)(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))'
-      '@kete/design': '@kete-africa/design@0.16.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
+      '@kete/agents': '@kete-africa/agents@0.5.8(@grpc/grpc-js@1.14.5)(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))'
+      '@kete/design': '@kete-africa/design@0.16.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
       '@kete/sdk': '@kete-africa/sdk@0.23.0'
       react: 19.3.0
     transitivePeerDependencies:
@@ -6654,9 +6662,9 @@ snapshots:
       '@kete/tenancy': '@kete-africa/tenancy@0.1.10(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@langchain/core': 1.2.14(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(ws@8.22.0)
       '@langchain/textsplitters': 1.0.2(@langchain/core@1.2.14(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(ws@8.22.0))
-      ai: 7.0.126(zod@4.6.5)
+      ai: 7.0.126(zod@4.6.7)
       pgvector: 0.3.0
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/api'
       - '@opentelemetry/exporter-trace-otlp-proto'
@@ -6698,7 +6706,7 @@ snapshots:
   '@kete-africa/records@0.1.10':
     dependencies:
       '@kete/sdk': '@kete-africa/sdk@0.23.0'
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - pg-native
 
@@ -6716,14 +6724,14 @@ snapshots:
     dependencies:
       '@kete/records': '@kete-africa/records@0.1.10'
       '@kete/tenancy': '@kete-africa/tenancy@0.1.10(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - drizzle-orm
       - pg-native
 
-  '@kete-africa/shell@0.4.9(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
+  '@kete-africa/shell@0.4.10(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
     dependencies:
-      '@kete/design': '@kete-africa/design@0.16.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
+      '@kete/design': '@kete-africa/design@0.16.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
       '@kete/sdk': '@kete-africa/sdk@0.23.0'
       react: 19.3.0
     transitivePeerDependencies:
@@ -6738,10 +6746,10 @@ snapshots:
       '@kete/ai': '@kete-africa/ai@0.6.8(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/records': '@kete-africa/records@0.1.10'
       '@kete/tenancy': '@kete-africa/tenancy@0.1.10(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
-      ai: 7.0.126(zod@4.6.5)
+      ai: 7.0.126(zod@4.6.7)
       fflate: 0.8.3
       skills-ref: 0.1.5
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - drizzle-orm
       - pg-native
@@ -6805,7 +6813,7 @@ snapshots:
       '@kete/commands': '@kete-africa/commands@0.3.9(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@modelcontextprotocol/client': 2.3.0
       undici: 7.30.0
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - drizzle-orm
       - pg-native
@@ -6817,7 +6825,7 @@ snapshots:
       '@kete/tenancy': '@kete-africa/tenancy@0.1.10(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       echarts: 6.1.0
       react: 19.3.0
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - drizzle-orm
       - pg-native
@@ -6855,7 +6863,7 @@ snapshots:
       langsmith: 0.10.8(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(ws@8.22.0)
       mustache: 4.2.0
       p-queue: 6.6.2
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/api'
       - '@opentelemetry/exporter-trace-otlp-proto'
@@ -6909,27 +6917,27 @@ snapshots:
     dependencies:
       '@lukeed/csprng': 1.1.0
 
-  '@mastra/core@1.76.0(@grpc/grpc-js@1.14.5)(ai@7.0.126(zod@4.6.5))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5)':
+  '@mastra/core@1.76.0(@grpc/grpc-js@1.14.5)(ai@7.0.126(zod@4.6.7))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)':
     dependencies:
       '@a2a-js/sdk-v0_3': '@a2a-js/sdk@0.3.14(@grpc/grpc-js@1.14.5)(express@5.2.1(supports-color@7.2.0))'
       '@a2a-js/sdk-v1': '@a2a-js/sdk@1.0.1(@grpc/grpc-js@1.14.5)(express@5.2.1(supports-color@7.2.0))'
-      '@ai-sdk/provider-utils-v6': '@ai-sdk/provider-utils@4.0.40(zod@4.6.5)'
-      '@ai-sdk/provider-utils-v7': '@ai-sdk/provider-utils@5.0.54(zod@4.6.5)'
+      '@ai-sdk/provider-utils-v6': '@ai-sdk/provider-utils@4.0.40(zod@4.6.7)'
+      '@ai-sdk/provider-utils-v7': '@ai-sdk/provider-utils@5.0.54(zod@4.6.7)'
       '@ai-sdk/provider-v5': '@ai-sdk/provider@2.0.3'
       '@ai-sdk/provider-v6': '@ai-sdk/provider@3.0.14'
       '@ai-sdk/provider-v7': '@ai-sdk/provider@4.0.22'
       '@isaacs/ttlcache': 2.1.5
       '@lukeed/uuid': 2.0.1
-      '@mastra/schema-compat': 1.3.13(zod@4.6.5)
+      '@mastra/schema-compat': 1.3.13(zod@4.6.7)
       '@standard-schema/spec': 1.1.0
-      chat: 4.41.1(ai@7.0.126(zod@4.6.5))(supports-color@7.2.0)(zod@4.6.5)
+      chat: 4.41.1(ai@7.0.126(zod@4.6.7))(supports-color@7.2.0)(zod@4.6.7)
       croner: 10.0.1
       dotenv: 17.4.2
       execa: 9.6.1
       fastq: 1.20.3
       gray-matter: 4.0.3
       hono: 4.13.12
-      hono-openapi: 1.3.5(hono@4.13.12)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5)
+      hono-openapi: 1.3.5(hono@4.13.12)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       ignore: 7.0.11
       jpeg-js: 0.4.4
       json-schema: 0.4.0
@@ -6941,7 +6949,7 @@ snapshots:
       re2js: 2.8.6
       ws: 8.22.0
       xxhash-wasm: 1.1.0
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - '@bufbuild/protobuf'
       - '@grpc/grpc-js'
@@ -6961,23 +6969,23 @@ snapshots:
       - zod-openapi
       - zod-to-json-schema
 
-  '@mastra/memory@1.37.0(@mastra/core@1.76.0(ai@7.0.126(zod@4.6.5))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)':
+  '@mastra/memory@1.37.0(@mastra/core@1.76.0(ai@7.0.126(zod@4.6.7))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(zod@4.6.7))(supports-color@7.2.0)':
     dependencies:
-      '@mastra/core': 1.76.0(@grpc/grpc-js@1.14.5)(ai@7.0.126(zod@4.6.5))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5)
-      '@mastra/schema-compat': 1.3.13(zod@4.6.5)
+      '@mastra/core': 1.76.0(@grpc/grpc-js@1.14.5)(ai@7.0.126(zod@4.6.7))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@mastra/schema-compat': 1.3.13(zod@4.6.7)
       async-mutex: 0.5.0
       diff: 8.0.4
       json-schema: 0.4.0
       lru-cache: 11.5.3
       probe-image-size: 7.4.0(supports-color@7.2.0)
       xxhash-wasm: 1.1.0
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - supports-color
 
-  '@mastra/pg@1.31.0(@mastra/core@1.76.0(ai@7.0.126(zod@4.6.5))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(zod@4.6.5))':
+  '@mastra/pg@1.31.0(@mastra/core@1.76.0(ai@7.0.126(zod@4.6.7))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(zod@4.6.7))':
     dependencies:
-      '@mastra/core': 1.76.0(@grpc/grpc-js@1.14.5)(ai@7.0.126(zod@4.6.5))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5)
+      '@mastra/core': 1.76.0(@grpc/grpc-js@1.14.5)(ai@7.0.126(zod@4.6.7))(express@5.2.1(supports-color@7.2.0))(supports-color@7.2.0)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       async-mutex: 0.5.0
       pg: 8.23.1
       pg-connection-string: 2.14.1
@@ -6985,10 +6993,10 @@ snapshots:
     transitivePeerDependencies:
       - pg-native
 
-  '@mastra/schema-compat@1.3.13(zod@4.6.5)':
+  '@mastra/schema-compat@1.3.13(zod@4.6.7)':
     dependencies:
       json-schema-to-zod: 2.8.1
-      zod: 4.6.5
+      zod: 4.6.7
       zod-from-json-schema: 0.5.6
 
   '@mcp-ui/client@7.1.1(@cfworker/json-schema@4.1.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)':
@@ -7010,11 +7018,11 @@ snapshots:
       eventsource-parser: 3.1.1
       jose: 6.2.12
       pkce-challenge: 5.0.1
-      zod: 4.6.5
+      zod: 4.6.7
 
   '@modelcontextprotocol/core@2.3.0':
     dependencies:
-      zod: 4.6.5
+      zod: 4.6.7
 
   '@modelcontextprotocol/ext-apps@1.7.5(@modelcontextprotocol/sdk@1.32.1(@cfworker/json-schema@4.1.1)(supports-color@7.2.0)(zod@3.25.76))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(zod@3.25.76)':
     dependencies:
@@ -7052,7 +7060,7 @@ snapshots:
   '@modelcontextprotocol/server@2.3.0':
     dependencies:
       '@modelcontextprotocol/core': 2.3.0
-      zod: 4.6.5
+      zod: 4.6.7
 
   '@napi-rs/canvas-android-arm64@1.0.10':
     optional: true
@@ -7615,24 +7623,24 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5)':
+  '@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@types/json-schema': 7.0.15
       quansync: 0.2.11
     optionalDependencies:
       valibot: 1.5.0(typescript@5.9.3)
-      zod: 4.6.5
-      zod-to-json-schema: 3.25.2(zod@4.6.5)
+      zod: 4.6.7
+      zod-to-json-schema: 3.25.2(zod@4.6.7)
 
-  '@standard-community/standard-openapi@0.2.10(@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(valibot@1.5.0(typescript@5.9.3))(zod@4.6.5)':
+  '@standard-community/standard-openapi@0.2.10(@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(valibot@1.5.0(typescript@5.9.3))(zod@4.6.7)':
     dependencies:
-      '@standard-community/standard-json': 0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5)
+      '@standard-community/standard-json': 0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       '@standard-schema/spec': 1.1.0
       openapi-types: 12.1.3
     optionalDependencies:
       valibot: 1.5.0(typescript@5.9.3)
-      zod: 4.6.5
+      zod: 4.6.7
 
   '@standard-schema/spec@1.1.0': {}
 
@@ -7815,7 +7823,7 @@ snapshots:
       jiti: 2.7.0
       magic-string: 0.30.21
       prettier: 3.9.9
-      zod: 4.6.5
+      zod: 4.6.7
     transitivePeerDependencies:
       - supports-color
 
@@ -7829,7 +7837,7 @@ snapshots:
       '@tanstack/router-utils': 1.162.4(supports-color@7.2.0)
       chokidar: 5.0.0
       unplugin: 3.4.0(esbuild@0.28.2)(rolldown@1.2.14)(rollup@4.63.5)(vite@8.3.4(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
-      zod: 4.6.5
+      zod: 4.6.7
     optionalDependencies:
       '@tanstack/react-router': 1.170.44(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       vite: 8.3.4(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -7887,7 +7895,7 @@ snapshots:
       ufo: 1.6.4
       vitefu: 1.1.3(vite@8.3.4(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
       xmlbuilder2: 4.0.3
-      zod: 4.6.5
+      zod: 4.6.7
     optionalDependencies:
       vite: 8.3.4(@types/node@22.20.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
     transitivePeerDependencies:
@@ -8196,19 +8204,19 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  ai@7.0.122(zod@4.6.5):
+  ai@7.0.122(zod@4.6.7):
     dependencies:
-      '@ai-sdk/gateway': 4.0.100(zod@4.6.5)
+      '@ai-sdk/gateway': 4.0.100(zod@4.6.7)
       '@ai-sdk/provider': 4.0.19
-      '@ai-sdk/provider-utils': 5.0.51(zod@4.6.5)
-      zod: 4.6.5
+      '@ai-sdk/provider-utils': 5.0.51(zod@4.6.7)
+      zod: 4.6.7
 
-  ai@7.0.126(zod@4.6.5):
+  ai@7.0.126(zod@4.6.7):
     dependencies:
-      '@ai-sdk/gateway': 4.0.102(zod@4.6.5)
+      '@ai-sdk/gateway': 4.0.102(zod@4.6.7)
       '@ai-sdk/provider': 4.0.21
-      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.5)
-      zod: 4.6.5
+      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.7)
+      zod: 4.6.7
 
   ajv-formats@3.0.1(ajv@8.20.0):
     optionalDependencies:
@@ -8365,7 +8373,7 @@ snapshots:
 
   bn.js@4.12.5: {}
 
-  body-parser@2.3.0(supports-color@7.2.0):
+  body-parser@2.4.0(supports-color@7.2.0):
     dependencies:
       bytes: 3.1.2
       content-type: 2.1.0
@@ -8373,7 +8381,7 @@ snapshots:
       http-errors: 2.0.1
       iconv-lite: 0.7.3
       on-finished: 2.4.1
-      qs: 6.16.0
+      qs: 6.16.1
       raw-body: 3.0.2
       type-is: 2.1.0
     transitivePeerDependencies:
@@ -8462,7 +8470,7 @@ snapshots:
 
   character-reference-invalid@2.0.1: {}
 
-  chat@4.41.1(ai@7.0.126(zod@4.6.5))(supports-color@7.2.0)(zod@4.6.5):
+  chat@4.41.1(ai@7.0.126(zod@4.6.7))(supports-color@7.2.0)(zod@4.6.7):
     dependencies:
       '@workflow/serde': 4.1.0-beta.2
       mdast-util-to-string: 4.0.0
@@ -8472,8 +8480,8 @@ snapshots:
       remend: 1.4.0
       unified: 11.0.5
     optionalDependencies:
-      ai: 7.0.126(zod@4.6.5)
-      zod: 4.6.5
+      ai: 7.0.126(zod@4.6.7)
+      zod: 4.6.7
     transitivePeerDependencies:
       - supports-color
 
@@ -8909,7 +8917,7 @@ snapshots:
   express@5.2.1(supports-color@7.2.0):
     dependencies:
       accepts: 2.0.0
-      body-parser: 2.3.0(supports-color@7.2.0)
+      body-parser: 2.4.0(supports-color@7.2.0)
       content-disposition: 1.1.0
       content-type: 1.0.5
       cookie: 0.7.2
@@ -9100,11 +9108,11 @@ snapshots:
 
   he@1.2.0: {}
 
-  hono-openapi@1.3.5(hono@4.13.12)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5):
+  hono-openapi@1.3.5(hono@4.13.12)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7):
     dependencies:
       '@hono/standard-validator': 0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.12)
-      '@standard-community/standard-json': 0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5)
-      '@standard-community/standard-openapi': 0.2.10(@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(valibot@1.5.0(typescript@5.9.3))(zod@4.6.5)
+      '@standard-community/standard-json': 0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+      '@standard-community/standard-openapi': 0.2.10(@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(valibot@1.5.0(typescript@5.9.3))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(valibot@1.5.0(typescript@5.9.3))(zod@4.6.7)
       '@standard-schema/spec': 1.1.0
       '@types/json-schema': 7.0.15
       hono: 4.13.12
@@ -10350,6 +10358,11 @@ snapshots:
       es-define-property: 1.0.1
       side-channel: 1.1.1
 
+  qs@6.16.1:
+    dependencies:
+      es-define-property: 1.0.1
+      side-channel: 1.1.1
+
   quansync@0.2.11: {}
 
   quick-format-unescaped@4.0.4: {}
@@ -11331,20 +11344,20 @@ snapshots:
 
   zod-from-json-schema@0.5.6:
     dependencies:
-      zod: 4.6.5
+      zod: 4.6.7
 
   zod-to-json-schema@3.25.2(zod@3.25.76):
     dependencies:
       zod: 3.25.76
 
-  zod-to-json-schema@3.25.2(zod@4.6.5):
+  zod-to-json-schema@3.25.2(zod@4.6.7):
     dependencies:
-      zod: 4.6.5
+      zod: 4.6.7
     optional: true
 
   zod@3.25.76: {}
 
-  zod@4.6.5: {}
+  zod@4.6.7: {}
 
   zrender@6.1.0:
     dependencies:

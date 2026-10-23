@@ -124,7 +124,7 @@ export function SessionCard({
         <div className="grid min-w-0 gap-1">
           <div className="flex flex-wrap items-center gap-2">
             <Tag tone={item.overdue ? 'error' : 'info'}>
-              {item.overdue ? m.today_overdue() : kindLabel(item.kind)}
+              {item.overdue ? m.today_overdue() : kindLabel(item.kind, item.source)}
             </Tag>
           </div>
           <h3 className="text-title font-semibold">{item.title}</h3>

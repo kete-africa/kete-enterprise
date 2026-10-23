@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApi } from '../src/app.js';
 import { useModel } from '../src/features/assistant/index.js';
 import { datasetTools } from '../src/features/datasets/index.js';
+import { settleTurns } from '../src/features/messages/index.js';
 import { tableOf } from '../src/platform/tables.js';
 import { startApi, tokenFor } from './support.js';
 
@@ -252,5 +253,38 @@ describe('an answer that is a table', () => {
     await call(t.admin, 'POST', '/organization/modules', { module: 'datasets', enabled: true });
     const events = await chat(t.kofi, { message: 'Qui doit de l’argent ?' });
     expect(events.some((event) => event.type === 'table')).toBe(false);
+  });
+});
+
+describe('a table Kete read in a thread (spec 111)', () => {
+  it('is kept with its turn and drawn under its answer, not only announced', async () => {
+    useModel(
+      streamingModel(
+        'team_data_rows',
+        { datasetId, filters: [{ column: 'Jours', op: 'gte', value: 30 }], sortBy: 'Dû' },
+        'Voici les factures impayées depuis plus de 30 jours.',
+      ),
+    );
+    const thread = String(
+      ((await call(t.ama, 'GET', '/threads/kete')).body.thread as { id: string }).id,
+    );
+    const said = await call(t.ama, 'POST', `/threads/${thread}/messages`, {
+      text: 'Quelles factures restent impayées ?',
+    });
+    expect(said.status).toBe(201);
+    await settleTurns();
+    const seen = (await call(t.ama, 'GET', `/threads/${thread}`)).body as {
+      messages: { id: string; author: { id: string } }[];
+      runs: Record<string, { tables?: { title: string; rows: Record<string, unknown>[] }[] }>;
+    };
+    const answer = seen.messages.at(-1);
+    expect(answer?.author.id).toBe('agt_assistant');
+    const tables = seen.runs[answer?.id ?? '']?.tables ?? [];
+    expect(tables.map((table) => table.title)).toEqual(['Factures impayées']);
+    expect(tables[0]?.rows.map((row) => row['Client'])).toEqual([
+      'Garage Bè',
+      'M. Kossi',
+      'Hôtel du Golfe',
+    ]);
   });
 });

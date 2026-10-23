@@ -220,7 +220,7 @@ export const comfortRoutes = new Hono<{ Variables: IdentityVariables }>()
       const references = found.messages.flatMap((m) => m.references ?? []);
       return {
         ...found,
-        names: await namesOf(db, ids, identity, messageWords().outsider),
+        names: await namesOf(db, ids, identity, messageWords().teammate),
         cited: await citedStates(db, references),
       };
     }).catch(refuse);

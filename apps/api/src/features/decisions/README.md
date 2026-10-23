@@ -34,6 +34,9 @@ sequenceDiagram
   sending reminders comes with the worker (spec 007).
 - **Subjects** are declared by the features (`registerSubject`); a circuit exists for a known
   subject only, and a new one replaces the active one for new requests.
+- **Their words** (spec 111): a subject says its name, what its measure is — a label, and the words
+  of its levels when it has some (a tool's opening: « Risque · moyen ») — and whether its reference
+  is only Kete's own id, then never shown. An app's subject takes its measure's words from its card.
 
 ## In the registry
 

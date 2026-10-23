@@ -14,7 +14,25 @@ export const kindIcon: Record<DayItem['kind'], IconName> = {
   note: 'file',
 };
 
-export function kindLabel(kind: DayItem['kind']): string {
+/**
+ * Kete's own features that put a task in « À faire », by the key they file it under: said in
+ * words, never by that key; an app's task keeps the app's name.
+ */
+const KETE_SOURCES: Record<string, () => string> = {
+  notes: m.day_source_notes,
+  requests: m.day_source_requests,
+  agents: m.day_source_agents,
+  assistant: m.day_source_assistant,
+  closure: m.day_source_closure,
+  exchanges: m.day_source_exchanges,
+};
+
+/** Where a thing comes from, in words. */
+export const sourceWords = (source: string | null | undefined): string =>
+  source ? (KETE_SOURCES[source]?.() ?? source) : '';
+
+export function kindLabel(kind: DayItem['kind'], source?: string | null): string {
+  if (kind === 'app_task' && source && KETE_SOURCES[source]) return m.todo_kind_kete();
   return {
     decision: m.todo_kind_decision,
     draft: m.todo_kind_draft,
@@ -33,7 +51,7 @@ export const dayOf = (value: string) =>
 
 /** Why a thing waits, in words: where it comes from, when it is due. */
 export function why(item: DayItem): string {
-  const source = item.source ?? '';
+  const source = sourceWords(item.source);
   switch (item.kind) {
     case 'decision':
       return m.today_why_decision({ source });

@@ -105,7 +105,7 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
       const ids = threads.flatMap((t) => [t.thread.holder.id, t.last?.author.id ?? '']);
       return {
         threads,
-        names: await namesOf(db, ids.filter(Boolean), identity, messageWords().outsider),
+        names: await namesOf(db, ids.filter(Boolean), identity, messageWords().teammate),
       };
     });
     return c.json(answer);
@@ -150,7 +150,7 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
         db,
         shown.map((m) => m.author.id),
         identity,
-        messageWords().outsider,
+        messageWords().teammate,
       );
       return shown.map((m) => ({
         ...m,
@@ -295,9 +295,12 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
         title: string;
         steps: unknown[];
         seconds: number | null;
-      }>(`select message_id, title, steps, seconds from thread_runs where message_id = any($1)`, [
-        messages.map((m) => m.id),
-      ]);
+        tables: unknown[];
+      }>(
+        `select message_id, title, steps, seconds, tables from thread_runs
+          where message_id = any($1)`,
+        [messages.map((m) => m.id)],
+      );
       const state = await stateOf(db, thread);
       const actions = await actionsOf(db, threadId);
       // What Kete proposed her here, the turn at work, and in her own thread what she handed.
@@ -344,7 +347,7 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
         actions,
         pending: await pendingOf(db, threadId),
         ...state,
-        names: await namesOf(db, ids, identity, messageWords().outsider),
+        names: await namesOf(db, ids, identity, messageWords().teammate),
         faces: await facesOf(db, ids),
         mailbox: (await mailboxOf(db, identity.userId)) !== null,
       };

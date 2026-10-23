@@ -6,6 +6,7 @@ export {
   messagesComfortMigrationSql,
   messagesLiveMigrationSql,
   messagesMigrationSql,
+  runTablesMigrationSql,
 } from './migration.js';
 export {
   agentAnswered,
