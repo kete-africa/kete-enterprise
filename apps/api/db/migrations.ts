@@ -34,6 +34,7 @@ import { outboxMigrationSql } from '@kete/sdk';
 import {
   agentAutonomyMigrationSql,
   agentSourcesMigrationSql,
+  evaluationsMigrationSql,
   agentsAtWorkMigrationSql,
   agentTasksMigrationSql,
   agentsMigrationSql,
@@ -53,6 +54,7 @@ import {
   conversationsMigrationSql,
   feedbackMigrationSql,
   memoryMigrationSql,
+  sharedMemoryMoveSql,
   schedulesMigrationSql,
   tablesMigrationSql,
   viewsMigrationSql,
@@ -99,6 +101,7 @@ import { eventsMigrationSql } from '../src/features/events/index.js';
 import { measureMigrationSql } from '../src/features/measure/index.js';
 import { viewConfigsMigrationSql } from '../src/features/views/index.js';
 import { connectionsMigrationSql } from '../src/features/connections/index.js';
+import { agentMemoryMigrationSql } from '@kete/agents';
 
 export interface MigrationContext {
   schema: string;
@@ -306,4 +309,10 @@ export const migrations: Migration[] = [
   { name: '0079_agents_sources', sql: (context) => agentSourcesMigrationSql(context) },
   // One connection, three uses: the tool sets' grants, a webhook per connection (spec 105).
   { name: '0080_one_connection', sql: (context) => connectionsMigrationSql(context) },
+  // One memory for Kete and the agents, under her agreement; agents prove themselves (spec 106).
+  {
+    name: '0081_one_memory',
+    sql: (context) => agentMemoryMigrationSql(context) + sharedMemoryMoveSql(context),
+  },
+  { name: '0082_agent_evaluations', sql: (context) => evaluationsMigrationSql(context) },
 ];

@@ -1,4 +1,5 @@
 import { OUTSIDE_ABILITIES, runAgent } from '@kete/agents';
+import { BudgetExceededError } from '@kete/ai';
 import type { CapabilityTool, InvocationResult } from '@kete/capabilities';
 import { MAX_DELEGATION_DEPTH, type Actor } from '@kete/commands';
 import { newId } from '@kete/records';
@@ -19,6 +20,8 @@ import { readModules } from '../organization/index.js';
 import { putTask, spaceHref } from '../workspace/index.js';
 import type { Agent } from './agents.record.js';
 import { findAgent, personOfAgent } from './infrastructure/agents.tables.js';
+import { listMemories, memoryPrompt, rememberTool } from '../assistant/memory.js';
+import { budgetSpent } from './budget.js';
 import { objectContextFor } from './context.js';
 import { agentToolSets } from './toolsets.js';
 
@@ -646,6 +649,17 @@ const identityOf = (person: { organizationId: string; userId: string }) => ({
   expiresAt: new Date(Date.now() + 60 * 60_000),
 });
 
+/** Whether a task's thread is read by more than its one person: no memory there. */
+async function sharedThread(db: SqlExecutor, taskId: string): Promise<boolean> {
+  const { rows } = await db.query<{ n: number }>(
+    `select count(*)::int as n from agent_task_threads x
+       join kete_thread_members m on m.thread_id = x.thread_id
+      where x.task_id = $1 and m.member_kind = 'person' and m.until is null`,
+    [taskId],
+  );
+  return (rows[0]?.n ?? 0) > 1;
+}
+
 function promptOf(task: AgentTask): string {
   return [
     task.instruction,
@@ -812,9 +826,14 @@ export async function runTask(
         const context = await transaction(organizationId, (db) =>
           objectContextFor(db, identityOf(person), taskId),
         ).catch(() => '');
+        // What she asked to be remembered — never in a thread several people read (spec 106).
+        const remembered = await transaction(organizationId, async (db) =>
+          (await sharedThread(db, taskId)) ? [] : listMemories(db, userId),
+        ).catch(() => []);
         const tools = [
           ...(agent.sources.includes('kete') ? own : []),
           ...keteOwn,
+          rememberTool(person, agent.agentId),
           ...beyond,
           ...delegationTools(organizationId, userId, task, agent),
         ].map((tool): CapabilityTool => ({
@@ -850,7 +869,12 @@ export async function runTask(
             'brouillon qu’elle valide. Réponds en français, brièvement : ce que tu as fait, ce qui ' +
             'attend sa décision, ce que tu n’as pas pu faire.',
           messages: [
-            { role: 'user', content: [context, promptOf(task)].filter(Boolean).join('\n\n') },
+            {
+              role: 'user',
+              content: [context, memoryPrompt(remembered), promptOf(task)]
+                .filter(Boolean)
+                .join('\n\n'),
+            },
           ],
           tools,
           maxSteps: 8,
@@ -875,6 +899,13 @@ export async function runTask(
     await answered(organizationId, taskId);
     return 'done';
   } catch (error) {
+    // Its budget spent: it waits, and its person holds « demander plus » (spec 106, R18).
+    if (error instanceof BudgetExceededError) {
+      await transaction(organizationId, (db) =>
+        budgetSpent(db, organizationId, agent, userId, notificationWords().agentBudgetSpent),
+      ).catch(() => undefined);
+      return fail('stopped', 'budget_spent');
+    }
     // Stopping it at a step may end the run with an error: what she asked comes first.
     const parked = await park(organizationId, taskId).catch(() => null);
     if (parked) return parked;

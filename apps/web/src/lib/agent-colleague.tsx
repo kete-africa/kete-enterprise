@@ -246,6 +246,14 @@ function Segmented<T extends string>({
   );
 }
 
+/** How it last proved itself, in words (spec 106). */
+const proofWords = {
+  waiting: m.colleague_proof_waiting,
+  passed: m.colleague_proof_passed,
+  failed: m.colleague_proof_failed,
+  unavailable: m.colleague_proof_unavailable,
+};
+
 /** Its sources of tools, in words: what its job description may draw on (spec 104). */
 const SOURCES: [string, () => string][] = [
   ['kete', m.colleague_source_kete],
@@ -408,6 +416,47 @@ export function AgentSidePanel({ agent }: { agent: AgentSide }) {
         </ul>
         <p className="m-0 text-[12px] text-fg-muted">{m.colleague_sources_hint()}</p>
       </Block>
+      <Block title={m.colleague_budget()}>
+        <p className="m-0 text-[12.5px]">
+          {agent.budget.monthlyTokens === null
+            ? m.colleague_budget_none({ spent: agent.budget.spentTokens.toLocaleString() })
+            : m.colleague_budget_of({
+                spent: agent.budget.spentTokens.toLocaleString(),
+                limit: agent.budget.monthlyTokens.toLocaleString(),
+              })}
+        </p>
+      </Block>
+      {agent.proof && (
+        <Block title={m.colleague_proof()}>
+          <p className="m-0 flex flex-wrap items-center gap-2 text-[12.5px]">
+            <Tag
+              tone={
+                agent.proof.status === 'passed'
+                  ? 'validated'
+                  : agent.proof.status === 'failed'
+                    ? 'error'
+                    : 'neutral'
+              }
+            >
+              {proofWords[agent.proof.status]()}
+            </Tag>
+            {agent.proof.score !== null &&
+              m.colleague_proof_score({
+                score: String(Math.round(agent.proof.score * 100)),
+                cases: String(agent.proof.cases ?? 0),
+              })}
+          </p>
+          {agent.proof.failures.length > 0 && (
+            <ul className="m-0 grid list-none gap-1 p-0 text-[12px] text-fg-muted">
+              {agent.proof.failures.map((f) => (
+                <li key={f.name}>
+                  {f.name} — {f.failures.join(' · ')}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Block>
+      )}
       <Block title={m.colleague_computer()}>
         <p className="m-0 text-[12.5px]">
           {agent.computerMinutes === null

@@ -9,6 +9,8 @@ import { getPool, transaction } from '../../platform/db.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import type { Agent, AgentTask } from '../agents/index.js';
 import {
+  budgetOf,
+  evaluationsOf,
   findAgent,
   getTask,
   personOfAgent,
@@ -872,6 +874,9 @@ export async function agentSide(db: SqlExecutor, identity: Identity, thread: Thr
     wakeEveryMinutes: agent.wakeEveryMinutes,
     watches: agent.watches,
     draftBudget: agent.draftBudget,
+    // Its budget this month and how it last proved itself (spec 106).
+    budget: await budgetOf(db, agent.agentId),
+    proof: (await evaluationsOf(db, agent.agentId))[0] ?? null,
     // What it draws on, and the events that set it to work (spec 104).
     sources: agent.sources,
     follows: (

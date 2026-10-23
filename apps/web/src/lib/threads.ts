@@ -188,6 +188,16 @@ export interface AgentSide {
   wakeEveryMinutes: number;
   watches: string[];
   draftBudget: number;
+  /** Its tokens this month (spec 106): its own limit, the organization's. */
+  budget: { monthlyTokens: number | null; spentTokens: number; organizationTokens: number | null };
+  /** How it last proved itself (spec 106). */
+  proof: {
+    status: 'waiting' | 'passed' | 'failed' | 'unavailable';
+    score: number | null;
+    cases: number | null;
+    failures: { name: string; failures: string[] }[];
+    askedAt: string;
+  } | null;
   /** Its sources of tools (spec 104): « kete » and Kete's own sets. */
   sources: string[];
   /** The events that set it to work. */

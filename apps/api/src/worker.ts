@@ -5,6 +5,8 @@ import { runDueSchedules } from './features/assistant/index.js';
 import { readConnected } from './features/connectors/index.js';
 import { dispatchPending, listenForEvents } from './features/events/index.js';
 import { watchIndicators } from './features/measure/index.js';
+import { runWaitingEvaluations } from './features/agents/index.js';
+import { expireMemories } from '@kete/agents';
 import { sendQueuedMail } from './features/mail/index.js';
 import {
   checkDueWatches,
@@ -152,6 +154,29 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const sent = await sendDigests();
           if (sent > 0) console.log(`[worker] ${sent} threads summary(ies) queued`);
+        },
+      }),
+      // Agents prove themselves after a change of their job (spec 106, R21).
+      defineJob({
+        name: 'evaluate-agents',
+        schedule: '*/5 * * * *',
+        retryLimit: 0,
+        async handle() {
+          const ran = await runWaitingEvaluations();
+          if (ran > 0) console.log(`[worker] ${ran} agent evaluation(s)`);
+        },
+      }),
+      // What she asked to be remembered, only as long as she said (spec 106).
+      defineJob({
+        name: 'expire-memories',
+        schedule: '17 * * * *',
+        retryLimit: 0,
+        async handle() {
+          for (const organizationId of await workOrganizations(getPool())) {
+            await transaction(organizationId, (db) => expireMemories(db, organizationId)).catch(
+              (error: unknown) => console.error(`[worker] memories of ${organizationId}`, error),
+            );
+          }
         },
       }),
       // Events not yet delivered (spec 101): a safety net under the listener, every minute.

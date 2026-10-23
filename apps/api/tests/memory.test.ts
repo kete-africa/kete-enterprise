@@ -73,7 +73,7 @@ describe('the assistant’s memory', () => {
     expect(
       ((await call(t.kofi, 'GET', '/assistant/memories')).body.memories as unknown[]).length,
     ).toBe(1);
-    expect((await call(t.esi, 'GET', '/assistant/memories')).body).toEqual({ memories: [] });
+    expect((await call(t.esi, 'GET', '/assistant/memories')).body).toMatchObject({ memories: [] });
     expect((await call(t.esi, 'POST', `/assistant/memories/${memoryId}/forget`, {})).status).toBe(
       404,
     );

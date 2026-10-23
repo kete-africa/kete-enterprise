@@ -38,5 +38,12 @@ export {
   schedulesMigrationSql,
   type Schedule,
 } from './schedules.js';
-export { memoryMigrationSql, memoryRoutes } from './memory.js';
+export {
+  listMemories,
+  memoryMigrationSql,
+  memoryPrompt,
+  memoryRoutes,
+  rememberTool,
+  sharedMemoryMoveSql,
+} from './memory.js';
 export { nextRun } from './when.js';
