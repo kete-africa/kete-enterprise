@@ -1398,6 +1398,7 @@ export function ThreadsScreen({
 
   const allNames = { ...names, ...(view?.names ?? {}), ...extraNames };
   const nameOf = (who: { id: string }) => (who.id === KETE ? 'Kete' : (allNames[who.id] ?? ''));
+  const faceOf = (who: { id: string }) => view?.faces?.[who.id] ?? null;
   const messages = [...(older?.messages ?? []), ...(view?.messages ?? [])];
   const byId = new Map(
     messages.flatMap((msg) => [[msg.first, msg] as const, [msg.id, msg] as const]),
@@ -1642,6 +1643,7 @@ export function ThreadsScreen({
               words={words}
               me={{ kind: 'person', id: me }}
               nameOf={nameOf}
+              faceOf={faceOf}
               quoted={
                 message.reply_to
                   ? (byId.get(message.reply_to) as ShownMessage | undefined)

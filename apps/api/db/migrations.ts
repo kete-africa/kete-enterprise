@@ -34,6 +34,7 @@ import { outboxMigrationSql } from '@kete/sdk';
 import {
   agentAutonomyMigrationSql,
   agentSourcesMigrationSql,
+  agentFacesMigrationSql,
   evaluationsMigrationSql,
   agentsAtWorkMigrationSql,
   agentTasksMigrationSql,
@@ -315,4 +316,6 @@ export const migrations: Migration[] = [
     sql: (context) => agentMemoryMigrationSql(context) + sharedMemoryMoveSql(context),
   },
   { name: '0082_agent_evaluations', sql: (context) => evaluationsMigrationSql(context) },
+  // Agents' faces, drawn alike everywhere (spec 107, R6).
+  { name: '0083_agent_faces', sql: (context) => agentFacesMigrationSql(context) },
 ];

@@ -138,6 +138,11 @@ export interface ThreadView {
   files: ThreadFiles[];
   link: string | null;
   names: Record<string, string>;
+  /** The agents' own faces (spec 107, R6). */
+  faces?: Record<
+    string,
+    { glyph: string; tint?: 'blue' | 'green' | 'amber' | 'red' | 'violet' | 'teal' | 'slate' }
+  >;
   mailbox: boolean;
   /** There are older messages than this page. */
   older: boolean;

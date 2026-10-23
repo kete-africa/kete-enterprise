@@ -1,4 +1,5 @@
 import { simulatePolicy } from '@kete/policies';
+import { timeZoneIn } from '../settings/index.js';
 import { newId } from '@kete/records';
 import type { Thread } from '@kete/sdk';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
@@ -694,7 +695,7 @@ export async function runDueRoutines(now = new Date()): Promise<number> {
             cadence: agent.routine.cadence,
             weekday: null,
             time: agent.routine.time,
-            timeZone: 'Africa/Lome',
+            timeZone: await timeZoneIn(db, row.organization_id),
           },
           now,
         ),

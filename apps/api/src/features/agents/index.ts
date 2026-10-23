@@ -5,6 +5,7 @@ export { AgentRuleError, setAgentJob } from './commands.js';
 export {
   agentAutonomyMigrationSql,
   agentSourcesMigrationSql,
+  agentFacesMigrationSql,
   agentsMigrationSql,
   dueAgents,
 } from './infrastructure/agents.tables.js';

@@ -9,6 +9,7 @@ import { kindsOf } from '../objects/index.js';
 import { readModules } from '../organization/index.js';
 import { listResources } from '../registry/index.js';
 import { follows, type KeteEventRow, type Subscription } from './events.js';
+import { followLife } from './life.js';
 import { eventWords } from './words.js';
 
 // The dispatcher (spec 101; ADR 0017): each recorded event goes to whoever depends on it — the
@@ -189,6 +190,10 @@ export async function dispatchEvents(organizationId: string): Promise<number> {
     const consumers: [string, (db: SqlExecutor) => Promise<void>][] = [];
     if (event.source === 'app' && event.object) {
       consumers.push(['thread', (db) => toThread(db, organizationId, event)]);
+    }
+    // An object closed puts its thread away; opened again, its thread opens (spec 107, R12).
+    if (event.source === 'index' && event.type === 'object.state_changed') {
+      consumers.push(['life', (db) => followLife(db, event)]);
     }
     for (const subscription of subscriptions.filter((s) => follows(s, event))) {
       consumers.push([
