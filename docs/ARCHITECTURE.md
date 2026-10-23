@@ -188,6 +188,23 @@ places and assets are two references born here, each with its thread. « # », t
 gateway's `objects_find` and `object_read`, and the « Équipements » screens all read the index.
 See `apps/api/src/features/objects/README.md`.
 
+### One event path (spec 101)
+
+```mermaid
+flowchart LR
+  A[an app · event with its object] --> L[(kete_events)]
+  O[(kete_objects)] -->|created · state changed| L
+  L -->|pg_notify| D[dispatcher · worker]
+  S[(event_subscriptions)] --> D
+  D -->|claimed once| T[the object's thread]
+  D -->|claimed once| G[agents that follow it]
+  L -->|pg_notify| V[screens open on the object]
+```
+
+One log of what changed — an app's business events naming their object, the index's births and
+changes of state —; subscriptions as data; a dispatcher that claims each delivery with its effect,
+retries a failure five times, then shows it. See `apps/api/src/features/events/README.md`.
+
 ## Where it runs
 
 - Any Postgres 16 or more (with pgvector) and any S3-compatible storage, or a disk for a single

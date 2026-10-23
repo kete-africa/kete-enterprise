@@ -129,6 +129,37 @@ export const fetchAsset = createServerFn({ method: 'GET' })
     ).catch(() => null),
   );
 
+/** What happened to an object, the latest first (spec 101): its births, its states, the apps' facts. */
+export interface ObjectEvent {
+  eventId: string;
+  source: 'app' | 'index';
+  type: string;
+  label: string;
+  app: string | null;
+  data: { from?: string; to?: string; state?: string };
+  occurredAt: string;
+}
+
+export const fetchObjectEvents = createServerFn({ method: 'GET' })
+  .validator((input: unknown) => {
+    const v = (input ?? {}) as { kind?: unknown; id?: unknown };
+    if (typeof v.kind !== 'string' || !/^[a-z][a-z0-9_]{1,40}$/.test(v.kind)) {
+      throw new Error('Unknown.');
+    }
+    if (typeof v.id !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(v.id)) {
+      throw new Error('Unknown.');
+    }
+    return { kind: v.kind, id: v.id };
+  })
+  .handler(({ data }) =>
+    callApi<{ events: ObjectEvent[] }>(
+      getRequest(),
+      `/v1/objects/${data.kind}/${encodeURIComponent(data.id)}/events`,
+    )
+      .then((answer) => answer.events)
+      .catch(() => [] as ObjectEvent[]),
+  );
+
 export const fetchPlace = createServerFn({ method: 'GET' })
   .validator((input: unknown) => ({
     placeId: idOf('plc', (input as { placeId?: unknown })?.placeId),

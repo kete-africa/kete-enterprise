@@ -2855,5 +2855,13 @@
   "asset_nothing_in_progress": "Nothing in progress on this asset.",
   "place_not_found": "This place does not exist, or it is not yours to read.",
   "place_kind": "Place",
-  "place_hosts": "What it hosts"
+  "place_hosts": "What it hosts",
+  "object_history": "Its history",
+  "object_history_empty": "Nothing has happened yet.",
+  "object_history_created": "Declared",
+  "object_history_state": "State: {from} → {to}",
+  "object_history_from_app": "an event from {app}, about this object",
+  "object_history_from_kete": "said by Kete when the object changes",
+  "object_history_tag_event": "event",
+  "object_history_tag_state": "state"
 }

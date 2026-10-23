@@ -2,7 +2,14 @@ import { CanvasIcon, EmptyState, PageSection, Tag } from '@kete/design';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { refusal } from '@/lib/forms';
-import { assetStates, fetchAsset, setAssetState, type AssetState } from '@/lib/objects';
+import { ObjectHistory, useObjectLive } from '@/lib/object-history';
+import {
+  assetStates,
+  fetchAsset,
+  fetchObjectEvents,
+  setAssetState,
+  type AssetState,
+} from '@/lib/objects';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
 import * as m from '@/paraglide/messages.js';
@@ -10,7 +17,13 @@ import { toneOf } from './assets';
 
 export const Route = createFileRoute('/equipements/$assetId')({
   beforeLoad: ({ location }) => requirePerson(location.href),
-  loader: ({ params }) => fetchAsset({ data: { assetId: params.assetId } }),
+  loader: async ({ params }) => {
+    const [card, events] = await Promise.all([
+      fetchAsset({ data: { assetId: params.assetId } }),
+      fetchObjectEvents({ data: { kind: 'asset', id: params.assetId } }),
+    ]);
+    return card ? { ...card, events } : null;
+  },
   component: AssetPage,
 });
 
@@ -24,13 +37,16 @@ const stateWords: Record<AssetState, () => string> = {
 
 /**
  * One asset (spec 100; canvas v7, « Un objet »): its card — kind, state, who answers for it, its
- * four axes, its own figures —, its named links both ways, what is in progress about it, its thread.
- * Every name is one she may read; what she may not read is not named.
+ * four axes, its own figures —, its named links both ways, what is in progress about it, its history
+ * (spec 101), its thread. Every name is one she may read; what she may not read is not named. The
+ * page reads itself again when the asset changes.
  */
 function AssetPage() {
   const { me } = Route.useRouteContext();
   const card = Route.useLoaderData();
   const router = useRouter();
+  const { assetId } = Route.useParams();
+  useObjectLive('asset', assetId);
   const [error, setError] = useState<string | null>(null);
   if (!card) {
     return (
@@ -180,6 +196,13 @@ function AssetPage() {
           </ul>
         )}
       </PageSection>
+
+      <ObjectHistory
+        events={card.events}
+        stateWord={(state) =>
+          state && state in stateWords ? stateWords[state as AssetState]() : (state ?? '')
+        }
+      />
     </AppShell>
   );
 }

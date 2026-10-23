@@ -3,6 +3,7 @@ import { createJobs, defineJob, type Jobs } from '@kete/jobs';
 import { dueAgents, runQueuedTasks, wakeDueAgents } from './features/agents/index.js';
 import { runDueSchedules } from './features/assistant/index.js';
 import { readConnected } from './features/connectors/index.js';
+import { dispatchPending, listenForEvents } from './features/events/index.js';
 import { sendQueuedMail } from './features/mail/index.js';
 import {
   checkDueWatches,
@@ -26,6 +27,8 @@ import { env } from './platform/env.js';
 export async function startWorker(): Promise<Jobs> {
   // The scheduled tasks' runs are kept in the routines' history (spec 051).
   listenForRoutines();
+  // The event path (spec 101): each event dispatched as it is recorded; the minute catches up.
+  void listenForEvents({ dispatch: true });
   const jobs = createJobs({
     // The jobs' own schema belongs to the owner role; an agent's work goes through the app's pool,
     // under row-level security.
@@ -148,6 +151,16 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const sent = await sendDigests();
           if (sent > 0) console.log(`[worker] ${sent} threads summary(ies) queued`);
+        },
+      }),
+      // Events not yet delivered (spec 101): a safety net under the listener, every minute.
+      defineJob({
+        name: 'dispatch-events',
+        schedule: '* * * * *',
+        retryLimit: 0,
+        async handle() {
+          const made = await dispatchPending();
+          if (made > 0) console.log(`[worker] ${made} event delivery(ies)`);
         },
       }),
       // Holdings (spec 087): the six sources said as holdings each minute.

@@ -84,6 +84,7 @@ import {
   objectsRoutes,
   placesRoutes,
 } from './features/objects/index.js';
+import { eventsRoutes, objectHistory, objectLive } from './features/events/index.js';
 import { partiesPermissions, partiesRoutes } from './features/parties/index.js';
 import { projectsFor, projectsPermissions, projectsRoutes } from './features/projects/index.js';
 import { receptionRoutes, requestRoutes } from './features/requests/index.js';
@@ -293,6 +294,10 @@ export function createApi(): Hono {
   v1.route('/tools', toolsRoutes);
   v1.route('/parties', partiesRoutes);
   v1.route('/projects', projectsRoutes);
+  // One event path (spec 101): what happened to an object, live; who follows what.
+  v1.get('/objects/:kind/:id/events', objectHistory);
+  v1.get('/objects/:kind/:id/live', objectLive);
+  v1.route('/events', eventsRoutes);
   v1.route('/objects', objectsRoutes);
   v1.route('/assets', assetsRoutes);
   v1.route('/places', placesRoutes);
