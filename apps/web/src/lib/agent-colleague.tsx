@@ -291,6 +291,19 @@ export function AgentSidePanel({ agent }: { agent: AgentSide }) {
       if (!answer.ok) return setNote(refusal(answer.error));
       await router.invalidate();
     });
+  // While she is away (spec 108): she lets it act for her with her token, or takes it back.
+  const away = (on: boolean) =>
+    void changeAgents({
+      data: { path: `/${agent.agentId}/away`, body: { away: on }, key: crypto.randomUUID() },
+    }).then(async (answer) => {
+      if (!answer.ok) return setNote(refusal(answer.error));
+      setNote(null);
+      await router.invalidate();
+    });
+  const sourceWords: [string, () => string][] = [
+    ...SOURCES,
+    ...agent.apps.map((app): [string, () => string] => [app.product, () => app.name]),
+  ];
   const takeOptions: { value: TakeOnLevel; label: string }[] = [
     { value: 'never', label: m.colleague_never() },
     { value: 'proposes', label: m.colleague_proposes() },
@@ -391,7 +404,7 @@ export function AgentSidePanel({ agent }: { agent: AgentSide }) {
       </Block>
       <Block title={m.colleague_sources()}>
         <ul aria-label={m.colleague_sources()} className="m-0 flex list-none flex-wrap gap-1.5 p-0">
-          {SOURCES.map(([source, word]) => {
+          {sourceWords.map(([source, word]) => {
             const on = agent.sources.includes(source);
             return (
               <li key={source}>
@@ -415,6 +428,19 @@ export function AgentSidePanel({ agent }: { agent: AgentSide }) {
           })}
         </ul>
         <p className="m-0 text-[12px] text-fg-muted">{m.colleague_sources_hint()}</p>
+      </Block>
+      <Block title={m.colleague_away()}>
+        <p className="m-0 text-[12.5px]">
+          {agent.away.since
+            ? m.colleague_away_on({ day: dayWord(agent.away.since) })
+            : m.colleague_away_off()}
+        </p>
+        {agent.mine && agent.away.possible && (
+          <Button variant="secondary" onClick={() => away(!agent.away.since)}>
+            {agent.away.since ? m.colleague_away_take() : m.colleague_away_give()}
+          </Button>
+        )}
+        <p className="m-0 text-[12px] text-fg-muted">{m.colleague_away_hint()}</p>
       </Block>
       <Block title={m.colleague_budget()}>
         <p className="m-0 text-[12.5px]">

@@ -150,3 +150,36 @@ flowchart LR
   prepared —; an evaluation asked at every change of its job, run by the worker with its person's
   rights and its tools played dry; under the threshold it is paused.
 - The memory is the assistant's (`../assistant/memory.ts`), on `@kete/agents`' tables.
+
+## While its person is away (spec 108; kete-core spec 150)
+
+A task runs in the worker — given in her thread, woken by a routine or by an event the agent
+follows — and holds no token of hers: before, an agent reached none of the team's apps. Now, signed
+in, she lets it act for her in her absence (« En votre absence » beside its thread): her token goes
+to the Compte Kete as her consent, which keeps a **standing mandate** and answers its grant, written
+on the agent (`agents.away`, migration `0084_agents_away`). At each task, when its job description
+names one of the team's apps by its product (`prd_…` among its sources), the agent asks the Compte
+Kete for its mandate of now — her claims read again, ten minutes — and receives those apps' tools
+only (`appToolsAway`), each app applying its own rights and autonomy.
+
+```mermaid
+sequenceDiagram
+  participant P as Person (signed in)
+  participant E as Kete Enterprise
+  participant K as Compte Kete
+  participant W as The worker (she is away)
+  participant A as An app of its sources
+  P->>E: POST /v1/agents/:id/away { away: true }
+  E->>K: standing-mandates · her token, the agent
+  K-->>E: grant → agents.away
+  W->>K: standing-mandates/token · the grant
+  K-->>W: her mandate of now · act = the agent
+  W->>A: its tools, with the mandate
+  P->>E: { away: false } → withdrawn here and at the Compte Kete
+```
+
+- **Hers alone to give**: the person it acts for, signed in (never while someone views her space);
+  she or a manager of agents takes it back. Mandates off (`KETE_MANDATES`), it cannot be given.
+- **Never more than her**: refused by the Compte Kete once withdrawn there (Mon espace Kete ·
+  Sécurité) or once she has left; a grant given by someone it no longer acts for is not used.
+- **Only its sources**: an app its job description does not name is not reached.

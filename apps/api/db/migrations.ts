@@ -35,6 +35,7 @@ import {
   agentAutonomyMigrationSql,
   agentSourcesMigrationSql,
   agentFacesMigrationSql,
+  agentAwayMigrationSql,
   evaluationsMigrationSql,
   agentsAtWorkMigrationSql,
   agentTasksMigrationSql,
@@ -318,4 +319,6 @@ export const migrations: Migration[] = [
   { name: '0082_agent_evaluations', sql: (context) => evaluationsMigrationSql(context) },
   // Agents' faces, drawn alike everywhere (spec 107, R6).
   { name: '0083_agent_faces', sql: (context) => agentFacesMigrationSql(context) },
+  // An agent acts while its person is away, with the mandate she gave it (spec 108).
+  { name: '0084_agents_away', sql: (context) => agentAwayMigrationSql(context) },
 ];

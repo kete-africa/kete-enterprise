@@ -7,9 +7,11 @@ import { joinThread, openThread, postMessage } from '@kete/threads';
 import { delegateHolding } from '@kete/work';
 import { asPerson } from '../../platform/acting.js';
 import { getPool, transaction } from '../../platform/db.js';
+import { mandatesOn } from '../../platform/mandates.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import type { Agent, AgentTask } from '../agents/index.js';
 import {
+  awayOf,
   budgetOf,
   evaluationsOf,
   findAgent,
@@ -23,6 +25,7 @@ import { explainDraft, nextRun } from '../assistant/index.js';
 import { decideDraft, reviewDrafts } from '../gateway/index.js';
 import { tell } from '../notifications/index.js';
 import { readModules } from '../organization/index.js';
+import { listResources } from '../registry/index.js';
 import { unitsOfPersonAndAbove } from '../rights/index.js';
 import { engine, entitiesFor } from '../policies/index.js';
 import { namesOf } from './state.js';
@@ -823,6 +826,7 @@ export async function agentSide(db: SqlExecutor, identity: Identity, thread: Thr
   const agent = await findAgent(db, owner.agentId);
   if (!agent) return null;
   const person = await personOfAgent(db, agent);
+  const away = await awayOf(db, agent.agentId);
   const names = await namesOf(db, person ? [person] : [], identity, messageWords().outsider);
   const { rows: month } = await db.query<{ done: string; asked: string; refused: string }>(
     `select count(*) filter (where status = 'done') as done,
@@ -887,5 +891,18 @@ export async function agentSide(db: SqlExecutor, identity: Identity, thread: Thr
         [agent.agentId],
       )
     ).rows.map((r) => ({ type: r.type_pattern, objectKind: r.object_kind, state: r.state })),
+    // The team's apps its job description may name, and whether it acts for her while she is
+    // away, with the mandate she gave it (spec 108).
+    apps: [
+      ...new Map(
+        (await listResources(db))
+          .filter((r) => r.kind === 'app' && r.status === 'active' && r.card)
+          .map((r) => [r.card?.product ?? '', { product: r.card?.product ?? '', name: r.name }]),
+      ).values(),
+    ],
+    away: {
+      possible: mandatesOn(),
+      since: away && away.userId === person ? away.at : null,
+    },
   };
 }

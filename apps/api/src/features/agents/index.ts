@@ -9,6 +9,7 @@ export {
   agentsMigrationSql,
   dueAgents,
 } from './infrastructure/agents.tables.js';
+export { agentAwayMigrationSql, awayOf, type Away } from './away.js';
 export type { How } from './how.js';
 export { useAgentModel } from './record.js';
 export { agentsPermissions, agentsRoutes } from './routes.js';

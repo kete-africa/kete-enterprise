@@ -92,17 +92,45 @@ export async function appToolsFor(
   identity: Parameters<typeof registryFor>[1] & { organizationId: string },
   personToken: string,
   agent: Agent = ASSISTANT,
-): Promise<{
+): Promise<AppTools> {
+  return toolsOfApps(identity, await tokenForAgent(personToken, agent), () => true);
+}
+
+/**
+ * The tools of the apps an agent's job description names (spec 108), while its person is away:
+ * only the team's Kete apps whose product is one of its sources, reached with the mandate she
+ * gave it ahead of time (kete-core spec 150) — her rights as they are now, never more.
+ */
+export async function appToolsAway(
+  identity: Parameters<typeof registryFor>[1] & { organizationId: string },
+  mandate: string | null,
+  products: readonly string[],
+): Promise<AppTools> {
+  return toolsOfApps(
+    identity,
+    mandate,
+    (r) => r.kind === 'app' && !!r.card && products.includes(r.card.product),
+  );
+}
+
+export interface AppTools {
   tools: CapabilityTool[];
   /** The view a tool of an app shows with its result, and the app it comes from (MCP Apps). */
   viewOf: (toolName: string) => { resourceId: string; uri: string } | null;
   close: () => Promise<void>;
-}> {
+}
+
+type AppResource = Awaited<ReturnType<typeof appsOf>>[number];
+
+async function toolsOfApps(
+  identity: Parameters<typeof registryFor>[1] & { organizationId: string },
+  token: string | null,
+  keep: (resource: AppResource) => boolean,
+): Promise<AppTools> {
   const views = new Map<string, { resourceId: string; uri: string }>();
   const viewOf = (toolName: string) => views.get(toolName) ?? null;
-  const token = await tokenForAgent(personToken, agent);
   if (!token) return { tools: [], viewOf, close: async () => undefined };
-  const resources = await appsOf(identity);
+  const resources = (await appsOf(identity)).filter(keep);
   const clients: Client[] = [];
   const found = await Promise.all(
     resources.map(async (resource) => {
