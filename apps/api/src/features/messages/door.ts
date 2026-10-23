@@ -7,6 +7,7 @@ import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
 import { joinThread, messagesOf, postMessage, threadOf } from '@kete/threads';
 import { setReturnTo } from '@kete/work';
 import { z } from 'zod';
+import { timeZoneIn } from '../settings/index.js';
 import { asPerson } from '../../platform/acting.js';
 import { transaction } from '../../platform/db.js';
 import type { IdentityVariables } from '../../platform/identity.js';
@@ -1048,7 +1049,7 @@ export async function confirmGestures(
         cadence: routine.cadence,
         ...(routine.cadence === 'weekly' ? { weekday: routine.weekday ?? 1 } : {}),
         time: routine.time,
-        timeZone: 'Africa/Lome',
+        timeZone: await timeZoneIn(db, identity.organizationId),
         byEmail: false,
         locale: 'fr',
       },

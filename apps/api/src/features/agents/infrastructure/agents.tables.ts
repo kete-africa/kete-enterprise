@@ -235,6 +235,12 @@ export async function setJob(
   return rows[0] ? toAgent(rows[0]) : null;
 }
 
+/** An agent's face (spec 107; D-062, R6): a glyph and a tint, from its template or chosen. */
+export function agentFacesMigrationSql(options: { schema: string }): string {
+  return `alter table ${options.schema}.agents
+  add column face jsonb check (face is null or (face ? 'glyph'));`;
+}
+
 /**
  * An agent's sources of tools and the template it came from (spec 104): « kete » by default, what
  * every agent had before.

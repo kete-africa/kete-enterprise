@@ -122,3 +122,16 @@ export function clearCenterSetting(
     by: input.by,
   });
 }
+
+/** The organization's time zone (`kete.time_zone`): Lomé's until it says otherwise. */
+export async function timeZoneIn(db: SqlExecutor, organizationId: string): Promise<string> {
+  return (await settingsIn(db, organizationId)).value<string>('kete.time_zone');
+}
+
+/** The hour of a moment in a time zone, 0 to 23. */
+export function hourIn(at: Date, timeZone: string): number {
+  const hour = new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hour12: false, timeZone })
+    .formatToParts(at)
+    .find((p) => p.type === 'hour')?.value;
+  return Number(hour ?? at.getUTCHours()) % 24;
+}

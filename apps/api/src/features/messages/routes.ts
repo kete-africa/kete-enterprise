@@ -54,7 +54,7 @@ import {
   pendingOf,
   waitForApproval,
 } from './outside.js';
-import { actionsOf, namesOf, stateOf } from './state.js';
+import { actionsOf, facesOf, namesOf, stateOf } from './state.js';
 import { messageWords } from './words.js';
 
 type Ctx = Context<{ Variables: IdentityVariables }>;
@@ -345,6 +345,7 @@ export const threadRoutes = new Hono<{ Variables: IdentityVariables }>()
         pending: await pendingOf(db, threadId),
         ...state,
         names: await namesOf(db, ids, identity, messageWords().outsider),
+        faces: await facesOf(db, ids),
         mailbox: (await mailboxOf(db, identity.userId)) !== null,
       };
     });

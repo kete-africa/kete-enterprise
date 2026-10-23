@@ -161,9 +161,10 @@ export const takeAgentTemplate = defineCommand({
           }
         : {}),
     });
-    await db.query(`update agents set template = $2 where agent_id = $1`, [
+    await db.query(`update agents set template = $2, face = $3 where agent_id = $1`, [
       created.agentId,
       `${input.product}:${input.name}`,
+      t.avatar ? JSON.stringify(t.avatar) : null,
     ]);
     // What wakes it: the events it follows, as subscriptions of its own (spec 101).
     for (const trigger of t.triggers ?? []) {

@@ -39,3 +39,6 @@ flowchart LR
   data never shown, only its words). `GET /v1/objects/:kind/:id/live`: a stream that tells the
   screen when the object changes; the screen then reads it again. `GET /v1/events/failures`: what
   could not arrive, for the administrator.
+- **An object's life** (`life.ts`, spec 107): a consumer of the index's changes of state — an
+  object reaching a state its kind calls closed puts its thread away; opened again, its thread
+  opens. A thread merged into another stays where it went.

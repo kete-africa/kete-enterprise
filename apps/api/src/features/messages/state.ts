@@ -166,6 +166,18 @@ export async function stateOf(db: SqlExecutor, thread: Thread) {
  * third party, else her address; who signs in, by her account's name; anyone else is someone
  * outside the organization — never an identifier.
  */
+/** The faces of the agents a thread shows (spec 107, R6): those that have one of their own. */
+export async function facesOf(
+  db: SqlExecutor,
+  ids: string[],
+): Promise<Record<string, { glyph: string; tint?: string }>> {
+  const { rows } = await db.query<{ agent_id: string; face: { glyph: string; tint?: string } }>(
+    `select agent_id, face from agents where agent_id = any($1) and face is not null`,
+    [[...new Set(ids)]],
+  );
+  return Object.fromEntries(rows.map((r) => [r.agent_id, r.face]));
+}
+
 export async function namesOf(
   db: SqlExecutor,
   ids: string[],
