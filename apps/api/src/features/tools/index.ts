@@ -3,6 +3,7 @@ export { reachable, useToolsFetch } from './infrastructure/public-fetch.js';
 export { toolsRoutes } from './routes.js';
 export {
   importedCapabilities,
+  listToolSets,
   reserveToolNames,
   toolSetsVersion,
   toolsMigrationSql,

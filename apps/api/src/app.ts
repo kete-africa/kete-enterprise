@@ -87,6 +87,7 @@ import {
 import { eventsRoutes, objectHistory, objectLive } from './features/events/index.js';
 import { measureRoutes } from './features/measure/index.js';
 import { readViewRoute, viewsRoutes } from './features/views/index.js';
+import { connectionsRoutes, connectionWebhook } from './features/connections/index.js';
 import { partiesPermissions, partiesRoutes } from './features/parties/index.js';
 import { projectsFor, projectsPermissions, projectsRoutes } from './features/projects/index.js';
 import { receptionRoutes, requestRoutes } from './features/requests/index.js';
@@ -293,6 +294,8 @@ export function createApi(): Hono {
   // Threads: one per object, her thread « Kete », the router's cards, mail bridged (spec 089).
   v1.route('/threads', threadRoutes);
   v1.route('/connectors', connectorRoutes);
+  // One connection, three uses: read, act, signal — and its health (spec 105).
+  v1.route('/connections', connectionsRoutes);
   v1.route('/tools', toolsRoutes);
   v1.route('/parties', partiesRoutes);
   v1.route('/projects', projectsRoutes);
@@ -405,6 +408,8 @@ export function createApi(): Hono {
   open.route('/chat', phoneWebhookRoutes);
   // Planifier in a calendar, under its secret address (spec 098).
   open.route('/agenda', feedPublicRoutes);
+  // An external tool's events, signed with its connection's own secret (spec 105).
+  open.post('/connections/:id/webhook', connectionWebhook);
   api.route('/public', open);
   // A refused gesture says why, with a stable code the screens translate.
   api.onError((error, c) => {

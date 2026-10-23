@@ -18,6 +18,7 @@
     "@kete/capabilities": "npm:@kete-africa/capabilities@^0.6.2",
     "@kete/channels": "npm:@kete-africa/channels@^0.3.5",
     "@kete/commands": "npm:@kete-africa/commands@^0.3.8",
+    "@kete/connections": "npm:@kete-africa/connections@^0.2.0",
     "@kete/drafts": "npm:@kete-africa/drafts@^0.4.6",
     "@kete/files": "npm:@kete-africa/files@^0.5.0",
     "@kete/jobs": "npm:@kete-africa/jobs@^0.1.9",

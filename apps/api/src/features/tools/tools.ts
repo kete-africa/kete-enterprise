@@ -1,5 +1,6 @@
 import type { CapabilityDefinition } from '@kete/capabilities';
 import { defineCommand } from '@kete/commands';
+import { allows, grantsOf } from '@kete/connections';
 import { newId } from '@kete/records';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
 import {
@@ -314,13 +315,18 @@ async function callTool(row: Row, tool: ImportedTool, input: Record<string, unkn
  * own, with the same gesture, policies and journal.
  */
 export async function importedCapabilities(db: SqlExecutor): Promise<CapabilityDefinition[]> {
-  const { rows } = await db.query<Row>(
-    `select ${COLUMNS} from imported_tool_sets where status = 'active' order by prefix`,
+  const { rows } = await db.query<Row & { grants: unknown }>(
+    `select ${COLUMNS}, grants from imported_tool_sets where status = 'active' order by prefix`,
   );
-  return rows.flatMap((row) =>
-    toolCapabilities(row.tools, {
+  return rows.flatMap((row) => {
+    // One connection, three uses (spec 105): a read when it may read, an act only when granted.
+    const grants = grantsOf(row.grants);
+    const granted = row.tools.filter((tool) =>
+      tool.effect === 'read' ? grants.read : allows(grants, 'act', tool.name).allowed,
+    );
+    return toolCapabilities(granted, {
       permissions: { read: TOOLS_READ, act: TOOLS_ACT },
       call: (tool, input) => callTool(row, tool, input),
-    }),
-  );
+    });
+  });
 }
