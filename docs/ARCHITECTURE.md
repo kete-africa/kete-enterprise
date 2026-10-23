@@ -205,6 +205,23 @@ One log of what changed — an app's business events naming their object, the in
 changes of state —; subscriptions as data; a dispatcher that claims each delivery with its effect,
 retries a failure five times, then shows it. See `apps/api/src/features/events/README.md`.
 
+### The Measure (spec 102)
+
+```mermaid
+flowchart LR
+  I[indicator · source, rule, owner] --> R[reading · her rights, filters, period]
+  C[the center · holdings, money, assets] --> R
+  A[an app · data set summed up there, or figure] -->|her token| R
+  R --> P[provenance · source, filters, rows, moment]
+  R -->|red for the organization| H[holding « action corrective »]
+  R --> F[freezes · reviews]
+```
+
+An indicator of the referential names its source; its reading is live, hers, and says where it
+comes from; a silent source is missing and red, never zero; turning red for the organization gives
+its owner a holding. One aggregation engine (`@kete/metrics`) for the apps' data sets and the
+center's tables. See `apps/api/src/features/measure/README.md`.
+
 ## Where it runs
 
 - Any Postgres 16 or more (with pgvector) and any S3-compatible storage, or a disk for a single

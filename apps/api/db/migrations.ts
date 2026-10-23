@@ -95,6 +95,7 @@ import {
 } from '../src/features/messages/index.js';
 import { objectsMigrationSql } from '../src/features/objects/index.js';
 import { eventsMigrationSql } from '../src/features/events/index.js';
+import { measureMigrationSql } from '../src/features/measure/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -294,4 +295,6 @@ export const migrations: Migration[] = [
   { name: '0075_objects_at_the_center', sql: (context) => objectsMigrationSql(context) },
   // One event path: the log, who follows what, each delivery kept (spec 101, kete-core ADR 0017).
   { name: '0076_one_event_path', sql: (context) => eventsMigrationSql(context) },
+  // The Measure: indicators' sources and rules, their colours, freezes (spec 102, ADR 0015).
+  { name: '0077_the_measure', sql: (context) => measureMigrationSql(context) },
 ];

@@ -19,6 +19,7 @@ import { useClosureModel } from '../src/features/closure/index.js';
 import { seedDay } from '../db/demo/day.js';
 import { seedErp } from '../db/demo/erp.js';
 import { seedAssets, seedMoney, seedParties, seedProject } from '../db/demo/references.js';
+import { seedMeasure } from '../db/demo/measure.js';
 import { seedTime } from '../db/demo/time.js';
 import { demoEmail } from '../db/demo/kya.js';
 import { seedLibrary } from '../db/demo/library.js';
@@ -202,6 +203,10 @@ if (manager && colleague) {
     holder: { userId: manager.account_user_id },
   });
   if (assetsSeeded > 0) say(`Équipements : ${assetsSeeded} dans /equipements, dont un en alerte.`);
+  // The Measure (spec 102): two indicators read live from the center, the others typed.
+  const measured = await seedMeasure({ api: app, admin: token });
+  if (measured > 0)
+    say(`Indicateurs : ${measured} lus en direct dans /indicateurs, avec leur source.`);
   const day = await seedDay({
     api: app,
     organizationId: ORGANIZATION,

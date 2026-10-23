@@ -4,6 +4,7 @@ import { dueAgents, runQueuedTasks, wakeDueAgents } from './features/agents/inde
 import { runDueSchedules } from './features/assistant/index.js';
 import { readConnected } from './features/connectors/index.js';
 import { dispatchPending, listenForEvents } from './features/events/index.js';
+import { watchIndicators } from './features/measure/index.js';
 import { sendQueuedMail } from './features/mail/index.js';
 import {
   checkDueWatches,
@@ -161,6 +162,16 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const made = await dispatchPending();
           if (made > 0) console.log(`[worker] ${made} event delivery(ies)`);
+        },
+      }),
+      // The Measure (spec 102): the center's indicators read for the organization; red obliges.
+      defineJob({
+        name: 'watch-indicators',
+        schedule: '*/15 * * * *',
+        retryLimit: 0,
+        async handle() {
+          const turned = await watchIndicators();
+          if (turned > 0) console.log(`[worker] ${turned} indicator(s) turned red`);
         },
       }),
       // Holdings (spec 087): the six sources said as holdings each minute.

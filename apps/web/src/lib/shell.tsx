@@ -53,6 +53,7 @@ export type Page =
   | 'phone'
   | 'surveys'
   | 'performance'
+  | 'indicators'
   | 'team'
   | 'meetings'
   | 'compliance'
@@ -262,6 +263,19 @@ export function placesOf(me: Me): Place[] {
       href: '/performance',
       icon: 'chart',
       label: m.nav_performance(),
+      group: 'tools',
+    },
+    // The indicators read live, with where each figure comes from (spec 102).
+    opens(me, 'performance', [
+      'performance:manage',
+      'performance:measure',
+      'performance:validate',
+      'performance:read',
+    ]) && {
+      page: 'indicators',
+      href: '/indicateurs',
+      icon: 'chart',
+      label: m.nav_indicators(),
       group: 'tools',
     },
     opens(me, 'meetings', ['meetings:manage', 'meetings:publish']) && {
