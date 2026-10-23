@@ -164,6 +164,30 @@ flowchart LR
   RT --> T[The object's thread · cleaned · original kept]
 ```
 
+## Objects at the center (spec 100)
+
+One index of every object that matters (doctrine D-062, R1, R2, R4, R15; kete-core ADR 0014): the
+center's references and the apps' objects, with their title, state, four axes and named links —
+never an app's data. Each person reads what her rights already give her.
+
+```mermaid
+flowchart LR
+  subgraph Declared once
+    CK[the center's kinds · party, project, unit, place, asset] --> K[kindsOf]
+    M[an app's manifest · objects] -->|registry card| K
+  end
+  P[(projects · parties · units · places · assets)] -->|triggers| X[(kete_objects)]
+  A[an app · PUT /public/apps/objects] -->|its kinds, states, links| X
+  X --> L[(object_links)]
+  F[holdings · money facts · time facts] -->|object kind + id| X
+  X -->|sight: her own · her projects · her units · objects:read · parties:read| R[/v1/objects · « # » · search · objects_find · object_read/]
+```
+
+The center's references keep their row by triggers; an app says its objects with its own token;
+places and assets are two references born here, each with its thread. « # », the search, the
+gateway's `objects_find` and `object_read`, and the « Équipements » screens all read the index.
+See `apps/api/src/features/objects/README.md`.
+
 ## Where it runs
 
 - Any Postgres 16 or more (with pgvector) and any S3-compatible storage, or a disk for a single

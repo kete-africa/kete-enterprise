@@ -3,6 +3,7 @@ import { transaction } from '../../platform/db.js';
 import { appOf } from '../../platform/identity.js';
 import { appDecision, productOfClient } from './decisions.js';
 import { receiveAppEvent, type EventOutcome } from './events.js';
+import { ObjectsError, receiveAppObjects } from '../objects/index.js';
 import { AppModelError, receiveAppHoldings } from './model.js';
 
 const organization = /^org_[\w-]{2,64}$/;
@@ -66,6 +67,43 @@ export const appEventRoutes = new Hono()
       );
     } catch (error) {
       if (error instanceof AppModelError) {
+        return c.json(
+          { error: error.code, issues: error.issues },
+          error.code === 'unknown_app' ? 404 : 422,
+        );
+      }
+      throw error;
+    }
+  })
+  // Its objects, with its own token (spec 100, kete-core spec 142): the center's index follows them.
+  .put('/objects', async (c) => {
+    const app = await appOf(c.req.raw);
+    if (!app) return c.json({ error: 'unauthenticated' }, 401);
+    const body = (await c.req.json().catch(() => null)) as {
+      organization?: unknown;
+      product?: unknown;
+      objects?: unknown;
+    } | null;
+    const org = body?.organization;
+    const product = body?.product;
+    if (
+      typeof org !== 'string' ||
+      !organization.test(org) ||
+      typeof product !== 'string' ||
+      !productId.test(product) ||
+      !Array.isArray(body?.objects)
+    ) {
+      return c.json({ error: 'invalid_input' }, 422);
+    }
+    const objects = body.objects as unknown[];
+    try {
+      return c.json(
+        await transaction(org, (db) =>
+          receiveAppObjects(db, org, app.clientId, { product, objects }),
+        ),
+      );
+    } catch (error) {
+      if (error instanceof ObjectsError) {
         return c.json(
           { error: error.code, issues: error.issues },
           error.code === 'unknown_app' ? 404 : 422,

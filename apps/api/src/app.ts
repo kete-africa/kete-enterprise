@@ -78,6 +78,12 @@ import {
   timeRoutes,
 } from './features/time/index.js';
 import { closureRoutes } from './features/closure/index.js';
+import {
+  assetsRoutes,
+  objectsPermissions,
+  objectsRoutes,
+  placesRoutes,
+} from './features/objects/index.js';
 import { partiesPermissions, partiesRoutes } from './features/parties/index.js';
 import { projectsFor, projectsPermissions, projectsRoutes } from './features/projects/index.js';
 import { receptionRoutes, requestRoutes } from './features/requests/index.js';
@@ -120,6 +126,7 @@ export const permissionCatalog = [
   ...decisionsPermissions,
   ...agentsPermissions,
   ...partiesPermissions,
+  ...objectsPermissions,
   ...projectsPermissions,
   ...moneyPermissions,
   ...timePermissions,
@@ -286,6 +293,9 @@ export function createApi(): Hono {
   v1.route('/tools', toolsRoutes);
   v1.route('/parties', partiesRoutes);
   v1.route('/projects', projectsRoutes);
+  v1.route('/objects', objectsRoutes);
+  v1.route('/assets', assetsRoutes);
+  v1.route('/places', placesRoutes);
   v1.route('/money', moneyRoutes);
   // The time the apps say, and Planifier's days (spec 079, doctrine D-050).
   v1.route('/time/feed', feedRoutes);

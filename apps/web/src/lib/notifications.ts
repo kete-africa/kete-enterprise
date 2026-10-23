@@ -68,7 +68,7 @@ export const unsubscribeDevice = createServerFn({ method: 'POST' })
   });
 
 export interface SearchResult {
-  kind: 'conversation' | 'action' | 'decision' | 'person' | 'app' | 'document';
+  kind: 'conversation' | 'action' | 'decision' | 'person' | 'app' | 'document' | 'object';
   title: string;
   detail: string | null;
   href: string;

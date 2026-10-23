@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { actingPerson } from '../../platform/acting.js';
 import { createAction } from '../actions/index.js';
 import { inboxFor } from '../decisions/index.js';
+import { findObjects, objectCard } from '../objects/index.js';
 import { measureFromReading, readingsToTake } from '../performance/index.js';
 import { listParties } from '../parties/index.js';
 import { projectsFor } from '../projects/index.js';
@@ -116,6 +117,76 @@ export const gatewayCapabilities = [
         email: party.email,
         channel: party.channel,
       }));
+    },
+  }),
+  defineCapability({
+    name: 'objects_find',
+    description:
+      'The objects of the organization the person may read — projects, third parties, units, places, assets (installations, machines, vehicles) and the apps’ objects (tickets, invoices, contracts…) — found by words, kind, project, third party, unit, person or state. Each comes with its state and its four axes; closed ones only when asked.',
+    permission: GATEWAY_PERMISSION,
+    autonomy: 1,
+    input: z.object({
+      q: z.string().trim().max(120).optional(),
+      kind: z
+        .string()
+        .regex(/^[a-z][a-z0-9_]{1,40}$/)
+        .optional(),
+      projectId: z.string().max(80).optional(),
+      partyId: z.string().max(80).optional(),
+      unitId: z.string().max(80).optional(),
+      personId: z.string().max(128).optional(),
+      state: z.string().max(41).optional(),
+      closed: z.boolean().default(false),
+    }),
+    async run(input, { db }) {
+      return (await findObjects(db, person(), { ...input, limit: 30 })).map((o) => ({
+        kind: o.kind,
+        id: o.id,
+        title: o.title,
+        state: o.stateLabel ?? o.state,
+        projectId: o.projectId,
+        partyId: o.partyId,
+        unitId: o.unitId,
+        personId: o.personId,
+        href: o.href,
+      }));
+    },
+  }),
+  defineCapability({
+    name: 'object_read',
+    description:
+      'One object the person may read, with its named links both ways (an asset produced by a project, located at a place, concerned by a ticket), what is in progress about it, and whether it has a thread.',
+    permission: GATEWAY_PERMISSION,
+    autonomy: 1,
+    input: z.object({
+      kind: z.string().regex(/^[a-z][a-z0-9_]{1,40}$/),
+      id: z.string().min(1).max(128),
+    }),
+    async run(input, { db }) {
+      const card = await objectCard(db, person(), input.kind, input.id);
+      if (!card) return { found: false };
+      return {
+        found: true,
+        object: {
+          kind: card.object.kind,
+          id: card.object.id,
+          title: card.object.title,
+          state: card.object.stateLabel ?? card.object.state,
+          projectId: card.object.projectId,
+          partyId: card.object.partyId,
+          unitId: card.object.unitId,
+          personId: card.object.personId,
+        },
+        links: card.links.map((l) => ({
+          relation: l.label,
+          kind: l.object.kind,
+          id: l.object.id,
+          title: l.object.title,
+          state: l.object.stateLabel ?? l.object.state,
+        })),
+        inProgress: card.holdings.map((h) => ({ what: h.what, state: h.state, due: h.due })),
+        hasThread: card.threadId !== null,
+      };
     },
   }),
   defineCapability({

@@ -21,6 +21,7 @@ const kinds: { kind: SearchResult['kind']; label: () => string }[] = [
   { kind: 'action', label: m.search_kind_action },
   { kind: 'conversation', label: m.search_kind_conversation },
   { kind: 'document', label: m.search_kind_document },
+  { kind: 'object', label: m.search_kind_object },
   { kind: 'person', label: m.search_kind_person },
   { kind: 'app', label: m.search_kind_app },
 ];

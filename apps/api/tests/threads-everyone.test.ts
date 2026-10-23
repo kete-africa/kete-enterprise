@@ -211,7 +211,8 @@ describe('the conversation (FR-001)', () => {
     };
     expect(opened.cited[`project:${ids.project}`]).toEqual({
       label: 'Climatisation Hôtel du Golfe',
-      state: 'open',
+      // Its state in words, from its kind (spec 100): what a person reads.
+      state: 'En cours',
     });
   });
 

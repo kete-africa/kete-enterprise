@@ -8,15 +8,18 @@ import { readRegister } from '../actions/index.js';
 import { listConversations } from '../assistant/index.js';
 import { inboxFor } from '../decisions/index.js';
 import { myCard, unitCard } from '../directory/index.js';
+import { findObjects } from '../objects/index.js';
 import { knowledgeEmbedderFor, libraryOpen, readerKeys } from '../knowledge/index.js';
 import { registryFor } from '../registry/index.js';
 import { personOfAccount } from '../structure/index.js';
 
 // Searching everywhere (spec 030): one question across what a person may see — her conversations,
-// her actions, her decisions, the people of her units, her apps, the library. Every result comes
+// her actions, her decisions, the objects she may read, the people of her units, her apps, the
+// library. Every result comes
 // from the features' own readers, so the search shows exactly what the screens show her.
 
-export type ResultKind = 'conversation' | 'action' | 'decision' | 'person' | 'app' | 'document';
+export type ResultKind =
+  'conversation' | 'action' | 'decision' | 'person' | 'app' | 'document' | 'object';
 
 export interface SearchResult {
   kind: ResultKind;
@@ -67,6 +70,19 @@ export const searchRoutes = new Hono<{ Variables: IdentityVariables }>().get('/'
           .map((a) => ({ kind: 'action', title: a.title, detail: a.dueOn, href: '/actions' })),
       );
     }
+
+    // The objects she may read (spec 100, D-062 R15): projects, third parties, places, assets, the
+    // apps' objects — found by their title, opened where they live.
+    add(
+      (await findObjects(db, identity, { q: query, limit: PER_KIND }))
+        .filter((o) => o.href)
+        .map((o) => ({
+          kind: 'object',
+          title: o.title,
+          detail: o.stateLabel,
+          href: o.href ?? '',
+        })),
+    );
 
     const inbox = await inboxFor(db, identity);
     add(

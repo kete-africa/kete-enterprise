@@ -30,7 +30,7 @@ import type { IdentityVariables } from '../../platform/identity.js';
 import { fileStorage } from '../../platform/storage.js';
 import { transcribeAudio, TranscriptionUnavailable } from '../../platform/transcription.js';
 import { usageStore } from '../../platform/usage.js';
-import { isAdministrator } from '../rights/index.js';
+import { CENTER, findObjects, kindsOf } from '../objects/index.js';
 import { mayManage, me, readable, refuse } from './access.js';
 import { startTurn } from './door.js';
 import { namesOf } from './state.js';
@@ -73,23 +73,26 @@ export async function citedStates(
   references: { kind: string; id: string; app?: string }[],
 ): Promise<Record<string, { label: string; state: string | null }>> {
   const states: Record<string, { label: string; state: string | null }> = {};
-  const projects = references.filter((r) => r.kind === 'project' && !r.app).map((r) => r.id);
-  const parties = references.filter((r) => r.kind === 'party' && !r.app).map((r) => r.id);
-  if (projects.length > 0) {
-    const { rows } = await db.query<{ project_id: string; name: string; status: string }>(
-      `select project_id, name, status from projects where project_id = any($1)`,
-      [projects],
-    );
-    for (const row of rows)
-      states[`project:${row.project_id}`] = { label: row.name, state: row.status };
-  }
-  if (parties.length > 0) {
-    const { rows } = await db.query<{ party_id: string; name: string; roles: string[] }>(
-      `select party_id, name, roles from parties where party_id = any($1)`,
-      [parties],
+  if (references.length > 0) {
+    // The index says each object's title and state now (spec 100): projects, parties, assets, the
+    // apps' objects alike.
+    const kinds = await kindsOf(db);
+    const { rows } = await db.query<{
+      kind: string;
+      object_id: string;
+      title: string;
+      state: string | null;
+    }>(
+      `select kind, object_id, title, state from kete_objects
+        where (kind, object_id) in (select * from unnest($1::text[], $2::text[]))`,
+      [references.map((r) => r.kind), references.map((r) => r.id)],
     );
     for (const row of rows) {
-      states[`party:${row.party_id}`] = { label: row.name, state: row.roles.join(', ') || null };
+      const kind = kinds.find((k) => k.kind === row.kind);
+      states[`${row.kind}:${row.object_id}`] = {
+        label: row.title,
+        state: kind?.states.find((x) => x.id === row.state)?.label.fr ?? row.state,
+      };
     }
   }
   for (const reference of references) {
@@ -99,22 +102,14 @@ export async function citedStates(
   return states;
 }
 
-/** The objects « # » offers her: her projects, the third parties, the apps' objects she reads. */
+/**
+ * The objects « # » offers her: what she may read of the index — projects, third parties, assets,
+ * places, the apps' objects (spec 100) — then the apps' objects whose threads she is in that their
+ * app has not said to the index yet.
+ */
 async function objectsFor(db: SqlExecutor, identity: Identity, q: string) {
   const like = `%${q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
-  const admin = isAdministrator(identity);
-  const { rows: projects } = await db.query<{ project_id: string; name: string; status: string }>(
-    `select p.project_id, p.name, p.status from projects p
-      where p.name ilike $1
-        and ($2 or exists (select 1 from dossier_members m
-                            where m.dossier_id = p.dossier_id and m.user_id = $3))
-      order by p.created_at desc limit 8`,
-    [like, admin, identity.userId],
-  );
-  const { rows: parties } = await db.query<{ party_id: string; name: string; roles: string[] }>(
-    `select party_id, name, roles from parties where name ilike $1 order by name limit 6`,
-    [like],
-  );
+  const indexed = await findObjects(db, identity, { q, limit: 16 });
   const { rows: objects } = await db.query<{
     object_kind: string;
     object_id: string;
@@ -124,6 +119,8 @@ async function objectsFor(db: SqlExecutor, identity: Identity, q: string) {
     `select t.object_kind, t.object_id, o.product, t.title
        from thread_objects o join kete_threads t using (thread_id)
       where (t.title ilike $1 or t.object_id ilike $1)
+        and not exists (select 1 from kete_objects x
+                         where x.kind = t.object_kind and x.object_id = t.object_id)
         and exists (select 1 from kete_thread_members m
                      where m.thread_id = t.thread_id and m.member_kind = 'person'
                        and m.member_id = $2 and m.until is null)
@@ -131,12 +128,12 @@ async function objectsFor(db: SqlExecutor, identity: Identity, q: string) {
     [like, identity.userId],
   );
   return [
-    ...projects.map((p) => ({ kind: 'project', id: p.project_id, label: p.name, state: p.status })),
-    ...parties.map((p) => ({
-      kind: 'party',
-      id: p.party_id,
-      label: p.name,
-      state: p.roles.join(', '),
+    ...indexed.map((o) => ({
+      kind: o.kind,
+      id: o.id,
+      ...(o.product !== CENTER ? { app: o.product } : {}),
+      label: o.title,
+      state: o.stateLabel,
     })),
     ...objects.map((o) => ({
       kind: o.object_kind,

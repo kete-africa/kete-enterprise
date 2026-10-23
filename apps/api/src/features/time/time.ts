@@ -68,6 +68,14 @@ export const datedFactInput = z
       .optional(),
     visibility: z.enum(['shared', 'busy', 'private']).optional(),
     href: z.url().max(600).optional(),
+    /** The object it is about: it inherits that object's axes (spec 100, kete-core spec 142). */
+    object: z
+      .object({
+        kind: z.string().regex(/^[a-z][a-z0-9_]{1,40}$/),
+        id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/),
+      })
+      .strict()
+      .optional(),
     cancelled: z.boolean().optional(),
   })
   .strict()
@@ -93,14 +101,14 @@ export async function sayTimeFact(
   }
   await db.query(
     `insert into time_facts (organization_id, source, key, kind, label, day, until, starts_at,
-       ends_at, person_ids, project_id, party_id, visibility, href, said_by)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       ends_at, person_ids, project_id, party_id, visibility, href, said_by, object_kind, object_id)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
      on conflict (organization_id, source, key) do update set
        kind = excluded.kind, label = excluded.label, day = excluded.day, until = excluded.until,
        starts_at = excluded.starts_at, ends_at = excluded.ends_at, person_ids = excluded.person_ids,
        project_id = excluded.project_id, party_id = excluded.party_id,
        visibility = excluded.visibility, href = excluded.href, said_by = excluded.said_by,
-       updated_at = now()`,
+       object_kind = excluded.object_kind, object_id = excluded.object_id, updated_at = now()`,
     [
       organizationId,
       said.source,
@@ -117,6 +125,8 @@ export async function sayTimeFact(
       fact.visibility ?? 'shared',
       fact.href ?? null,
       said.by,
+      fact.object?.kind ?? null,
+      fact.object?.id ?? null,
     ],
   );
   return 'kept';
