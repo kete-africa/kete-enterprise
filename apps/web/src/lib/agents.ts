@@ -176,7 +176,7 @@ export const fetchAgents = createServerFn({ method: 'GET' }).handler(
 );
 
 const paths =
-  /^\/(|agt_[0-9a-f-]+\/(status|wake|tasks|autonomy|sharing)|signals\/sig_[0-9a-f-]+\/close|tasks\/tsk_[0-9a-f-]+\/(stop|pause|resume|write|take-over))$/;
+  /^\/(|agt_[0-9a-f-]+\/(status|wake|tasks|autonomy|sharing|away)|signals\/sig_[0-9a-f-]+\/close|tasks\/tsk_[0-9a-f-]+\/(stop|pause|resume|write|take-over))$/;
 
 export const changeAgents = createServerFn({ method: 'POST' })
   .validator((input: unknown) => {

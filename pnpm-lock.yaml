@@ -53,8 +53,8 @@ importers:
         specifier: npm:@kete-africa/ai@^0.6.8
         version: '@kete-africa/ai@0.6.8(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
       '@kete/auth':
-        specifier: npm:@kete-africa/auth@^0.5.1
-        version: '@kete-africa/auth@0.5.1'
+        specifier: npm:@kete-africa/auth@^0.6.0
+        version: '@kete-africa/auth@0.6.0'
       '@kete/capabilities':
         specifier: npm:@kete-africa/capabilities@^0.6.3
         version: '@kete-africa/capabilities@0.6.3(drizzle-orm@0.45.3(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(kysely@0.28.17)(pg@8.23.1))'
@@ -171,8 +171,8 @@ importers:
   apps/web:
     dependencies:
       '@kete/auth':
-        specifier: npm:@kete-africa/auth@^0.5.1
-        version: '@kete-africa/auth@0.5.1'
+        specifier: npm:@kete-africa/auth@^0.6.0
+        version: '@kete-africa/auth@0.6.0'
       '@kete/conversation':
         specifier: npm:@kete-africa/conversation@^0.3.0
         version: '@kete-africa/conversation@0.3.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(supports-color@7.2.0)'
@@ -1087,8 +1087,8 @@ packages:
   '@kete-africa/ai@0.6.8':
     resolution: {integrity: sha512-CNgpH49xWzOF6BHTn2S1lhVqSRoTn9C5w062nbzoaBG0201wYLNgoObFSn/Ac29t6kbNVd1ZmH8xes9YG+wpGQ==, tarball: https://npm.pkg.github.com/download/@kete-africa/ai/0.6.8/8a142b3166d4b0696cab3e80a2307dec0a0e6133}
 
-  '@kete-africa/auth@0.5.1':
-    resolution: {integrity: sha512-lU/uB6t+aAZ9qbgdbgqo7XLDbNTLiiN3aG+B8/U6/3H/7Lc/4yZb3N4GDAProEpOecDrPyT+ym/9hjINKRgRqQ==, tarball: https://npm.pkg.github.com/download/@kete-africa/auth/0.5.1/a94d22a3a9f8056453102777acd0df3cd7ee83a8}
+  '@kete-africa/auth@0.6.0':
+    resolution: {integrity: sha512-EfhL7oaXm7r91ecTALjxJPbnoOvflYSW+bAfGww87hFQVWebTNPQYBkTuxW2mSKJSqUa3lUOs8rSwTfuRRI4Kg==, tarball: https://npm.pkg.github.com/download/@kete-africa/auth/0.6.0/f7c8c55a5bfbbd0f3a774d27edf4309c874f2fb8}
 
   '@kete-africa/capabilities@0.6.3':
     resolution: {integrity: sha512-1+O1UU2jRSRffRp/eaVG4kZ2gSePqNE+CIlJ+CnE0dVbTOp7iuR5sugMBJUXSxqzjd2rG4gFzKFootLG/gcbyw==, tarball: https://npm.pkg.github.com/download/@kete-africa/capabilities/0.6.3/3f702d5fd3ecc64f34957b59978a093c10dc64bf}
@@ -6492,7 +6492,7 @@ snapshots:
       - drizzle-orm
       - pg-native
 
-  '@kete-africa/auth@0.5.1':
+  '@kete-africa/auth@0.6.0':
     dependencies:
       jose: 6.2.12
 

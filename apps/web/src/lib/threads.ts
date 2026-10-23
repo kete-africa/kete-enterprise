@@ -203,8 +203,12 @@ export interface AgentSide {
     failures: { name: string; failures: string[] }[];
     askedAt: string;
   } | null;
-  /** Its sources of tools (spec 104): « kete » and Kete's own sets. */
+  /** Its sources of tools (spec 104): « kete », Kete's own sets, the team's apps by product. */
   sources: string[];
+  /** The team's apps its job description may name (spec 108). */
+  apps: { product: string; name: string }[];
+  /** Whether it acts for her while she is away, with the mandate she gave it (spec 108). */
+  away: { possible: boolean; since: string | null };
   /** The events that set it to work. */
   follows: { type: string; objectKind: string | null; state: string | null }[];
 }

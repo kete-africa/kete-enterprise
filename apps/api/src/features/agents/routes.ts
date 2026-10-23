@@ -5,8 +5,10 @@ import type { z } from 'zod';
 import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal, runGesture } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
+import { standingMandates } from '../../platform/mandates.js';
 import { readModules } from '../organization/index.js';
 import { isAdministrator, reach, reachesAnything, unitsOfPersonAndAbove } from '../rights/index.js';
+import { giveAgentAway, takeAgentAway } from './away.js';
 import { budgetOf, setAgentBudget } from './budget.js';
 import { catalogueOf, enableAgentTemplate, takeAgentTemplate } from './catalogue.js';
 import { askEvaluation, evaluationsOf, THRESHOLD, writeEvalCase } from './evaluations.js';
@@ -290,6 +292,43 @@ export function agentsRoutes(permissions: readonly string[]) {
           if ((await personOfAgent(db, agent)) !== userId) throw forbidden();
         });
         return run(c, shareAgent, { ...((await bodyOf(c)) as object), agentId });
+      })
+      // While she is away (spec 108; kete-core spec 150): she lets her agent act for her, signed
+      // in — her token is her consent to the Compte Kete — or takes it back, here or there.
+      .post('/:agentId/away', async (c) => {
+        const agentId = c.req.param('agentId');
+        const { organizationId, userId } = c.get('identity');
+        const body = (await bodyOf(c)) as { away?: unknown } | null;
+        if (typeof body?.away !== 'boolean') {
+          throw new GestureRefusal(422, 'invalid_input', 'Away: true or false.');
+        }
+        if (!body.away) {
+          await transaction(organizationId, (db) => ownAgent(c, db, agentId));
+          const taken = await runGesture(c, takeAgentAway, { agentId });
+          // Withdrawn at the Compte Kete too; if it does not answer, the grant left is unused.
+          if (taken.grant) {
+            await standingMandates()
+              ?.revoke(organizationId, taken.grant)
+              .catch(() => false);
+          }
+          return c.json({ agentId, away: false });
+        }
+        if (c.get('viewedBy')) throw new GestureRefusal(403, 'view_as_forbidden', 'Hers to give.');
+        const agent = await transaction(organizationId, async (db) => {
+          const found = await ownAgent(c, db, agentId);
+          if ((await personOfAgent(db, found)) !== userId) throw forbidden();
+          return found;
+        });
+        const standing = standingMandates();
+        if (!standing) {
+          throw new GestureRefusal(409, 'mandates_off', 'Agents carry no mandate here yet.');
+        }
+        const token = /^Bearer (.+)$/.exec(c.req.header('authorization') ?? '')?.[1] ?? '';
+        const grant = await standing.grant(token, { id: agent.agentId, name: agent.name });
+        if (!grant) {
+          throw new GestureRefusal(409, 'mandate_refused', 'The Compte Kete gave no mandate.');
+        }
+        return run(c, giveAgentAway, { agentId, grant, userId });
       })
       // What it did these last days (spec 052).
       // Its budget this month (spec 106): what it spent, its own limit, the organization's.

@@ -12,7 +12,7 @@
     "screens": "tsx scripts/screens.ts"
   },
   "dependencies": {
-    "@kete/auth": "npm:@kete-africa/auth@^0.5.1",
+    "@kete/auth": "npm:@kete-africa/auth@^0.6.0",
     "@kete/conversation": "npm:@kete-africa/conversation@^0.3.0",
     "@kete/design": "npm:@kete-africa/design@^0.16.0",
     "@kete/intelligence": "npm:@kete-africa/intelligence@^0.4.6",

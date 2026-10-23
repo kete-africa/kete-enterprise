@@ -14,7 +14,13 @@ import { organizationLanguageModel, organizationModelConfig } from '../../platfo
 import { sourcesOf, type Source } from '../../platform/sources.js';
 import { usageStore } from '../../platform/usage.js';
 import { abilitiesIn, abilityTools, computerForRun, researcherOf } from '../ai/index.js';
-import { decideDraft, toolPermissions, toolsForAgent, underPolicies } from '../gateway/index.js';
+import {
+  appToolsAway,
+  decideDraft,
+  toolPermissions,
+  toolsForAgent,
+  underPolicies,
+} from '../gateway/index.js';
 import { notificationWords, tell } from '../notifications/index.js';
 import { readModules } from '../organization/index.js';
 import { putTask, spaceHref } from '../workspace/index.js';
@@ -24,6 +30,7 @@ import { listMemories, memoryPrompt, rememberTool } from '../assistant/memory.js
 import { budgetSpent } from './budget.js';
 import { objectContextFor } from './context.js';
 import { agentToolSets } from './toolsets.js';
+import { awayMandate, awayOf, productsOf } from './away.js';
 
 // Tasks given to agents (spec 036): a person gives one of her agents an instruction; the worker
 // runs it in the background — her capabilities narrowed to its job description, every commitment
@@ -822,6 +829,22 @@ export async function runTask(
         });
         for (const tool of keteOwn)
           facts.set(tool.name, { permission: undefined, level: tool.autonomy });
+        // The apps its job description names (spec 108): a task runs while she is away, so the
+        // agent carries the mandate she gave it ahead of time — her rights as they are now, each
+        // app applying its own autonomy. None when she gave none, or withdrew it.
+        const products = productsOf(agent.sources);
+        const apps =
+          products.length > 0
+            ? await appToolsAway(
+                identityOf(person),
+                await transaction(organizationId, (db) => awayOf(db, agent.agentId))
+                  .then((given) => awayMandate(organizationId, given, userId))
+                  .catch(() => null),
+                products,
+              ).catch(() => null)
+            : null;
+        for (const tool of apps?.tools ?? [])
+          facts.set(tool.name, { permission: undefined, level: tool.autonomy });
         // What it works on, when the task is about an object: its card, links, last words.
         const context = await transaction(organizationId, (db) =>
           objectContextFor(db, identityOf(person), taskId),
@@ -833,6 +856,7 @@ export async function runTask(
         const tools = [
           ...(agent.sources.includes('kete') ? own : []),
           ...keteOwn,
+          ...(apps?.tools ?? []),
           rememberTool(person, agent.agentId),
           ...beyond,
           ...delegationTools(organizationId, userId, task, agent),
@@ -859,31 +883,35 @@ export async function runTask(
             return result;
           },
         }));
-        return runAgent({
-          agent: agent.agentId,
-          name: agent.name,
-          model,
-          instructions:
-            `Tu es ${agent.name}, un agent de Kete Enterprise. Ta mission : ${agent.mission}\n` +
-            'Tu agis pour une personne et jamais au-delà de ses droits. Ce qui engage passe par un ' +
-            'brouillon qu’elle valide. Réponds en français, brièvement : ce que tu as fait, ce qui ' +
-            'attend sa décision, ce que tu n’as pas pu faire.',
-          messages: [
-            {
-              role: 'user',
-              content: [context, memoryPrompt(remembered), promptOf(task)]
-                .filter(Boolean)
-                .join('\n\n'),
-            },
-          ],
-          tools,
-          maxSteps: 8,
-          metering,
-          // What a page or a computer said is outside content: nothing acts at once after it.
-          outside: { tools: OUTSIDE_ABILITIES },
-          ...(researcher ? { subAgents: [researcher] } : {}),
-          abortSignal: abort.signal,
-        });
+        try {
+          return await runAgent({
+            agent: agent.agentId,
+            name: agent.name,
+            model,
+            instructions:
+              `Tu es ${agent.name}, un agent de Kete Enterprise. Ta mission : ${agent.mission}\n` +
+              'Tu agis pour une personne et jamais au-delà de ses droits. Ce qui engage passe par un ' +
+              'brouillon qu’elle valide. Réponds en français, brièvement : ce que tu as fait, ce qui ' +
+              'attend sa décision, ce que tu n’as pas pu faire.',
+            messages: [
+              {
+                role: 'user',
+                content: [context, memoryPrompt(remembered), promptOf(task)]
+                  .filter(Boolean)
+                  .join('\n\n'),
+              },
+            ],
+            tools,
+            maxSteps: 8,
+            metering,
+            // What a page or a computer said is outside content: nothing acts at once after it.
+            outside: { tools: OUTSIDE_ABILITIES },
+            ...(researcher ? { subAgents: [researcher] } : {}),
+            abortSignal: abort.signal,
+          });
+        } finally {
+          await apps?.close();
+        }
       },
     );
     const parked = await park(organizationId, taskId);
