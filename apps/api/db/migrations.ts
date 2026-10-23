@@ -27,10 +27,7 @@ import { formsMigrationSql } from '../src/features/forms/index.js';
 import { dossiersMigrationSql } from '../src/features/dossiers/index.js';
 import { todoMigrationSql } from '../src/features/todo/index.js';
 import { knowledgeTablesSql } from '../src/features/knowledge/index.js';
-import {
-  attentionTablesSql,
-  notificationsTablesSql,
-} from '../src/features/notifications/index.js';
+import { attentionTablesSql, notificationsTablesSql } from '../src/features/notifications/index.js';
 import { appDecisionsMigrationSql, appEventsMigrationSql } from '../src/features/apps/index.js';
 import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/commands';
 import { outboxMigrationSql } from '@kete/sdk';
