@@ -429,19 +429,21 @@ export function AgentSidePanel({ agent }: { agent: AgentSide }) {
         </ul>
         <p className="m-0 text-[12px] text-fg-muted">{m.colleague_sources_hint()}</p>
       </Block>
-      <Block title={m.colleague_away()}>
-        <p className="m-0 text-[12.5px]">
-          {agent.away.since
-            ? m.colleague_away_on({ day: dayWord(agent.away.since) })
-            : m.colleague_away_off()}
-        </p>
-        {agent.mine && agent.away.possible && (
-          <Button variant="secondary" onClick={() => away(!agent.away.since)}>
-            {agent.away.since ? m.colleague_away_take() : m.colleague_away_give()}
-          </Button>
-        )}
-        <p className="m-0 text-[12px] text-fg-muted">{m.colleague_away_hint()}</p>
-      </Block>
+      {agent.mine && (
+        <Block title={m.colleague_away()}>
+          <p className="m-0 text-[12.5px]">
+            {agent.away.since
+              ? m.colleague_away_on({ day: dayWord(agent.away.since) })
+              : m.colleague_away_off()}
+          </p>
+          {agent.away.possible && (
+            <Button variant="secondary" onClick={() => away(!agent.away.since)}>
+              {agent.away.since ? m.colleague_away_take() : m.colleague_away_give()}
+            </Button>
+          )}
+          <p className="m-0 text-[12px] text-fg-muted">{m.colleague_away_hint()}</p>
+        </Block>
+      )}
       <Block title={m.colleague_budget()}>
         <p className="m-0 text-[12.5px]">
           {agent.budget.monthlyTokens === null
