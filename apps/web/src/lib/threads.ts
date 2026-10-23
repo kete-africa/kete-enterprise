@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 import { callApi, sendGesture, type GestureAnswer } from '@/platform/api';
+import type { AnswerTable } from '@/lib/workspace';
 
 // Threads (doctrine D-057; specs 089, 090, 098): one per object, groups, direct threads, her thread
 // « Kete ». A trace at least as good as mail, and a place people live in: unread, live, members,
@@ -68,6 +69,8 @@ export interface ThreadRun {
   title: string;
   steps: { state: 'done' | 'now' | 'todo' | 'ask'; label: string; tag?: string }[];
   seconds: number | null;
+  /** The tables its tools read, drawn under its answer (spec 111). */
+  tables?: (AnswerTable & { tool: string })[];
 }
 
 /** What a thread holds, for « Infos du fil » (spec 099, FR-002). */

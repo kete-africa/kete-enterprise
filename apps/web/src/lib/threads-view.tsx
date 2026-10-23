@@ -33,6 +33,7 @@ import {
   Requests,
   RoutineBanner,
 } from '@/lib/agent-colleague';
+import { AnswerTable } from '@/lib/chat/answer-table';
 import { FromPage, InviteToKete, KeteSide, Proposals, TurnAtWork } from '@/lib/kete-door';
 import { refusal } from '@/lib/forms';
 import { shownMoney } from '@/lib/money';
@@ -981,6 +982,26 @@ function Members({ view, me, people }: { view: ThreadView; me: string; people: P
   const [adding, setAdding] = useState(false);
   const [chosen, setChosen] = useState('');
   const members = (view.thread.members ?? []).filter((mb) => !mb.until);
+  // A client reached on several channels is one member: one row, its channels said.
+  const channelOf = (id: string) =>
+    id.startsWith('whatsapp:')
+      ? m.threads_channel_whatsapp()
+      : id.startsWith('telegram:')
+        ? m.threads_channel_telegram()
+        : id.startsWith('mail:')
+          ? m.threads_channel_mail()
+          : '';
+  const rows: { member: (typeof members)[number]; channels: string[] }[] = [];
+  for (const mb of members) {
+    const same =
+      mb.kind === 'contact'
+        ? rows.find(
+            (r) => r.member.kind === 'contact' && view.names[r.member.id] === view.names[mb.id],
+          )
+        : undefined;
+    if (same) same.channels.push(channelOf(mb.id));
+    else rows.push({ member: mb, channels: mb.kind === 'contact' ? [channelOf(mb.id)] : [] });
+  }
   const holder = view.thread.holder.id === me;
   const addable = people.filter((p) => !members.some((mb) => mb.id === p.id));
   const change = (body: { add?: string[]; remove?: string[] }) =>
@@ -988,9 +1009,9 @@ function Members({ view, me, people }: { view: ThreadView; me: string; people: P
       router.invalidate(),
     );
   return (
-    <StateBlock title={m.threads_members({ count: String(members.length) })}>
+    <StateBlock title={m.threads_members({ count: String(rows.length) })}>
       <ul className="grid gap-1">
-        {members.map((mb) => (
+        {rows.map(({ member: mb, channels }) => (
           <li key={`${mb.id}-${mb.since}`} className="flex items-center gap-2 text-body-sm">
             <Avatar name={view.names[mb.id] ?? ''} kind={mb.kind} />
             <span className="truncate">{view.names[mb.id] ?? m.threads_someone()}</span>
@@ -999,7 +1020,9 @@ function Members({ view, me, people }: { view: ThreadView; me: string; people: P
                 ? m.threads_holds()
                 : mb.role === 'subscriber'
                   ? m.threads_subscriber()
-                  : m.threads_since({ day: dayOf(mb.since) })}
+                  : channels.filter(Boolean).length
+                    ? channels.filter(Boolean).join(' · ')
+                    : m.threads_since({ day: dayOf(mb.since) })}
             </span>
             {holder && mb.id !== me && mb.id !== view.thread.holder.id && mb.kind !== 'contact' && (
               <button
@@ -1680,6 +1703,9 @@ export function ThreadsScreen({
                   {view.pages[message.first] && (
                     <FromPage page={view.pages[message.first] as { href: string; title: string }} />
                   )}
+                  {run?.tables?.map((table, index) => (
+                    <AnswerTable key={`${table.tool}-${index}`} table={table} />
+                  ))}
                   {view.requests?.[message.first] && (
                     <Requests list={view.requests[message.first] ?? []} />
                   )}

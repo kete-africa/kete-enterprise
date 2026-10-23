@@ -25,3 +25,18 @@ overrides:
   # @mcp-ui/client's MCP SDK (GHSA-22jm-h49p-29qw, GHSA-46jr-4wx8-v453), vite 7 (GHSA-587h-7wmj-h5pm).
   '@modelcontextprotocol/sdk@>=1.3.0 <1.32.0': ^1.32.1
   'vite@>=7.0.0 <7.3.7': ^7.3.7
+  # Zod can exhaust memory validating oversized input (GHSA-mrhx-c7xc-m3w5, 2026-10-23): zod 4
+  # lifted to 4.6.6, and the MCP SDK and MCP Apps, which accept zod 4, given it.
+  'zod@>=4.0.0 <4.6.6': ^4.6.6
+  '@modelcontextprotocol/sdk>zod': ^4.6.6
+  '@modelcontextprotocol/ext-apps>zod': ^4.6.6
+  # body-parser under Mastra's A2A server (DoS, published 2026-10-23): fixed in 2.4.0.
+  'body-parser@>=2.0.0 <2.4.0': ^2.4.0
+
+# Advisories without a fix where they are left (reviewed at each release):
+auditConfig:
+  ignoreGhsas:
+    # Zod 3, which has no fixed 3.x, remains only under @kete/design's DESIGN.md tooling (build
+    # time, Kete's own file) and @mcp-ui/client, which validates in her browser what an app's view
+    # sends to its own frame; every zod at the server is 4.6.6 or later.
+    - GHSA-mrhx-c7xc-m3w5

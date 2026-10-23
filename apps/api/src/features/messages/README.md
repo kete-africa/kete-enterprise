@@ -100,6 +100,9 @@ flowchart LR
   words are kept in `kete_turns` as they come (`GET /:threadId/turn`); `POST /turns/:turnId/stop`
   stops it, and what was said stays. Read unasked (a group's message that gives orders), it speaks
   only to propose, and only to its author.
+- **What it read, drawn** (spec 111): the rows a tool read and says how to show (`tableOf`) are kept
+  with the turn's run (`thread_runs.tables`, migration `0086_run_tables`) and drawn under its answer
+  — never only announced.
 - **What it proposes** waits under its message (`kete_proposals`, returned by `GET /:threadId` as
   `proposals`): `POST /proposals/:id/confirm` (the gestures she keeps, as corrected) makes the
   holdings — « pour action » messages in the object's thread, returned to whom she names —, the

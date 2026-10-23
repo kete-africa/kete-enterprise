@@ -162,20 +162,25 @@ export function AnswerTable({
         render: (row) => sayCell(row.original[column.key], column.kind),
       };
     }),
-    {
-      key: '__act',
-      label: <span className="sr-only">{m.table_act()}</span>,
-      align: 'end',
-      render: (row) => (
-        <button
-          type="button"
-          onClick={() => speakOf([row.original])}
-          className="font-semibold text-link underline"
-        >
-          {m.table_act()}
-        </button>
-      ),
-    },
+    // « Agir » only where there is a field to say it in.
+    ...(onSpeak
+      ? [
+          {
+            key: '__act',
+            label: <span className="sr-only">{m.table_act()}</span>,
+            align: 'end' as const,
+            render: (row: Row<typeof features, Line>) => (
+              <button
+                type="button"
+                onClick={() => speakOf([row.original])}
+                className="font-semibold text-link underline"
+              >
+                {m.table_act()}
+              </button>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -218,7 +223,7 @@ export function AnswerTable({
           )}
         </span>
         <span className="flex flex-wrap items-center gap-2">
-          {chosen.length > 0 && (
+          {chosen.length > 0 && onSpeak && (
             <Button onClick={() => speakOf(chosen.map((row) => row.original))}>
               {m.table_act_selection({ count: chosen.length })}
             </Button>

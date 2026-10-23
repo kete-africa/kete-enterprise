@@ -91,7 +91,7 @@ function TodoPage() {
   useAssistantPage(
     current
       ? {
-          kind: kindLabel(current.kind),
+          kind: kindLabel(current.kind, current.source),
           title: current.title,
           href: `/a-faire?item=${keyOf(current)}`,
         }
@@ -171,7 +171,7 @@ function TodoPage() {
                         >
                           <span className="flex items-center justify-between gap-2">
                             <Tag tone={item.kind === 'draft' ? 'agent' : 'neutral'}>
-                              {kindLabel(item.kind)}
+                              {kindLabel(item.kind, item.source)}
                             </Tag>
                             {item.overdue ? (
                               <span className="text-body-sm text-state-error-fg">
@@ -303,7 +303,7 @@ function Header({ item, children }: { item: DayItem; children?: ReactNode }) {
     <header className="grid gap-2">
       <p className="flex flex-wrap items-center gap-2 text-body-sm text-fg-muted">
         <Icon name={kindIcon[item.kind]} size={16} />
-        <span>{kindLabel(item.kind)}</span>
+        <span>{kindLabel(item.kind, item.source)}</span>
         {children}
       </p>
       <h2 className="font-heading text-[24px] leading-tight font-semibold">{item.title}</h2>
@@ -565,12 +565,28 @@ function DecisionPane({
       </ol>
 
       <dl className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] gap-x-4 gap-y-2 text-body-sm">
-        <dt className="text-fg-muted">{m.todo_reference()}</dt>
-        <dd>{request.reference}</dd>
+        {request.reference && (
+          <>
+            <dt className="text-fg-muted">{m.todo_reference()}</dt>
+            <dd>{request.reference}</dd>
+          </>
+        )}
         {request.measure !== null && (
           <>
-            <dt className="text-fg-muted">{m.todo_measure()}</dt>
-            <dd className="font-number">{number.format(request.measure)}</dd>
+            <dt className="text-fg-muted">
+              {request.measureLabel
+                ? getLocale() === 'en'
+                  ? request.measureLabel.en
+                  : request.measureLabel.fr
+                : m.todo_measure()}
+            </dt>
+            <dd className="font-number">
+              {request.measureWords
+                ? getLocale() === 'en'
+                  ? request.measureWords.en
+                  : request.measureWords.fr
+                : number.format(request.measure)}
+            </dd>
           </>
         )}
         <dt className="text-fg-muted">{m.todo_asked_on()}</dt>

@@ -9,9 +9,10 @@ import { setReturnTo } from '@kete/work';
 import { z } from 'zod';
 import { timeZoneIn } from '../settings/index.js';
 import { asPerson } from '../../platform/acting.js';
+import { tableOf, type AnswerTable } from '../../platform/tables.js';
 import { transaction } from '../../platform/db.js';
 import type { IdentityVariables } from '../../platform/identity.js';
-import { findAgent, getTask, stateOfAgent, stopTask } from '../agents/index.js';
+import { findAgent, getTask, keteToolSets, stateOfAgent, stopTask } from '../agents/index.js';
 import {
   createSchedule,
   meteringStore,
@@ -393,7 +394,7 @@ export async function contextOf(db: SqlExecutor, identity: Identity, thread: Thr
     ...state.holdings.map((h) => h.holder.id),
     ...state.cards.map((h) => h.holder.id),
   ];
-  const names = await namesOf(db, ids, identity, messageWords().outsider);
+  const names = await namesOf(db, ids, identity, messageWords().teammate);
   return [
     thread.object ? `Objet : ${thread.object.kind} ${thread.object.id}` : 'Fil sans objet.',
     `Membres : ${members.map((m) => `${names[m.id]} (${m.id})`).join(', ') || '—'}`,
@@ -529,6 +530,8 @@ async function runTurn(
   const controller = new AbortController();
   running.set(turnId, controller);
   const steps: Step[] = [{ state: 'done', label: words.readThread, tag: words.levelRead }];
+  // The rows its tools read and say how to show: drawn under its answer, never only announced.
+  const tables: (AnswerTable & { tool: string })[] = [];
   const collected: Collected = { gestures: [], policies: [], handovers: [] };
   let text = '';
   let failure: 'no_model' | 'failed' | null = null;
@@ -551,7 +554,10 @@ async function runTurn(
     else {
       await asPerson(identity, async () => {
         const door = doorTools(identity, collected);
-        const tools = input.review ? door : [...(await toolsForPerson(identity)), ...door];
+        // The same turn as Kete Intelligence (D-061): its gestures and Kete's own sets — the
+        // library, the team's tables, forms, documents, dashboards — each with her rights.
+        const own = input.review ? [] : Object.values(await keteToolSets(identity)).flat();
+        const tools = input.review ? door : [...(await toolsForPerson(identity)), ...own, ...door];
         const levelOf = new Map(tools.map((t) => [t.name, t.autonomy]));
         const labelOf = (name: string) =>
           name === 'propose_gestures'
@@ -614,6 +620,9 @@ async function runTurn(
             });
             await save(true);
           } else if (part['type'] === 'tool-result') {
+            const output = part['output'] as { output?: unknown } | null;
+            const read = tableOf(output?.output);
+            if (read && tables.length < 4) tables.push({ tool: String(part['toolName']), ...read });
             const label = labelOf(String(part['toolName']));
             const step = steps.findLast((s) => s.label === label && s.state === 'now');
             if (step) step.state = 'done';
@@ -674,8 +683,8 @@ async function runTurn(
     });
     const messageId = posted.message.id;
     await db.query(
-      `insert into thread_runs (organization_id, message_id, title, steps, seconds)
-       values ($1, $2, $3, $4, $5)`,
+      `insert into thread_runs (organization_id, message_id, title, steps, seconds, tables)
+       values ($1, $2, $3, $4, $5, $6)`,
       [
         organizationId,
         messageId,
@@ -687,6 +696,7 @@ async function runTurn(
         }),
         JSON.stringify(steps),
         Math.round((Date.now() - started) / 1000),
+        JSON.stringify(stopped ? [] : tables),
       ],
     );
     await db.query(
@@ -1105,7 +1115,7 @@ export async function inviteToKete(
   if (thread.kind !== 'kete' || thread.holder.id !== identity.userId) {
     throw new ProposalError('invalid', 'Only her own thread « Kete » takes an invitation.');
   }
-  const names = await namesOf(db, people, identity, messageWords().outsider);
+  const names = await namesOf(db, people, identity, messageWords().teammate);
   await db.query(`update kete_threads set kind = 'group', title = $2 where thread_id = $1`, [
     thread.id,
     messageWords().keteGroup(identity.name, people.map((id) => names[id] ?? '').filter(Boolean)),

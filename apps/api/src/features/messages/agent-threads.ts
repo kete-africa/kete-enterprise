@@ -827,7 +827,7 @@ export async function agentSide(db: SqlExecutor, identity: Identity, thread: Thr
   if (!agent) return null;
   const person = await personOfAgent(db, agent);
   const away = await awayOf(db, agent.agentId);
-  const names = await namesOf(db, person ? [person] : [], identity, messageWords().outsider);
+  const names = await namesOf(db, person ? [person] : [], identity, messageWords().teammate);
   const { rows: month } = await db.query<{ done: string; asked: string; refused: string }>(
     `select count(*) filter (where status = 'done') as done,
             coalesce(sum(cardinality(draft_ids)), 0) as asked,

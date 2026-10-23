@@ -22,10 +22,21 @@ export type SubjectHandler = (
 const subjects = new Map<string, SubjectHandler>();
 const families: { matches: (subject: string) => boolean; handler: SubjectHandler }[] = [];
 
+type Words = { fr: string; en: string };
+
+/** What a request's measure is, in words: a label, and the words of its levels when it has some. */
+export interface SubjectMeasure {
+  label: Words;
+  levels?: Record<string, Words>;
+}
+
 /** A subject, and its words when they come from an app's card. */
 export interface SubjectEntry {
   subject: string;
-  label?: { fr: string; en: string };
+  label?: Words;
+  measure?: SubjectMeasure;
+  /** Its reference is Kete's own id, never shown to a person. */
+  internalReference?: boolean;
 }
 
 /** Where subjects come from beyond the features: the apps' cards (spec 023). */
@@ -38,15 +49,18 @@ const listeners: DecidedListener[] = [];
 
 /** The words of the features' own subjects: a person reads them, never the subject's code. */
 const ownLabels = new Map<string, { fr: string; en: string }>();
+const ownWords = new Map<string, Omit<SubjectEntry, 'subject' | 'label'>>();
 
 /** A feature declares a subject of requests, what deciding one does, and its words. */
 export function registerSubject(
   subject: string,
   handler: SubjectHandler,
   label?: { fr: string; en: string },
+  words?: Omit<SubjectEntry, 'subject' | 'label'>,
 ): void {
   subjects.set(subject, handler);
   if (label) ownLabels.set(subject, label);
+  if (words) ownWords.set(subject, words);
 }
 
 /** A family of subjects handled alike: the apps' (`prd_….…`, spec 023). */
@@ -190,7 +204,7 @@ export async function subjectsOf(db: SqlExecutor): Promise<SubjectEntry[]> {
   return [
     ...knownSubjects().map((subject) => {
       const label = ownLabels.get(subject);
-      return label ? { subject, label } : { subject };
+      return { subject, ...(label ? { label } : {}), ...ownWords.get(subject) };
     }),
     ...fromApps,
   ];

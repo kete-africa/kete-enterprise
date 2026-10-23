@@ -27,7 +27,7 @@ export interface Comment {
 }
 
 export interface DecisionDetail {
-  request: InboxRequest & { reference: string; measure: number | null };
+  request: InboxRequest & { reference: string | null; measure: number | null };
   mayDecide: boolean;
   requesterName: string | null;
   analysis: Analysis | null;
@@ -62,6 +62,8 @@ export const fetchDecision = createServerFn({ method: 'GET' })
         overdue: d.request.overdue,
         reference: d.request.reference,
         measure: d.request.measure,
+        measureLabel: d.request.measureLabel ?? null,
+        measureWords: d.request.measureWords ?? null,
         steps: d.request.steps.map((s) => ({
           position: s.position,
           rule: s.rule,

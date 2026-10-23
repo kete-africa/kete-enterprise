@@ -12,4 +12,16 @@ registerSubject(
   },
   // What a person reads in « Décider », instead of the subject's code.
   { fr: 'Ouverture d’un outil', en: 'Opening a tool' },
+  // Its measure is the tool's risk (`riskLevel`); its reference, the promotion's own id.
+  {
+    measure: {
+      label: { fr: 'Risque', en: 'Risk' },
+      levels: {
+        '1': { fr: 'faible', en: 'low' },
+        '2': { fr: 'moyen', en: 'medium' },
+        '3': { fr: 'élevé', en: 'high' },
+      },
+    },
+    internalReference: true,
+  },
 );

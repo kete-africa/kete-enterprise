@@ -97,6 +97,7 @@ import {
   messagesComfortMigrationSql,
   messagesLiveMigrationSql,
   messagesMigrationSql,
+  runTablesMigrationSql,
 } from '../src/features/messages/index.js';
 import { objectsMigrationSql } from '../src/features/objects/index.js';
 import { eventsMigrationSql } from '../src/features/events/index.js';
@@ -323,4 +324,6 @@ export const migrations: Migration[] = [
   { name: '0084_agents_away', sql: (context) => agentAwayMigrationSql(context) },
   // One attention model: who is told, of what, on which channel, once (spec 109, R14).
   { name: '0085_one_attention', sql: (context) => attentionTablesSql(context) },
+  // The tables a turn of Kete read, kept with its run and drawn under its answer (spec 111).
+  { name: '0086_run_tables', sql: (context) => runTablesMigrationSql(context) },
 ];
