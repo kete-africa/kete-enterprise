@@ -93,6 +93,7 @@ import {
   messagesLiveMigrationSql,
   messagesMigrationSql,
 } from '../src/features/messages/index.js';
+import { objectsMigrationSql } from '../src/features/objects/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -288,4 +289,6 @@ export const migrations: Migration[] = [
   { name: '0073_agents_as_colleagues', sql: (context) => agentThreadsMigrationSql(context) },
   // Mail as decided: what Kete reads in each box, its folders (spec 099, FR-018).
   { name: '0074_mail_as_decided', sql: (context) => mailSettingsMigrationSql(context) },
+  // The objects at the center: the index, named links, places and assets (spec 100, D-062).
+  { name: '0075_objects_at_the_center', sql: (context) => objectsMigrationSql(context) },
 ];

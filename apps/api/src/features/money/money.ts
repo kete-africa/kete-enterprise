@@ -63,6 +63,14 @@ export const moneyFactInput = z
       .string()
       .regex(/^pty_[0-9a-f-]{8,64}$/)
       .optional(),
+    /** The object it is about: it inherits that object's axes (spec 100, kete-core spec 142). */
+    object: z
+      .object({
+        kind: z.string().regex(/^[a-z][a-z0-9_]{1,40}$/),
+        id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/),
+      })
+      .strict()
+      .optional(),
     href: z.url().max(600).optional(),
   })
   .strict();
@@ -103,13 +111,14 @@ export async function sayFact(
   if (fact.party_id && !party) throw new MoneyRefusal('unknown_party');
   await db.query(
     `insert into money_facts (organization_id, source, key, kind, amount, currency, occurred_on,
-       label, project_id, post, party_id, href, said_by)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       label, project_id, post, party_id, href, said_by, object_kind, object_id)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      on conflict (organization_id, source, key) do update
        set kind = excluded.kind, amount = excluded.amount, currency = excluded.currency,
            occurred_on = excluded.occurred_on, label = excluded.label,
            project_id = excluded.project_id, post = excluded.post, party_id = excluded.party_id,
-           href = excluded.href, said_by = excluded.said_by, updated_at = now()`,
+           href = excluded.href, said_by = excluded.said_by, object_kind = excluded.object_kind,
+           object_id = excluded.object_id, updated_at = now()`,
     [
       organizationId,
       said.source,
@@ -124,6 +133,8 @@ export async function sayFact(
       party?.partyId ?? null,
       fact.href ?? null,
       said.by,
+      fact.object?.kind ?? null,
+      fact.object?.id ?? null,
     ],
   );
 }

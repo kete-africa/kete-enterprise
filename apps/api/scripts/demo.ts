@@ -18,7 +18,7 @@ import {
 import { useClosureModel } from '../src/features/closure/index.js';
 import { seedDay } from '../db/demo/day.js';
 import { seedErp } from '../db/demo/erp.js';
-import { seedMoney, seedParties, seedProject } from '../db/demo/references.js';
+import { seedAssets, seedMoney, seedParties, seedProject } from '../db/demo/references.js';
 import { seedTime } from '../db/demo/time.js';
 import { demoEmail } from '../db/demo/kya.js';
 import { seedLibrary } from '../db/demo/library.js';
@@ -195,6 +195,13 @@ if (manager && colleague) {
     const moneySaid = await seedMoney({ api: app, admin: token });
     if (moneySaid > 0) say(`Argent : ${moneySaid} mouvements écrits d’avance sur ce projet.`);
   }
+  // The objects at the center (spec 100): two places and four assets, one born of the project.
+  const assetsSeeded = await seedAssets({
+    api: app,
+    admin: token,
+    holder: { userId: manager.account_user_id },
+  });
+  if (assetsSeeded > 0) say(`Équipements : ${assetsSeeded} dans /equipements, dont un en alerte.`);
   const day = await seedDay({
     api: app,
     organizationId: ORGANIZATION,

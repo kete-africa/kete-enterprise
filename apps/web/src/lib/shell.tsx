@@ -30,6 +30,7 @@ export type Page =
   | 'resources'
   | 'apps'
   | 'parties'
+  | 'assets'
   | 'projects'
   | 'plan'
   | 'notifications'
@@ -232,6 +233,8 @@ export function placesOf(me: Me): Place[] {
       label: m.nav_parties(),
       group: 'me',
     },
+    // What the organization installs or owns and keeps (spec 100, D-056).
+    { page: 'assets', href: '/equipements', icon: 'tool', label: m.nav_assets(), group: 'me' },
     // What stands behind the center (spec 070): one door to every business tool.
     { page: 'apps', href: '/apps', icon: 'apps', label: m.nav_apps(), group: 'me' },
     { page: 'resources', href: '/ressources', icon: 'apps', label: m.nav_resources(), group: 'me' },
@@ -466,6 +469,7 @@ function sectionsOf(me: Me, current: Page): PlaceSection[] {
       href: '/tiers',
       icon: 'people',
     },
+    { id: 'assets', label: m.nav_assets(), href: '/equipements', icon: 'tool' },
   ];
   // What she pinned (spec 049), after her board.
   const pinned: ShellPlace[] = [
@@ -554,6 +558,7 @@ const shellWords = (): ShellWords => ({
 });
 
 const resultIcon: Record<SearchResult['kind'], IconName> = {
+  object: 'folder',
   conversation: 'sparkle',
   action: 'check',
   decision: 'flag',
