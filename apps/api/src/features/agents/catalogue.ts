@@ -3,6 +3,7 @@ import { newId } from '@kete/records';
 import { validateAgentTemplate, type AgentTemplate } from '@kete/sdk';
 import type { SqlExecutor } from '@kete/tenancy';
 import { z } from 'zod';
+import { kindsOf } from '../objects/index.js';
 import { listResources, registerAgent } from '../registry/index.js';
 import { AgentRuleError } from './commands.js';
 import { findAgent, insertAgent, setJob } from './infrastructure/agents.tables.js';
@@ -80,6 +81,42 @@ export async function catalogueOf(db: SqlExecutor): Promise<CatalogueEntry[]> {
     ...entry,
     enabled: enabled.has(`${entry.product}:${entry.template.name}`),
   }));
+}
+
+type Words = { fr: string; en: string };
+
+/** What wakes an agent of the catalogue, in the organization's words (canvas v7). */
+export type Wake =
+  | { kind: 'state'; object: Words; state: Words }
+  | { kind: 'event'; event: string }
+  | { kind: 'routine'; time: string };
+
+/** A template's triggers, its object kinds and states named as the organization names them. */
+export async function wakesOf(db: SqlExecutor, template: AgentTemplate): Promise<Wake[]> {
+  const kinds = await kindsOf(db);
+  return (template.triggers ?? []).map((trigger): Wake => {
+    if ('routine' in trigger) return { kind: 'routine', time: trigger.routine };
+    const kind = trigger.object_kind ? kinds.find((k) => k.kind === trigger.object_kind) : null;
+    const state = kind?.states.find((s) => s.id === trigger.state);
+    if (kind && state) {
+      return {
+        kind: 'state',
+        object: { fr: kind.label.fr, en: kind.label.en },
+        state: { fr: state.label.fr, en: state.label.en },
+      };
+    }
+    return { kind: 'event', event: trigger.event };
+  });
+}
+
+/** The team's apps by their product: who ships an agent, which apps a job description names. */
+export async function appNamesOf(db: SqlExecutor): Promise<Record<string, string>> {
+  const names: Record<string, string> = {};
+  for (const r of await listResources(db)) {
+    const product = (r.card as { product?: string } | null)?.product;
+    if (r.kind === 'app' && product && !names[product]) names[product] = r.name;
+  }
+  return names;
 }
 
 const which = z.object({

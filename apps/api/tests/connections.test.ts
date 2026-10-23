@@ -93,7 +93,12 @@ describe('a connection, seen once with its three uses (FR-001, FR-002)', () => {
     const [connection] = (await call(t.admin, 'GET', '/connections')).body.connections as View[];
     expect(connection).toMatchObject({
       connectionId: crm,
-      uses: { read: true, act: [{ tool: 'crm_send_invoice', level: null }], signal: [] },
+      uses: {
+        read: true,
+        act: [{ tool: 'crm_send_invoice', level: null }],
+        signal: [],
+        readings: [],
+      },
       health: 'ok',
       webhook: false,
     });

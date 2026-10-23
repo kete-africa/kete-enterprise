@@ -131,6 +131,10 @@ flowchart LR
 - `catalogue.ts`: Kete's templates and the apps' (`agent-template.v1`, checked); an administrator
   opens or closes one (`enable-agent-template`); a person takes an open one
   (`take-agent-template`): her agent, its subscriptions to the events it follows, its routine.
+  `GET /v1/agents/catalogue` says what wakes each one in the organization's words (`wakesOf`: an
+  object kind and state by their labels, a routine's hour) and the apps' names by product; the
+  screen draws canvas v7's cards — face, sources, what wakes it, what it takes on — grouped by who
+  ships it (spec 110).
 
 ## Memory, budget, proof (spec 106)
 
