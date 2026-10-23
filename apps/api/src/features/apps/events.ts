@@ -1,6 +1,7 @@
 import type { KeteIdentity } from '@kete/auth';
 import { validateEvent, type KeteEvent } from '@kete/sdk';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
+import { logAppEvent } from '../events/events.js';
 import { listResources, registryFor } from '../registry/index.js';
 import { appGrants } from './app-permissions.js';
 
@@ -92,6 +93,19 @@ export async function receiveAppEvent(
     ],
   );
   if (rows.length === 0) return { id: e.id, outcome: 'duplicate' };
+  // The one event path (spec 101): its object's thread and the agents that follow it learn it. A
+  // secret event stays in the app's log only.
+  if ((declared.classification ?? 'internal') !== 'secret') {
+    await logAppEvent(db, e.organization, {
+      eventId: e.id,
+      product: e.product,
+      type: e.type,
+      description: declared.description,
+      occurredAt: e.occurred_at,
+      data: e.data as Record<string, unknown>,
+      object: (e as { object?: { kind: string; id: string } }).object,
+    });
+  }
   const accepted: AcceptedEvent = {
     eventId: e.id,
     resourceId: app.resourceId,

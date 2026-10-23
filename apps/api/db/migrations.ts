@@ -94,6 +94,7 @@ import {
   messagesMigrationSql,
 } from '../src/features/messages/index.js';
 import { objectsMigrationSql } from '../src/features/objects/index.js';
+import { eventsMigrationSql } from '../src/features/events/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -291,4 +292,6 @@ export const migrations: Migration[] = [
   { name: '0074_mail_as_decided', sql: (context) => mailSettingsMigrationSql(context) },
   // The objects at the center: the index, named links, places and assets (spec 100, D-062).
   { name: '0075_objects_at_the_center', sql: (context) => objectsMigrationSql(context) },
+  // One event path: the log, who follows what, each delivery kept (spec 101, kete-core ADR 0017).
+  { name: '0076_one_event_path', sql: (context) => eventsMigrationSql(context) },
 ];

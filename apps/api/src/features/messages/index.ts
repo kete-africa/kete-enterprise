@@ -7,7 +7,13 @@ export {
   messagesLiveMigrationSql,
   messagesMigrationSql,
 } from './migration.js';
-export { agentAnswered, agentThreadsMigrationSql, runDueRoutines } from './agent-threads.js';
+export {
+  agentAnswered,
+  agentThreadsMigrationSql,
+  giveToAgent,
+  runDueRoutines,
+} from './agent-threads.js';
+export { KETE } from './access.js';
 export { mailSettingsMigrationSql } from './mail-settings.js';
 export { doorMigrationSql, drawerDoor, keepInKete, settleTurns, startTurn } from './door.js';
 export { ringUnread } from './push.js';

@@ -2855,5 +2855,13 @@
   "asset_nothing_in_progress": "Rien en cours sur cet équipement.",
   "place_not_found": "Ce lieu n’existe pas, ou il n’est pas le vôtre à lire.",
   "place_kind": "Lieu",
-  "place_hosts": "Ce qui s’y trouve"
+  "place_hosts": "Ce qui s’y trouve",
+  "object_history": "Son histoire",
+  "object_history_empty": "Rien d’arrivé encore.",
+  "object_history_created": "Déclaré",
+  "object_history_state": "État : {from} → {to}",
+  "object_history_from_app": "un événement de {app}, rattaché à cet objet",
+  "object_history_from_kete": "dit par Kete quand l’objet change",
+  "object_history_tag_event": "événement",
+  "object_history_tag_state": "état"
 }

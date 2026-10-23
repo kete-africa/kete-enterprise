@@ -19,7 +19,8 @@ with a person's token. See [the spec](../../../../../specs/022-app-permissions/s
 - `appGrants(db, identity, product)`: managed once a role carries one of the app's permissions.
 - `receiveAppEvent(db, clientId, event)`: kept once, only from the app the organization's registry
   holds under that client and product, only a type its card declares; `appNewsFor` counts them
-  for a person's briefing, never a secret one.
+  for a person's briefing, never a secret one. A kept event that is not secret goes on the one event
+  path (`features/events`, spec 101) with the object it names.
 - `openAppDecision`: an app's subject (`<product>.<subject>`) goes to the organization's circuit;
   once decided, the app is told the request's id at its callback (`tellAppsWith`).
 
