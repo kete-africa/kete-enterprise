@@ -54,6 +54,7 @@ export type Page =
   | 'surveys'
   | 'performance'
   | 'indicators'
+  | 'steering'
   | 'team'
   | 'meetings'
   | 'compliance'
@@ -276,6 +277,14 @@ export function placesOf(me: Me): Place[] {
       href: '/indicateurs',
       icon: 'chart',
       label: m.nav_indicators(),
+      group: 'tools',
+    },
+    // The steering board, configured where it is used (spec 103).
+    {
+      page: 'steering',
+      href: '/pilotage',
+      icon: 'layers',
+      label: m.nav_steering(),
       group: 'tools',
     },
     opens(me, 'meetings', ['meetings:manage', 'meetings:publish']) && {

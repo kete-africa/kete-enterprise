@@ -52,6 +52,7 @@ const money: Dataset = {
   permission: 'money:read',
   row: row({
     occurred_on: 'string',
+    month: 'string',
     kind: 'string',
     amount: 'number',
     post: 'string',
@@ -61,7 +62,7 @@ const money: Dataset = {
   }),
   time: 'occurred_on',
   measures: ['amount'],
-  dimensions: ['kind', 'post'],
+  dimensions: ['month', 'kind', 'post'],
   axes: { project: 'project_id', party: 'party_id', unit: 'unit_id' },
 };
 
@@ -134,7 +135,8 @@ export async function centerRows(
   if (name === 'money') {
     // Money with no project is the organization's own running: an administrator's, or money:read.
     const { rows } = await db.query<DatasetRow>(
-      `select to_char(m.occurred_on, 'YYYY-MM-DD') as occurred_on, m.kind, m.amount::float8 as amount,
+      `select to_char(m.occurred_on, 'YYYY-MM-DD') as occurred_on,
+              to_char(m.occurred_on, 'YYYY-MM') as month, m.kind, m.amount::float8 as amount,
               m.post, m.project_id, m.party_id, o.unit_id
          from money_facts m
          left join kete_objects o on o.kind = 'project' and o.object_id = m.project_id

@@ -22,6 +22,10 @@ export interface Indicator {
 
 export interface Reading {
   indicatorId: string;
+  name: string;
+  unit: string | null;
+  target: number | null;
+  threshold: number | null;
   value: number | null;
   status: 'done' | 'missing' | 'denied' | 'typed' | 'refused';
   colour: 'green' | 'orange' | 'red' | null;

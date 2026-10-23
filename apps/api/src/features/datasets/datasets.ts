@@ -1,3 +1,4 @@
+import { answerQuery } from '@kete/metrics';
 import { newId } from '@kete/records';
 import { organizationPolicySql, type SqlExecutor } from '@kete/tenancy';
 import { z } from 'zod';
@@ -345,7 +346,8 @@ export function selectRows(
 
 /**
  * The rows summed up: those passing the filters, grouped by up to three columns, each group with
- * its measures — the largest first. Only the data set's own columns are named.
+ * its measures — the largest first. Only the data set's own columns are named. The Measure's one
+ * engine sums them (spec 102; kete-core spec 144): the same sums as an app's data sets.
  */
 export function aggregate(columns: Column[], rows: Row[], spec: QuerySpec): Row[] {
   const types = new Map(columns.map((c) => [c.name, c.type]));
@@ -361,44 +363,27 @@ export function aggregate(columns: Column[], rows: Row[], spec: QuerySpec): Row[
       throw new QueryError(`${m.fn} needs a number column.`);
     }
   }
-  const groups = new Map<string, { key: Row; rows: Row[] }>();
-  for (const row of rows.filter((candidate) => passes(candidate, spec.filters))) {
-    const key = Object.fromEntries(spec.groupBy.map((g) => [g, row[g] ?? null]));
-    const id = JSON.stringify(key);
-    const group = groups.get(id) ?? { key, rows: [] };
-    group.rows.push(row);
-    groups.set(id, group);
-  }
-  const result = [...groups.values()].map(({ key, rows: members }) => {
-    const out: Row = { ...key };
-    for (const m of spec.measures) {
-      const values = m.column
-        ? members
-            .map((r) => r[m.column as string])
-            .filter((v): v is number => typeof v === 'number')
-        : [];
-      const sum = values.reduce((a, b) => a + b, 0);
-      out[measureName(m)] =
-        m.fn === 'count'
-          ? m.column
-            ? values.length
-            : members.length
-          : values.length === 0
-            ? null
-            : m.fn === 'sum'
-              ? round(sum)
-              : m.fn === 'avg'
-                ? round(sum / values.length)
-                : m.fn === 'min'
-                  ? Math.min(...values)
-                  : Math.max(...values);
-    }
-    return out;
-  });
-  const first = measureName(spec.measures[0] as QuerySpec['measures'][number]);
-  return result
-    .sort((a, b) => Number(b[first] ?? -Infinity) - Number(a[first] ?? -Infinity))
-    .slice(0, spec.limit);
+  // A table with no group and no row says nothing, as it always did.
+  if (rows.length === 0 && spec.groupBy.length === 0) return [];
+  const answer = answerQuery(
+    {
+      name: 'team',
+      row: {
+        type: 'object',
+        properties: Object.fromEntries(
+          columns.map((c) => [c.name, { type: c.type === 'number' ? 'number' : 'string' }]),
+        ),
+      },
+    },
+    rows,
+    {
+      ...(spec.filters.length
+        ? { where: spec.filters.map((f) => ({ field: f.column, op: f.op, value: f.value })) }
+        : {}),
+      ...(spec.groupBy.length ? { group_by: spec.groupBy } : {}),
+      measures: spec.measures.map((m) => ({ fn: m.fn, ...(m.column ? { field: m.column } : {}) })),
+      limit: spec.limit,
+    },
+  );
+  return answer.rows as Row[];
 }
-
-const round = (n: number) => Math.round(n * 1e6) / 1e6;
