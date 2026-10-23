@@ -27,6 +27,7 @@ export const routes = rootRoute('__root.tsx', [
   route('/projets', 'projects.tsx'),
   route('/projets/$projectId', 'project.tsx'),
   route('/equipements', 'assets.tsx'),
+  route('/indicateurs', 'indicators.tsx'),
   route('/equipements/$assetId', 'asset.tsx'),
   route('/lieux/$placeId', 'place.tsx'),
   route('/tiers', 'parties.tsx'),

@@ -3,6 +3,7 @@ export {
   createQuarter,
   importReferential,
   PerformanceRuleError,
+  recordMeasure,
   reviewPurpose,
 } from './commands.js';
 export {
@@ -12,10 +13,12 @@ export {
   fallbackOf,
   individualOf,
   type Colour,
+  type Comparison,
   type ReviewLine,
   type Scale,
 } from './compute.js';
 export {
+  findReview,
   listQuarters,
   listReviews,
   performanceMigrationSql,

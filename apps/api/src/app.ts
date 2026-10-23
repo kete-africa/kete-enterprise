@@ -85,6 +85,7 @@ import {
   placesRoutes,
 } from './features/objects/index.js';
 import { eventsRoutes, objectHistory, objectLive } from './features/events/index.js';
+import { measureRoutes } from './features/measure/index.js';
 import { partiesPermissions, partiesRoutes } from './features/parties/index.js';
 import { projectsFor, projectsPermissions, projectsRoutes } from './features/projects/index.js';
 import { receptionRoutes, requestRoutes } from './features/requests/index.js';
@@ -298,6 +299,8 @@ export function createApi(): Hono {
   v1.get('/objects/:kind/:id/events', objectHistory);
   v1.get('/objects/:kind/:id/live', objectLive);
   v1.route('/events', eventsRoutes);
+  // The Measure (spec 102): indicators read live with their proof, freezes, a colour's consequence.
+  v1.route('/measure', measureRoutes);
   v1.route('/objects', objectsRoutes);
   v1.route('/assets', assetsRoutes);
   v1.route('/places', placesRoutes);

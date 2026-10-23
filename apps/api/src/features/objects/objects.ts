@@ -294,13 +294,12 @@ const holds = async (db: SqlExecutor, identity: Identity, permission: string) =>
  */
 export async function sightOf(db: SqlExecutor, identity: Identity, kinds: Kind[]): Promise<Sight> {
   const admin = isAdministrator(identity);
-  const [projects, readsProjects, own, objectsReach, readsParties] = await Promise.all([
-    projectIdsOf(db, identity.userId),
-    admin ? true : holds(db, identity, 'projects:read'),
-    unitsOfPerson(db, identity),
-    reach(db, identity, 'objects:read'),
-    admin ? true : holds(db, identity, 'parties:read'),
-  ]);
+  // One after the other: a transaction's connection takes one query at a time.
+  const projects = await projectIdsOf(db, identity.userId);
+  const readsProjects = admin ? true : await holds(db, identity, 'projects:read');
+  const own = await unitsOfPerson(db, identity);
+  const objectsReach = await reach(db, identity, 'objects:read');
+  const readsParties = admin ? true : await holds(db, identity, 'parties:read');
   return {
     admin,
     userId: identity.userId,
