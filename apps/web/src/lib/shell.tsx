@@ -54,6 +54,7 @@ export type Page =
   | 'surveys'
   | 'performance'
   | 'indicators'
+  | 'steering'
   | 'team'
   | 'meetings'
   | 'compliance'
@@ -276,6 +277,14 @@ export function placesOf(me: Me): Place[] {
       href: '/indicateurs',
       icon: 'chart',
       label: m.nav_indicators(),
+      group: 'tools',
+    },
+    // The steering board, configured where it is used (spec 103).
+    {
+      page: 'steering',
+      href: '/pilotage',
+      icon: 'layers',
+      label: m.nav_steering(),
       group: 'tools',
     },
     opens(me, 'meetings', ['meetings:manage', 'meetings:publish']) && {
@@ -740,7 +749,7 @@ export function AppShell({
       {me.empty && !me.viewedBy && (
         <div
           role="status"
-          className="flex flex-wrap items-center gap-3 border-b border-line bg-state-verify-bg px-5 py-3 text-body-sm"
+          className="flex flex-wrap items-center gap-3 border-b border-line bg-state-verify-surface px-5 py-3 text-body-sm"
         >
           <div className="min-w-0 flex-1">
             <p className="font-semibold">{m.org_empty_title({ org: me.organization })}</p>

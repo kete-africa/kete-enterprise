@@ -96,6 +96,7 @@ import {
 import { objectsMigrationSql } from '../src/features/objects/index.js';
 import { eventsMigrationSql } from '../src/features/events/index.js';
 import { measureMigrationSql } from '../src/features/measure/index.js';
+import { viewConfigsMigrationSql } from '../src/features/views/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -297,4 +298,6 @@ export const migrations: Migration[] = [
   { name: '0076_one_event_path', sql: (context) => eventsMigrationSql(context) },
   // The Measure: indicators' sources and rules, their colours, freezes (spec 102, ADR 0015).
   { name: '0077_the_measure', sql: (context) => measureMigrationSql(context) },
+  // Views configured where they are used, in layers, every version kept (spec 103, ADR 0016).
+  { name: '0078_view_configs', sql: (context) => viewConfigsMigrationSql(context) },
 ];

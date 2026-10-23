@@ -219,8 +219,22 @@ flowchart LR
 
 An indicator of the referential names its source; its reading is live, hers, and says where it
 comes from; a silent source is missing and red, never zero; turning red for the organization gives
-its owner a holding. One aggregation engine (`@kete/metrics`) for the apps' data sets and the
-center's tables. See `apps/api/src/features/measure/README.md`.
+its owner a holding. One aggregation engine (`@kete/metrics`) for the apps' data sets, the
+center's tables, a team's tables and forms. See `apps/api/src/features/measure/README.md`.
+
+### Views configured where they are used (spec 103)
+
+```mermaid
+flowchart LR
+  D[Kete's default] --> L[the most precise layer, whole]
+  O[organization] --> L
+  P[position] --> L
+  M[her version · Kete's view_change] --> L
+  L --> B[view.v1 board] --> R[each card read with her rights] --> S[/pilotage · @kete/views/react/]
+```
+
+A place shows a `view.v1` document — Kete's default, the organization's, a position's or her own —
+every version kept, every change journaled. See `apps/api/src/features/views/README.md`.
 
 ## Where it runs
 

@@ -20,6 +20,7 @@ export {
   receiveAppObjects,
   sightOf,
   sightSql,
+  titlesOf,
   type IndexedObject,
   type ObjectCard,
 } from './objects.js';

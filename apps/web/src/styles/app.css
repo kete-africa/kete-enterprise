@@ -6,6 +6,7 @@
    the server and client builds would name a different stylesheet. */
 @source not '../../dist';
 @source '../../node_modules/@kete/design/src';
+@source '../../node_modules/@kete/views/dist';
 @source '../../node_modules/@kete/shell/dist';
 @source '../../node_modules/@kete/intelligence/dist';
 @source '../../node_modules/@kete/conversation/dist';

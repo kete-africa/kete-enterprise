@@ -10,6 +10,7 @@ import { projectsFor } from '../projects/index.js';
 import { registerInput, registerResourceForAgent, registryFor } from '../registry/index.js';
 import { covers, reach } from '../rights/index.js';
 import { chartFor } from '../structure/index.js';
+import { setMyView, viewFor } from '../views/index.js';
 import { factsFor } from '../workspace/index.js';
 
 /** Everyone reaches the gateway; what each tool returns is what the person may see (spec 006). */
@@ -254,6 +255,35 @@ export const gatewayCapabilities = [
     input: measureFromReading.input,
     command: measureFromReading,
     draft: { recordType: 'review-measure' },
+  }),
+  defineCapability({
+    name: 'view_read',
+    description:
+      'The view a place shows the person (« board:steering » is the steering board), as view.v1: its cards, their sources, charts and filters, and from which level it comes — Kete’s default, the organization’s, her position’s or her own.',
+    permission: GATEWAY_PERMISSION,
+    autonomy: 1,
+    input: z.object({ place: z.string().min(1).max(120) }),
+    async run(input, { db }) {
+      const found = await viewFor(db, person(), input.place);
+      return found.shown
+        ? {
+            found: true,
+            level: found.shown.level,
+            version: found.shown.version,
+            view: found.shown.view,
+          }
+        : { found: false };
+    },
+  }),
+  // Level 2: her own version of a view, changed on a sentence — kept, and undone in one gesture.
+  defineCapability({
+    name: 'view_change',
+    description:
+      'Changes the person’s own version of a view (spec 103): give the place (« board:steering ») and the whole view as view.v1 — read it first with view_read; add, remove or move a card, change a chart, a filter, a period. Only her version changes; the version before is kept and she can go back to it.',
+    permission: GATEWAY_PERMISSION,
+    autonomy: 2,
+    input: setMyView.input,
+    command: setMyView,
   }),
   // Level 3: an action engages its owner: the agent prepares it, the person validates.
   defineCapability({
