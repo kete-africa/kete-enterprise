@@ -23,7 +23,10 @@ async function steering(db: SqlExecutor): Promise<View> {
   const sourced = indicators.filter((i) => i.source && i.source.kind !== 'typed');
   const ruled = sourced.filter((i) => i.direction !== null);
   const both = (fr: string, en: string) => ({ fr, en });
-  const glance = indicators.slice(0, 12).map((i) => i.indicatorId);
+  // Read live first: a scorecard of what is typed each quarter says little between reviews.
+  const glance = [...sourced, ...indicators.filter((i) => !sourced.includes(i))]
+    .slice(0, 12)
+    .map((i) => i.indicatorId);
   const [first, ...rest] = glance;
   const cards = [
     ...(first

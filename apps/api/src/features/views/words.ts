@@ -8,6 +8,16 @@ const catalog = {
     waiting: 'Ce qui attend, par sujet',
     money: 'Facturé, mois par mois',
     cumulative: 'Facturé, en cumul',
+    measures: {
+      count: 'Nombre',
+      'sum(amount)': 'Montant',
+      'sum(open)': 'En cours',
+      'sum(late)': 'En retard',
+      'sum(waiting)': 'En attente',
+      'sum(done)': 'Faits',
+      'sum(in_service)': 'En service',
+      'sum(alert)': 'En alerte',
+    } as Record<string, string>,
   },
   en: {
     steering: 'Steering',
@@ -17,6 +27,16 @@ const catalog = {
     waiting: 'What waits, by subject',
     money: 'Invoiced, month by month',
     cumulative: 'Invoiced, cumulated',
+    measures: {
+      count: 'Count',
+      'sum(amount)': 'Amount',
+      'sum(open)': 'Open',
+      'sum(late)': 'Late',
+      'sum(waiting)': 'Waiting',
+      'sum(done)': 'Done',
+      'sum(in_service)': 'In service',
+      'sum(alert)': 'In alert',
+    } as Record<string, string>,
   },
 };
 

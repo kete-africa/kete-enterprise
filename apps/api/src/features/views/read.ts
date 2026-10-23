@@ -11,8 +11,9 @@ import {
   type Reading,
   type ReadingFilter,
 } from '../measure/index.js';
-import { findObjects, titlesOf } from '../objects/index.js';
+import { findObjects, kindsOf, titlesOf } from '../objects/index.js';
 import { listResources } from '../registry/index.js';
+import { viewWords } from './words.js';
 
 // What a view shows, read for her (spec 103; ADR 0015, 0016): its source with her rights, the
 // filters the place and the board bind, the period. Axis ids are named — a unit, a project, a third
@@ -33,20 +34,41 @@ const AXIS_FIELDS: Record<string, string> = {
   unit_id: 'unit',
 };
 
-/** Ids of the center's references, in a group's column, become their names. */
-async function named(db: SqlExecutor, rows: ViewData['rows']): Promise<ViewData['rows']> {
+/** The words of the center's measures, for a legend: never `sum(amount)`. */
+const MEASURES: Record<string, string> = viewWords().fr.measures;
+
+/**
+ * What a reader reads in a card's groups: a unit, a project, a third party by its name; an object's
+ * kind and an asset's state by their words; a measure by its name.
+ */
+async function named(
+  db: SqlExecutor,
+  dataset: string | null,
+  rows: ViewData['rows'],
+): Promise<ViewData['rows']> {
   const refs = rows.flatMap((r) =>
     Object.entries(AXIS_FIELDS).flatMap(([field, kind]) =>
       typeof r[field] === 'string' ? [{ kind, id: r[field] as string }] : [],
     ),
   );
-  if (refs.length === 0) return rows;
-  const titles = await titlesOf(db, refs);
+  const titles = refs.length ? await titlesOf(db, refs) : {};
+  const kinds = dataset ? await kindsOf(db) : [];
+  const kindWord = (kind: string) => kinds.find((k) => k.kind === kind)?.label.fr ?? kind;
+  const stateWord = (state: string) =>
+    kinds.find((k) => k.kind === 'asset')?.states.find((st) => st.id === state)?.label.fr ?? state;
   return rows.map((r) =>
     Object.fromEntries(
       Object.entries(r).map(([k, v]) => {
         const kind = AXIS_FIELDS[k];
-        return [k, kind && typeof v === 'string' ? (titles[`${kind}:${v}`] ?? v) : v];
+        const value =
+          kind && typeof v === 'string'
+            ? (titles[`${kind}:${v}`] ?? v)
+            : k === 'object_kind' && typeof v === 'string'
+              ? kindWord(v)
+              : k === 'state' && dataset === 'assets' && typeof v === 'string'
+                ? stateWord(v)
+                : v;
+        return [MEASURES[k] ?? k, value];
       }),
     ),
   );
@@ -104,7 +126,7 @@ export async function readView(
         const answer = answerQuery(dataset, rows, question);
         return {
           state: answer.counted === 0 ? 'empty' : 'done',
-          rows: await named(db, answer.rows),
+          rows: await named(db, source.dataset, answer.rows),
           readings: [],
           provenance: {
             source: `Kete · ${source.dataset}`,
@@ -136,7 +158,7 @@ export async function readView(
     if (asked.status === 'refused') return { ...none, state: 'denied' };
     return {
       state: asked.answer.counted === 0 ? 'empty' : 'done',
-      rows: await named(db, asked.answer.rows),
+      rows: await named(db, null, asked.answer.rows),
       readings: [],
       provenance: {
         source: `${app.name} · ${source.dataset}`,

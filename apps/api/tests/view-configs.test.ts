@@ -136,12 +136,12 @@ describe('a place shows a view (FR-001, FR-002)', () => {
     });
     expect(byState.rows).toEqual(
       expect.arrayContaining([
-        { state: 'in_service', count: 2 },
-        { state: 'alert', count: 1 },
+        { state: 'En service', Nombre: 2 },
+        { state: 'En alerte', Nombre: 1 },
       ]),
     );
     expect((await read(t.admin, 'unit_id')).rows).toEqual([
-      { unit_id: 'Agence Maritime', count: 3 },
+      { unit_id: 'Agence Maritime', Nombre: 3 },
     ]);
     // Essi works nowhere and reads no asset: nothing to count, said so.
     expect(await read(t.essi, 'state')).toMatchObject({ state: 'empty' });

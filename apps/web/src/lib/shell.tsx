@@ -749,7 +749,7 @@ export function AppShell({
       {me.empty && !me.viewedBy && (
         <div
           role="status"
-          className="flex flex-wrap items-center gap-3 border-b border-line bg-state-verify-bg px-5 py-3 text-body-sm"
+          className="flex flex-wrap items-center gap-3 border-b border-line bg-state-verify-surface px-5 py-3 text-body-sm"
         >
           <div className="min-w-0 flex-1">
             <p className="font-semibold">{m.org_empty_title({ org: me.organization })}</p>

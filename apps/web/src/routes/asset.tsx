@@ -81,7 +81,7 @@ function AssetPage() {
         className="overflow-hidden rounded-card border border-line-strong bg-surface"
       >
         <div className="flex flex-wrap items-start gap-3 p-4">
-          <span className="grid size-10 place-items-center rounded-control bg-state-info-bg text-state-info-fg">
+          <span className="grid size-10 place-items-center rounded-control bg-state-info-surface text-state-info-fg">
             <CanvasIcon name="sun" size={20} />
           </span>
           <div className="min-w-0 flex-1 basis-56">
