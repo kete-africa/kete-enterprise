@@ -1,4 +1,5 @@
 import {
+  planAttention,
   chatContactOf,
   chatLinkTokenOf,
   chatOrganizationsWaiting,
@@ -32,6 +33,7 @@ import {
   onWaiting,
 } from '../decisions/index.js';
 import { hearFromOutside } from '../messages/index.js';
+import { attentionOf } from '../notifications/index.js';
 import { phoneWords } from './words.js';
 
 // The center on a phone (spec 077): a person ties her WhatsApp or her Telegram to Kete Enterprise;
@@ -56,7 +58,10 @@ const buttonPattern = /^(approve|refuse):(drq_[0-9a-f-]{8,64})$/;
 
 let listening = false;
 
-/** What waits for a person's decision is sent to her phone too, when she tied it. */
+/**
+ * What waits for a person's decision is sent to her phone too, when she tied it — at once, or once
+ * her quiet hours end: the one attention model decides (spec 109, R14).
+ */
 export function listenForPhones(): void {
   if (listening) return;
   listening = true;
@@ -64,8 +69,16 @@ export function listenForPhones(): void {
     const words = phoneWords();
     for (const userId of approvers) {
       const contact = await chatContactOf(db, userId);
-      if (!contact?.consent) continue;
+      if (!contact?.consent || contact.channel === 'none') continue;
+      // Tying her phone is choosing it.
+      const prefs = await attentionOf(db, userId);
+      const plan = planAttention('act', {
+        ...prefs,
+        channels: [...prefs.channels, contact.channel],
+      });
+      if (plan.phone.at === 'never') continue;
       await queueChatText(db, organizationId, {
+        ...(plan.phone.at === 'later' ? { notBefore: plan.phone.after } : {}),
         reference: userId,
         kind: 'decision',
         subject: request.requestId,

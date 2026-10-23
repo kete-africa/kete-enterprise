@@ -8,6 +8,7 @@ import { watchIndicators } from './features/measure/index.js';
 import { runWaitingEvaluations } from './features/agents/index.js';
 import { expireMemories } from '@kete/agents';
 import { sendQueuedMail } from './features/mail/index.js';
+import { ringAfterQuiet } from './features/notifications/index.js';
 import {
   checkDueWatches,
   listenForRoutines,
@@ -144,6 +145,16 @@ export async function startWorker(): Promise<Jobs> {
         async handle() {
           const rung = await ringUnread();
           if (rung > 0) console.log(`[worker] ${rung} phone(s) rung for threads`);
+        },
+      }),
+      // What her quiet hours held back rings once they end, unless read since (spec 109, R14).
+      defineJob({
+        name: 'ring-after-quiet',
+        schedule: '* * * * *',
+        retryLimit: 0,
+        async handle() {
+          const rung = await ringAfterQuiet();
+          if (rung > 0) console.log(`[worker] ${rung} device(s) rung after quiet hours`);
         },
       }),
       // The threads' summary by mail, once a day after 18 h, for who chose it (spec 098).
