@@ -109,3 +109,25 @@ flowchart LR
 `findingsOf` is the one reading of a job description — its watches, within its permissions and its
 scope, with its person's rights. A round (`wakeAgent`) raises what it returns; a dry run
 (`POST /v1/agents/dry-run`) only says it. So an agent's first round raises what its dry run said.
+
+## Sources, context and the catalogue (spec 104)
+
+Doctrine D-062 (R5), kete-core ADR 0018 and spec 146.
+
+```mermaid
+flowchart LR
+  J[job description · sources] --> T[tools of its run]
+  G[gateway gestures · « kete »] --> T
+  K[Kete's own sets · knowledge, team_data, forms, documents, dashboards] --> T
+  O[the object of its task · card, links, last words] --> P[its prompt]
+  C[catalogue · Kete's and the apps' templates] -->|opened, then taken| J
+```
+
+- `toolsets.ts`: Kete's own sets, each open when its module is on, each tool reading with her
+  rights; `agentToolSets` keeps only the sets its sources name, within its level. Without « kete »
+  in its sources, the gateway's gestures do not reach it either.
+- `context.ts`: a task given in an object's thread starts with the object's card and the last words
+  of its thread, read with its person's rights.
+- `catalogue.ts`: Kete's templates and the apps' (`agent-template.v1`, checked); an administrator
+  opens or closes one (`enable-agent-template`); a person takes an open one
+  (`take-agent-template`): her agent, its subscriptions to the events it follows, its routine.

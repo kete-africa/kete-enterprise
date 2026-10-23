@@ -143,6 +143,7 @@ export const setAgentJob = defineCommand({
         computerMinutes: before.computerMinutes,
         returnTo: before.returnTo,
         routine: before.routine,
+        sources: before.sources,
       },
       after: after
         ? {

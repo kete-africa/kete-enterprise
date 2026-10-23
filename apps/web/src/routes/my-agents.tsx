@@ -1,6 +1,7 @@
 import { ThreadListPanel, type ListItem } from '@kete/conversation';
 import { CanvasIcon } from '@kete/design';
 import { createFileRoute, redirect } from '@tanstack/react-router';
+import { AgentCatalogue, fetchCatalogue } from '@/lib/agent-catalogue';
 import { NewAgent } from '@/lib/agents-view';
 import { AppShell } from '@/lib/shell';
 import { requirePerson } from '@/lib/signed-in';
@@ -36,10 +37,11 @@ export const Route = createFileRoute('/mes-agents')({
   },
   loaderDeps: ({ search }) => ({ agent: search.agent, nouveau: search.nouveau }),
   loader: async ({ deps }) => {
-    const [screen, people, { threads, names }] = await Promise.all([
+    const [screen, people, { threads, names }, catalogue] = await Promise.all([
       fetchAgentsScreen(),
       fetchPeopleToAdd(),
       fetchThreads(),
+      fetchCatalogue(),
     ]);
     // The agent named, else the first as the list shows them: needs her, works, finished, idle.
     const rank = { needs: 0, working: 1, finished: 2, idle: 3 } as const;
@@ -48,7 +50,7 @@ export const Route = createFileRoute('/mes-agents')({
       : (screen.agents.find((a) => a.agentId === deps.agent) ??
         [...screen.agents].sort((a, b) => rank[a.state] - rank[b.state])[0]);
     const view = chosen ? await fetchThread({ data: { threadId: chosen.threadId } }) : null;
-    return { screen, view, people, threads, names, current: chosen?.threadId ?? null };
+    return { screen, view, people, threads, names, catalogue, current: chosen?.threadId ?? null };
   },
   component: MyAgentsPage,
 });
@@ -101,7 +103,7 @@ function sectionsOf(screen: AgentsScreen) {
  */
 function MyAgentsPage() {
   const { me } = Route.useRouteContext();
-  const { screen, view, people, threads, names, current } = Route.useLoaderData();
+  const { screen, view, people, threads, names, catalogue, current } = Route.useLoaderData();
   return (
     <AppShell me={me} current="my_agents" bleed>
       <ThreadsScreen
@@ -135,7 +137,10 @@ function MyAgentsPage() {
             {screen.agents.length === 0 && (
               <p className="mb-3 text-fg-muted">{m.colleague_none()}</p>
             )}
-            <NewAgent />
+            <div className="grid gap-3">
+              <AgentCatalogue entries={catalogue.entries} administrator={catalogue.administrator} />
+              <NewAgent />
+            </div>
           </div>
         }
       />

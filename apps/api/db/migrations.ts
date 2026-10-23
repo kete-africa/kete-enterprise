@@ -33,6 +33,7 @@ import { commandsDelegationMigrationSql, commandsMigrationSql } from '@kete/comm
 import { outboxMigrationSql } from '@kete/sdk';
 import {
   agentAutonomyMigrationSql,
+  agentSourcesMigrationSql,
   agentsAtWorkMigrationSql,
   agentTasksMigrationSql,
   agentsMigrationSql,
@@ -300,4 +301,6 @@ export const migrations: Migration[] = [
   { name: '0077_the_measure', sql: (context) => measureMigrationSql(context) },
   // Views configured where they are used, in layers, every version kept (spec 103, ADR 0016).
   { name: '0078_view_configs', sql: (context) => viewConfigsMigrationSql(context) },
+  // Agents draw on their sources, and come from a catalogue (spec 104, ADR 0018).
+  { name: '0079_agents_sources', sql: (context) => agentSourcesMigrationSql(context) },
 ];

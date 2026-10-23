@@ -4,6 +4,7 @@ export { jobInput } from './agents.record.js';
 export { AgentRuleError, setAgentJob } from './commands.js';
 export {
   agentAutonomyMigrationSql,
+  agentSourcesMigrationSql,
   agentsMigrationSql,
   dueAgents,
 } from './infrastructure/agents.tables.js';
@@ -30,3 +31,12 @@ export {
 } from './tasks.js';
 export { wakeAgent, wakeDueAgents, type WakeReport } from './wake.js';
 export { knownWatches, registerWatch, type Watch } from './watches.js';
+export {
+  catalogueOf,
+  centerTemplates,
+  enableAgentTemplate,
+  takeAgentTemplate,
+  type CatalogueEntry,
+} from './catalogue.js';
+export { objectContextFor } from './context.js';
+export { agentToolSets, keteToolSets, KETE_SOURCES } from './toolsets.js';

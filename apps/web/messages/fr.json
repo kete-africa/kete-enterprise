@@ -2912,5 +2912,21 @@
   "views_unit": "Unité",
   "views_unit_all": "Toutes",
   "views_restore": "Revenir au tableau commun",
-  "views_restore_failed": "Impossible de revenir au tableau commun."
+  "views_restore_failed": "Impossible de revenir au tableau commun.",
+  "colleague_sources": "Ses sources",
+  "colleague_sources_hint": "Il ne reçoit que les outils de ces sources : de meilleurs choix, un coût plus bas.",
+  "colleague_source_kete": "Gestes de Kete",
+  "colleague_source_knowledge": "Bibliothèque",
+  "colleague_source_team_data": "Données des équipes",
+  "colleague_source_forms": "Formulaires",
+  "colleague_source_documents": "Modèles de documents",
+  "colleague_source_dashboards": "Tableaux de bord",
+  "colleague_when_event": "Quand arrive : {what}",
+  "catalogue_title": "Des agents prêts à prendre",
+  "catalogue_by_kete": "Kete",
+  "catalogue_open": "ouvert à tous",
+  "catalogue_closed": "fermé",
+  "catalogue_take": "Le prendre",
+  "catalogue_close": "Le fermer",
+  "catalogue_open_to_all": "L’ouvrir à tous"
 }

@@ -6,7 +6,8 @@ import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal, runGesture } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { readModules } from '../organization/index.js';
-import { reach, reachesAnything, unitsOfPersonAndAbove } from '../rights/index.js';
+import { isAdministrator, reach, reachesAnything, unitsOfPersonAndAbove } from '../rights/index.js';
+import { catalogueOf, enableAgentTemplate, takeAgentTemplate } from './catalogue.js';
 import { dryRunInput, type Agent } from './agents.record.js';
 import {
   AgentRuleError,
@@ -163,6 +164,40 @@ export function agentsRoutes(permissions: readonly string[]) {
           return { agents, shared, watches: knownWatches(), manages: all };
         });
         return c.json(screen);
+      })
+      // The catalogue (spec 104): the agents Kete and the apps ship, those open here, hers to take.
+      .get('/catalogue', async (c) => {
+        const identity = c.get('identity');
+        return c.json(
+          await transaction(identity.organizationId, async (db) => {
+            const admin = isAdministrator(identity);
+            const entries = await catalogueOf(db);
+            return {
+              entries: entries.filter((e) => admin || e.enabled),
+              administrator: admin,
+            };
+          }),
+        );
+      })
+      .post('/catalogue/:product/:name/enable', async (c) => {
+        const identity = c.get('identity');
+        if (!isAdministrator(identity)) {
+          throw new GestureRefusal(403, 'forbidden', 'An administrator opens the catalogue.');
+        }
+        const body = (await bodyOf(c)) as { enabled?: unknown };
+        return run(c, enableAgentTemplate, {
+          product: c.req.param('product'),
+          name: c.req.param('name'),
+          enabled: body?.enabled !== false,
+          by: identity.userId,
+        });
+      })
+      .post('/catalogue/:product/:name/take', async (c) => {
+        if (c.get('viewedBy')) throw new GestureRefusal(403, 'view_as_forbidden', 'Hers to take.');
+        return run(c, takeAgentTemplate, {
+          product: c.req.param('product'),
+          name: c.req.param('name'),
+        });
       })
       // A personal agent's job description from her sentence (spec 052): nothing created yet.
       .post('/understand', async (c) => {
