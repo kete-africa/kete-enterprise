@@ -242,6 +242,27 @@ describe('an administrator imports her organization’s tools', () => {
 });
 
 describe('her agents use them under Kete’s rules', () => {
+  it('act only where an administrator granted it, tool by tool (spec 105, R8)', async () => {
+    const before = await copilot(t.admin);
+    const offered = await names(before);
+    expect(offered).toEqual(
+      expect.arrayContaining(['crm_list_contacts', 'tickets_search_tickets']),
+    );
+    expect(offered).not.toContain('crm_create_contact');
+    expect(offered).not.toContain('tickets_close_ticket');
+    await before.close();
+    const sets = (await get(t.admin, '/tools')).body.sets as { setId: string; label: string }[];
+    const tickets = sets.find((set) => set.label === 'Tickets')?.setId ?? '';
+    for (const [id, act] of [
+      [crmSet, { crm_create_contact: 3, crm_delete_contact: 3 }],
+      [tickets, { tickets_close_ticket: 3 }],
+    ] as const) {
+      expect((await post(t.admin, `/connections/${id}/grants`, { read: true, act })).status).toBe(
+        200,
+      );
+    }
+  });
+
   it('reads alone, with the set’s key, through the gateway', async () => {
     const client = await copilot(t.admin);
     expect(await names(client)).toEqual(

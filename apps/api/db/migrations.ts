@@ -98,6 +98,7 @@ import { objectsMigrationSql } from '../src/features/objects/index.js';
 import { eventsMigrationSql } from '../src/features/events/index.js';
 import { measureMigrationSql } from '../src/features/measure/index.js';
 import { viewConfigsMigrationSql } from '../src/features/views/index.js';
+import { connectionsMigrationSql } from '../src/features/connections/index.js';
 
 export interface MigrationContext {
   schema: string;
@@ -303,4 +304,6 @@ export const migrations: Migration[] = [
   { name: '0078_view_configs', sql: (context) => viewConfigsMigrationSql(context) },
   // Agents draw on their sources, and come from a catalogue (spec 104, ADR 0018).
   { name: '0079_agents_sources', sql: (context) => agentSourcesMigrationSql(context) },
+  // One connection, three uses: the tool sets' grants, a webhook per connection (spec 105).
+  { name: '0080_one_connection', sql: (context) => connectionsMigrationSql(context) },
 ];

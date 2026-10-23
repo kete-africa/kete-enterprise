@@ -236,6 +236,20 @@ flowchart LR
 A place shows a `view.v1` document — Kete's default, the organization's, a position's or her own —
 every version kept, every change journaled. See `apps/api/src/features/views/README.md`.
 
+### One connection, three uses (spec 105)
+
+```mermaid
+flowchart LR
+  S[(tool sets · grants)] --> V[one view per address · health]
+  C[(connectors)] --> V
+  S -->|read · act only where granted| T[gateway · agents]
+  X[an external tool] -->|signed webhook| E[(kete_events · connection)] --> D[dispatcher]
+```
+
+An organization's tool is seen once with what it serves — read at connection, act only tool by
+tool and never alone, signal by choice — and whether it answers; its events arrive signed onto the
+one event path. See `apps/api/src/features/connections/README.md`.
+
 ## Where it runs
 
 - Any Postgres 16 or more (with pgvector) and any S3-compatible storage, or a disk for a single

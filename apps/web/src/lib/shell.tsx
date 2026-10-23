@@ -362,6 +362,13 @@ function adminPlaces(me: Me): ShellPlace[] {
       href: '/administration/regles',
       icon: 'check',
     },
+    // One connection, three uses (spec 105): each tool seen once.
+    me.administrator && {
+      id: 'connections',
+      label: m.nav_connections(),
+      href: '/administration/connexions',
+      icon: 'link',
+    },
     me.administrator && {
       id: 'connectors',
       label: m.nav_connectors(),
