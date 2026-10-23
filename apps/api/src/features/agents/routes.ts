@@ -7,7 +7,9 @@ import { bodyOf, GestureRefusal, runGesture } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { readModules } from '../organization/index.js';
 import { isAdministrator, reach, reachesAnything, unitsOfPersonAndAbove } from '../rights/index.js';
+import { budgetOf, setAgentBudget } from './budget.js';
 import { catalogueOf, enableAgentTemplate, takeAgentTemplate } from './catalogue.js';
+import { askEvaluation, evaluationsOf, THRESHOLD, writeEvalCase } from './evaluations.js';
 import { dryRunInput, type Agent } from './agents.record.js';
 import {
   AgentRuleError,
@@ -290,6 +292,49 @@ export function agentsRoutes(permissions: readonly string[]) {
         return run(c, shareAgent, { ...((await bodyOf(c)) as object), agentId });
       })
       // What it did these last days (spec 052).
+      // Its budget this month (spec 106): what it spent, its own limit, the organization's.
+      .get('/:agentId/budget', async (c) => {
+        const agentId = c.req.param('agentId');
+        const { organizationId } = c.get('identity');
+        return c.json(
+          await transaction(organizationId, async (db) => {
+            await ownAgent(c, db, agentId);
+            return budgetOf(db, agentId);
+          }),
+        );
+      })
+      .post('/:agentId/budget', async (c) => {
+        const agentId = c.req.param('agentId');
+        await transaction(c.get('identity').organizationId, (db) => ownAgent(c, db, agentId));
+        const body = (await bodyOf(c)) as { monthlyTokens?: unknown };
+        return run(c, setAgentBudget, { agentId, monthlyTokens: body?.monthlyTokens ?? null });
+      })
+      // How it proves itself (spec 106, R21): its last evaluations, one asked now, a case written.
+      .get('/:agentId/evaluations', async (c) => {
+        const agentId = c.req.param('agentId');
+        const { organizationId } = c.get('identity');
+        return c.json(
+          await transaction(organizationId, async (db) => {
+            await ownAgent(c, db, agentId);
+            return { evaluations: await evaluationsOf(db, agentId), threshold: THRESHOLD };
+          }),
+        );
+      })
+      .post('/:agentId/evaluations', async (c) => {
+        const agentId = c.req.param('agentId');
+        const { organizationId } = c.get('identity');
+        const evaluationId = await transaction(organizationId, async (db) => {
+          await ownAgent(c, db, agentId);
+          return askEvaluation(db, organizationId, agentId, 'asked');
+        });
+        return c.json({ evaluationId }, 202);
+      })
+      .post('/:agentId/cases', async (c) => {
+        const agentId = c.req.param('agentId');
+        await transaction(c.get('identity').organizationId, (db) => ownAgent(c, db, agentId));
+        const body = (await bodyOf(c)) as object;
+        return run(c, writeEvalCase, { ...body, agentId, by: c.get('identity').userId });
+      })
       .get('/:agentId/record', async (c) => {
         const days = Math.min(90, Math.max(1, Number(c.req.query('days') ?? 7) || 7));
         const { organizationId } = c.get('identity');

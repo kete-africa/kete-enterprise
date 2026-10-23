@@ -11,6 +11,8 @@ const catalog = {
     taskAdded: (source: string, title: string) => `${source} : ${title}`,
     agentSignal: (subject: string) => `Votre agent signale : ${subject}`,
     agentTaskDone: (agent: string) => `${agent} a terminé la tâche que vous lui avez confiée`,
+    agentBudgetSpent: (agent: string) =>
+      `Budget du mois atteint pour ${agent} : il attend. Relevez-le, ou demandez plus à l’administration.`,
     agentTaskTakenOver: (agent: string, instruction: string) =>
       `Repris à ${agent} : ${instruction}`,
     decisionComment: (author: string, title: string) => `${author} a écrit sur « ${title} »`,
@@ -52,6 +54,8 @@ const catalog = {
     taskAdded: (source: string, title: string) => `${source}: ${title}`,
     agentSignal: (subject: string) => `Your agent reports: ${subject}`,
     agentTaskDone: (agent: string) => `${agent} finished the task you gave it`,
+    agentBudgetSpent: (agent: string) =>
+      `${agent} spent its budget for the month: it waits. Raise it, or ask the administration for more.`,
     agentTaskTakenOver: (agent: string, instruction: string) =>
       `Taken over from ${agent}: ${instruction}`,
     decisionComment: (author: string, title: string) => `${author} wrote on “${title}”`,

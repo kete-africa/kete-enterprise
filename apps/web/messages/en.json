@@ -2740,7 +2740,7 @@
   "colleague_routine_remove": "Remove the routine",
   "colleague_routine_what": "What it does each time",
   "colleague_trial": "On trial until {day}: it only proposes",
-  "colleague_budget": "Its open drafts",
+  "colleague_budget": "Its budget",
   "colleague_budget_line": "{count} at most at once",
   "colleague_pill": "{working} working · {needs} waiting for you",
   "colleague_takeon_title": "{agent} can take it on",
@@ -2950,5 +2950,13 @@
   "connections_webhook_open": "Open its webhook",
   "connections_webhook_renew": "Renew its secret",
   "connections_webhook_once": "Its secret, shown once: copy it into the tool.",
-  "connections_webhook_where": "The tool sends it signed (kete-signature) to {path}."
+  "connections_webhook_where": "The tool sends it signed (kete-signature) to {path}.",
+  "colleague_budget_none": "{spent} tokens this month · only the organization’s budget bounds it.",
+  "colleague_budget_of": "{spent} tokens of {limit} this month.",
+  "colleague_proof": "Its proof",
+  "colleague_proof_score": "{score} % of {cases} cases",
+  "colleague_proof_waiting": "waiting",
+  "colleague_proof_passed": "proven",
+  "colleague_proof_failed": "to review",
+  "colleague_proof_unavailable": "not played"
 }

@@ -40,3 +40,15 @@ export {
 } from './catalogue.js';
 export { objectContextFor } from './context.js';
 export { agentToolSets, keteToolSets, KETE_SOURCES } from './toolsets.js';
+export { budgetOf, budgetSpent, setAgentBudget, type AgentBudget } from './budget.js';
+export {
+  askEvaluation,
+  casesOf,
+  evaluationsMigrationSql,
+  evaluationsOf,
+  runEvaluation,
+  runWaitingEvaluations,
+  THRESHOLD,
+  useEvaluationModel,
+  writeEvalCase,
+} from './evaluations.js';

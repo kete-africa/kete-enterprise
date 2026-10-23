@@ -1,6 +1,7 @@
 import { defineCommand } from '@kete/commands';
 import { z } from 'zod';
 import { registerAgent } from '../registry/index.js';
+import { askEvaluation } from './evaluations.js';
 import {
   agentAutonomyInput,
   agentSharingInput,
@@ -130,11 +131,13 @@ export const setAgentJob = defineCommand({
   name: 'set-agent-job',
   input: jobInput,
   reversibility: { reversible: true, inverse: 'set-agent-job' },
-  async handler(input, { db }) {
+  async handler(input, { db, organizationId }) {
     const before = await findAgent(db, input.agentId);
     if (!before) throw new AgentRuleError('not_found', 'The agent does not exist here.');
     const { agentId, ...job } = input;
     const after = await setJob(db, agentId, job);
+    // A new job description proves itself before it is trusted (spec 106, R21).
+    await askEvaluation(db, organizationId, agentId, 'job_changed');
     return {
       agentId,
       before: {

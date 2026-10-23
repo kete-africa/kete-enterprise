@@ -2740,7 +2740,7 @@
   "colleague_routine_remove": "Retirer la routine",
   "colleague_routine_what": "Ce qu’il fait à chaque fois",
   "colleague_trial": "À l’essai jusqu’au {day} : il propose seulement",
-  "colleague_budget": "Ses brouillons ouverts",
+  "colleague_budget": "Son budget",
   "colleague_budget_line": "{count} au plus à la fois",
   "colleague_pill": "{working} travaille · {needs} attend vous",
   "colleague_takeon_title": "{agent} peut s’en charger",
@@ -2950,5 +2950,13 @@
   "connections_webhook_open": "Ouvrir son webhook",
   "connections_webhook_renew": "Renouveler son secret",
   "connections_webhook_once": "Son secret, montré une seule fois : copiez-le dans l’outil.",
-  "connections_webhook_where": "L’outil l’envoie signé (kete-signature) à {path}."
+  "connections_webhook_where": "L’outil l’envoie signé (kete-signature) à {path}.",
+  "colleague_budget_none": "{spent} jetons ce mois · seul le budget de l’organisation le borne.",
+  "colleague_budget_of": "{spent} jetons sur {limit} ce mois.",
+  "colleague_proof": "Ses épreuves",
+  "colleague_proof_score": "{score} % de {cases} cas",
+  "colleague_proof_waiting": "en attente",
+  "colleague_proof_passed": "éprouvé",
+  "colleague_proof_failed": "à revoir",
+  "colleague_proof_unavailable": "non jouée"
 }

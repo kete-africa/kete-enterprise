@@ -210,9 +210,10 @@ async function note(
   text = '',
 ) {
   await db.query(
+    // The moment it is written, not the transaction's: two events of one gesture keep their order.
     `insert into colleague_request_events
-       (organization_id, event_id, request_id, kind, actor_kind, actor_id, actor_name, text)
-     values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+       (organization_id, event_id, request_id, kind, actor_kind, actor_id, actor_name, text, at)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, clock_timestamp())`,
     [
       organizationId,
       newId('rqe'),

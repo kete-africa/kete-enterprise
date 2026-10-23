@@ -131,3 +131,22 @@ flowchart LR
 - `catalogue.ts`: Kete's templates and the apps' (`agent-template.v1`, checked); an administrator
   opens or closes one (`enable-agent-template`); a person takes an open one
   (`take-agent-template`): her agent, its subscriptions to the events it follows, its routine.
+
+## Memory, budget, proof (spec 106)
+
+```mermaid
+flowchart LR
+  M[(one memory · @kete/agents · her agreement)] -->|not in a group thread| P[its prompt]
+  B[(its monthly budget · @kete/ai)] -->|spent| H[« demander plus » for its person]
+  J[a change of its job] --> E[evaluation waiting]
+  C[cases · written, accepted] --> E
+  E -->|worker · tools played dry| S{score ≥ 80 %}
+  S -->|no| Z[paused « à revoir »]
+```
+
+- `budget.ts`: its monthly tokens (`kete_ai_budgets`, scope agent), what it spent this month; spent,
+  its run stops `budget_spent` and its person holds « demander plus ».
+- `evaluations.ts`: its cases — written by its person, or a task she accepted with the gesture it
+  prepared —; an evaluation asked at every change of its job, run by the worker with its person's
+  rights and its tools played dry; under the threshold it is paused.
+- The memory is the assistant's (`../assistant/memory.ts`), on `@kete/agents`' tables.
