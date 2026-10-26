@@ -60,9 +60,12 @@ export const scheduleInput = z
     time: z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/),
     timeZone: z.string().min(1).max(64).refine(knownTimeZone).default('Africa/Lome'),
     byEmail: z.boolean().default(false),
+    /** An agent of hers the task is handed to (spec 113): a question only. */
+    agentId: z.string().min(1).max(80).optional(),
     locale: z.enum(['fr', 'en']).default('fr'),
   })
   .refine((v) => v.kind === 'briefing' || Boolean(v.prompt), { path: ['prompt'] })
+  .refine((v) => v.kind === 'prompt' || v.agentId === undefined, { path: ['agentId'] })
   .refine((v) => (v.cadence === 'weekly') === (v.weekday !== undefined), { path: ['weekday'] });
 
 export type ScheduleInput = z.infer<typeof scheduleInput>;
@@ -77,6 +80,7 @@ export interface Schedule {
   time: string;
   timeZone: string;
   byEmail: boolean;
+  agentId: string | null;
   active: boolean;
   nextRunAt: string;
   lastRunAt: string | null;
@@ -107,6 +111,7 @@ type Row = {
   time: string;
   time_zone: string;
   by_email: boolean;
+  agent_id: string | null;
   active: boolean;
   next_run_at: Date;
   last_run_at: Date | null;
@@ -114,7 +119,7 @@ type Row = {
 };
 
 const COLUMNS = `schedule_id, organization_id, user_id, name, email, locale, kind, title, prompt,
-  cadence, weekday, time, time_zone, by_email, active, next_run_at, last_run_at, last_status`;
+  cadence, weekday, time, time_zone, by_email, agent_id, active, next_run_at, last_run_at, last_status`;
 
 const shown = (r: Row): Schedule => ({
   scheduleId: r.schedule_id,
@@ -126,6 +131,7 @@ const shown = (r: Row): Schedule => ({
   time: r.time,
   timeZone: r.time_zone,
   byEmail: r.by_email,
+  agentId: r.agent_id,
   active: r.active,
   nextRunAt: r.next_run_at.toISOString(),
   lastRunAt: r.last_run_at?.toISOString() ?? null,
@@ -177,8 +183,8 @@ export async function createSchedule(
   );
   const { rows } = await db.query<Row>(
     `insert into assistant_schedules (schedule_id, organization_id, user_id, name, email, locale,
-       kind, title, prompt, cadence, weekday, time, time_zone, by_email, next_run_at)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       kind, title, prompt, cadence, weekday, time, time_zone, by_email, next_run_at, agent_id)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
      returning ${COLUMNS}`,
     [
       newId('sch'),
@@ -196,6 +202,7 @@ export async function createSchedule(
       input.timeZone,
       input.byEmail,
       next,
+      input.kind === 'prompt' ? (input.agentId ?? null) : null,
     ],
   );
   return shown(rows[0] as Row);

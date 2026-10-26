@@ -9,6 +9,7 @@ import {
   routineGesture,
   understandRoutine,
   type Family,
+  type HerAgent,
   type Proposal,
   type RunStatus,
 } from '@/lib/routines';
@@ -120,6 +121,10 @@ function RoutinesPage() {
     const card = board?.cards.find((c) => c.id === cardId);
     return board && card ? `${board.name} · ${card.title}` : cardId;
   };
+  const handed = (detail: string, agentId: string | null) => {
+    const name = agentId ? routines.agents.find((a) => a.agentId === agentId)?.name : null;
+    return name ? `${detail} · ${m.routines_handed_to({ agent: name })}` : detail;
+  };
   const locale = getLocale() === 'en' ? 'en' : 'fr';
   return (
     <AppShell me={me} current="routines">
@@ -135,7 +140,8 @@ function RoutinesPage() {
       {!me.viewedBy && (
         <NewRoutine
           busy={busy}
-          onActivate={(p) =>
+          agents={routines.agents}
+          onActivate={(p, agentId) =>
             run(() =>
               p.family === 'time'
                 ? createSchedule({
@@ -146,6 +152,7 @@ function RoutinesPage() {
                       cadence: p.cadence,
                       weekday: p.weekday ?? 1,
                       time: p.time,
+                      agentId,
                       locale,
                     },
                   })
@@ -156,6 +163,7 @@ function RoutinesPage() {
                         prompt: p.prompt,
                         resourceId: p.resourceId,
                         eventType: p.eventType,
+                        agentId,
                         locale,
                       },
                     })
@@ -190,7 +198,7 @@ function RoutinesPage() {
           <RoutineRow
             key={s.scheduleId}
             title={s.title}
-            detail={whenOf(s)}
+            detail={handed(whenOf(s), s.agentId)}
             active={s.active}
             busy={busy || Boolean(me.viewedBy)}
             onTry={() =>
@@ -226,10 +234,13 @@ function RoutinesPage() {
           <RoutineRow
             key={t.triggerId}
             title={t.title}
-            detail={m.routines_on_event({
-              app: appName(t.resourceId),
-              event: eventWords(t.resourceId, t.eventType),
-            })}
+            detail={handed(
+              m.routines_on_event({
+                app: appName(t.resourceId),
+                event: eventWords(t.resourceId, t.eventType),
+              }),
+              t.agentId,
+            )}
             active={t.active}
             busy={busy || Boolean(me.viewedBy)}
             onTry={() =>
@@ -355,8 +366,17 @@ function RoutinesPage() {
 }
 
 /** A routine in a sentence: understood, its plan read, then activated — or rephrased. */
-function NewRoutine({ busy, onActivate }: { busy: boolean; onActivate: (p: Proposal) => void }) {
+function NewRoutine({
+  busy,
+  agents,
+  onActivate,
+}: {
+  busy: boolean;
+  agents: HerAgent[];
+  onActivate: (p: Proposal, agentId: string) => void;
+}) {
   const [sentence, setSentence] = useState('');
+  const [agentId, setAgentId] = useState('');
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [thinking, setThinking] = useState(false);
@@ -415,12 +435,31 @@ function NewRoutine({ busy, onActivate }: { busy: boolean; onActivate: (p: Propo
               ))}
             </ol>
             <p className="text-body-sm text-fg-muted">{m.routines_rights()}</p>
+            {proposal.family !== 'watch' && agents.length > 0 && (
+              <label className="flex flex-col gap-1.5 text-body-sm font-semibold text-fg">
+                {m.routines_hand_to()}
+                <select
+                  value={agentId}
+                  onChange={(e) => setAgentId(e.target.value)}
+                  className="h-(--control-height) rounded-control border border-line-control bg-surface-control px-3 font-normal"
+                >
+                  <option value="">{m.routines_hand_none()}</option>
+                  {agents.map((a) => (
+                    <option key={a.agentId} value={a.agentId}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="font-normal text-fg-muted">{m.routines_hand_hint()}</span>
+              </label>
+            )}
             <div className="flex flex-wrap gap-2">
               <Button
                 disabled={busy}
                 onClick={() => {
-                  onActivate(proposal);
+                  onActivate(proposal, proposal.family === 'watch' ? '' : agentId);
                   setProposal(null);
+                  setAgentId('');
                   setSentence('');
                 }}
               >

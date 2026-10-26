@@ -21,7 +21,10 @@ import { partiesMigrationSql } from '../src/features/parties/index.js';
 import { projectsMigrationSql } from '../src/features/projects/index.js';
 import { rulesMigrationSql } from '../src/features/rules/index.js';
 import { notesAboutMigrationSql, notesMigrationSql } from '../src/features/notes/index.js';
-import { routinesMigrationSql } from '../src/features/routines/index.js';
+import {
+  routinesMigrationSql,
+  routinesOnAgentsMigrationSql,
+} from '../src/features/routines/index.js';
 import { documentsMigrationSql } from '../src/features/documents/index.js';
 import { formsMigrationSql } from '../src/features/forms/index.js';
 import { dossiersMigrationSql } from '../src/features/dossiers/index.js';
@@ -326,4 +329,6 @@ export const migrations: Migration[] = [
   { name: '0085_one_attention', sql: (context) => attentionTablesSql(context) },
   // The tables a turn of Kete read, kept with its run and drawn under its answer (spec 111).
   { name: '0086_run_tables', sql: (context) => runTablesMigrationSql(context) },
+  // A routine hands its work to one of her agents (spec 113).
+  { name: '0087_routines_on_agents', sql: (context) => routinesOnAgentsMigrationSql(context) },
 ];

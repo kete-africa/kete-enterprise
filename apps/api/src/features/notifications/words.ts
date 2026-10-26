@@ -7,6 +7,7 @@ const catalog = {
     decisionInformed: (title: string) => `Pour information : ${title}`,
     decisionReturned: (title: string, reason: string) =>
       `À corriger : ${title}${reason ? ` — ${reason}` : ''}`,
+    routineHandedTo: (agent: string) => `Confié à ${agent}`,
     scheduleAnswered: (title: string) => `Votre tâche « ${title} » a répondu`,
     taskAdded: (source: string, title: string) => `${source} : ${title}`,
     agentSignal: (subject: string) => `Votre agent signale : ${subject}`,
@@ -50,6 +51,7 @@ const catalog = {
     decisionInformed: (title: string) => `For your information: ${title}`,
     decisionReturned: (title: string, reason: string) =>
       `To correct: ${title}${reason ? ` — ${reason}` : ''}`,
+    routineHandedTo: (agent: string) => `Handed to ${agent}`,
     scheduleAnswered: (title: string) => `Your task « ${title} » answered`,
     taskAdded: (source: string, title: string) => `${source}: ${title}`,
     agentSignal: (subject: string) => `Your agent reports: ${subject}`,

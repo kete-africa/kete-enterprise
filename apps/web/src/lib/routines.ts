@@ -13,6 +13,7 @@ export interface Trigger {
   prompt: string;
   resourceId: string;
   eventType: string;
+  agentId: string | null;
   active: boolean;
   createdAt: string;
 }
@@ -51,6 +52,10 @@ export interface Figures {
   name: string;
   cards: { id: string; title: string }[];
 }
+export interface HerAgent {
+  agentId: string;
+  name: string;
+}
 export interface Routines {
   schedules: Schedule[];
   triggers: Trigger[];
@@ -58,6 +63,7 @@ export interface Routines {
   runs: Run[];
   apps: HeardApp[];
   figures: Figures[];
+  agents: HerAgent[];
 }
 export type Proposal =
   | {
@@ -125,12 +131,21 @@ export const createTrigger = createServerFn({ method: 'POST' })
       prompt: text(v.prompt, 2000),
       resourceId: text(v.resourceId, 80),
       eventType: text(v.eventType, 120),
+      agentId: text(v.agentId, 80),
       locale: v.locale === 'en' ? ('en' as const) : ('fr' as const),
     };
   })
-  .handler(async ({ data }) =>
-    answerOf(await sendGesture(getRequest(), '/v1/routines/triggers', data, crypto.randomUUID())),
-  );
+  .handler(async ({ data }) => {
+    const { agentId, ...rest } = data;
+    return answerOf(
+      await sendGesture(
+        getRequest(),
+        '/v1/routines/triggers',
+        { ...rest, ...(agentId ? { agentId } : {}) },
+        crypto.randomUUID(),
+      ),
+    );
+  });
 
 export const createWatch = createServerFn({ method: 'POST' })
   .validator((input: unknown) => {

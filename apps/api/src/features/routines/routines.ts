@@ -98,6 +98,7 @@ export const triggerInput = z.object({
   prompt: z.string().trim().min(1).max(2000),
   resourceId: z.string().min(1).max(80),
   eventType: z.string().min(1).max(120),
+  agentId: z.string().min(1).max(80).optional(),
 });
 export const watchInput = z.object({
   title: z.string().trim().min(1).max(120),
@@ -113,6 +114,8 @@ export interface Trigger {
   prompt: string;
   resourceId: string;
   eventType: string;
+  /** The agent of hers the routine hands its work to (spec 113). */
+  agentId: string | null;
   active: boolean;
   createdAt: string;
 }
@@ -155,6 +158,7 @@ type TriggerRow = {
   prompt: string;
   resource_id: string;
   event_type: string;
+  agent_id: string | null;
   active: boolean;
   created_at: Date;
 };
@@ -164,6 +168,7 @@ const triggerOf = (r: TriggerRow): Trigger => ({
   prompt: r.prompt,
   resourceId: r.resource_id,
   eventType: r.event_type,
+  agentId: r.agent_id,
   active: r.active,
   createdAt: r.created_at.toISOString(),
 });
@@ -229,8 +234,8 @@ export async function createTrigger(
   }
   const { rows } = await db.query<TriggerRow>(
     `insert into routine_triggers (trigger_id, organization_id, user_id, name, email, locale, title,
-       prompt, resource_id, event_type)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning *`,
+       prompt, resource_id, event_type, agent_id)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) returning *`,
     [
       newId('rtr'),
       person.organizationId,
@@ -242,6 +247,7 @@ export async function createTrigger(
       input.prompt,
       input.resourceId,
       input.eventType,
+      input.agentId ?? null,
     ],
   );
   return triggerOf(rows[0] as TriggerRow);
@@ -488,4 +494,15 @@ export async function failedRunsSince(db: SqlExecutor, since: Date): Promise<num
     [since],
   );
   return Number(rows[0]?.n ?? 0);
+}
+
+/** A routine may hand its work to one of her agents (spec 113). */
+export function routinesOnAgentsMigrationSql(options: { schema: string }): string {
+  const s = options.schema;
+  return `
+alter table ${s}.routine_triggers add column agent_id text;
+alter table ${s}.assistant_schedules add column agent_id text;
+alter table ${s}.assistant_schedules
+  add constraint assistant_schedules_agent_on_prompt check (agent_id is null or kind = 'prompt');
+`;
 }

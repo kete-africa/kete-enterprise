@@ -38,3 +38,32 @@ sequenceDiagram
   `routine_watches_due()`, security definer), then works each in its organization's transaction.
 - **Without a model**, understanding answers `assistant_unavailable`; she fills the same fields
   herself.
+
+## Handed to an agent (spec 113)
+
+A trigger and a scheduled question may name one agent of hers. The routine then gives no answer of
+its own: it gives the agent a task as she would have, and the agent works with the mandate she gave
+it for her absence (spec 108), reaching the apps its sources name.
+
+```mermaid
+sequenceDiagram
+  participant W as Worker
+  participant R as Routine (trigger or schedule)
+  participant G as Agent hand-off
+  participant T as Agent task
+  participant A as An app
+  W->>R: run (event heard, time come, or « Essayer maintenant »)
+  R->>G: her instruction + the event's facts (never secret data)
+  G->>G: the agent is at work and hers? otherwise the run fails
+  G->>T: queued task, requests expire after ten minutes
+  G-->>R: « Confié à <agent> », links to its thread
+  T->>A: its tools, with her mandate of now
+  T-->>G: its answer, in its thread with her
+```
+
+- No agent, no change: the assistant answers as before. An agent gone never falls back to the
+  assistant — the run fails and says so.
+- A scheduled task handed to an agent sends no e-mail; the answer is in the agent's thread.
+- Kept in `agent_id` on `routine_triggers` and `assistant_schedules` (migration 0087). The
+  assistant feature cannot import the agents above it: `useAgentHandOff` is how the routines
+  feature lends it the hand-off.
