@@ -10,6 +10,7 @@ export {
 } from './migration.js';
 export {
   agentAnswered,
+  agentsOfHers,
   agentThreadsMigrationSql,
   giveToAgent,
   runDueRoutines,

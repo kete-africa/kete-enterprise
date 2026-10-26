@@ -4,8 +4,9 @@ import { transaction } from '../../platform/db.js';
 import { bodyOf, GestureRefusal } from '../../platform/gestures.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { appsHeardBy } from '../apps/index.js';
-import { listSchedules } from '../assistant/index.js';
+import { agentHandOff, listSchedules } from '../assistant/index.js';
 import { figuresFor, readFigure } from '../dashboards/index.js';
+import { agentsOfHers } from '../messages/index.js';
 import { readModules } from '../organization/index.js';
 import {
   createTrigger,
@@ -43,10 +44,13 @@ const personOf = (identity: Identity, locale: 'fr' | 'en' = 'fr'): Person => ({
 });
 
 /** What she may build a routine on: the apps she hears, the figures she reads. */
-async function choicesOf(identity: Identity): Promise<Choices> {
+async function choicesOf(
+  identity: Identity,
+): Promise<Choices & { agents: { agentId: string; name: string }[] }> {
   return transaction(identity.organizationId, async (db) => ({
     apps: await appsHeardBy(db, identity),
     figures: (await readModules(db)).dashboards ? await figuresFor(db, identity) : [],
+    agents: (await agentsOfHers(db, identity)).map((a) => ({ agentId: a.agentId, name: a.name })),
   }));
 }
 
@@ -110,6 +114,9 @@ export const routineRoutes = new Hono<{ Variables: IdentityVariables }>()
       const app = (await appsHeardBy(db, identity)).find((a) => a.resourceId === input.resourceId);
       if (!app?.emits.some((e) => e.type === input.eventType)) {
         throw new GestureRefusal(422, 'unknown_event', 'Not an event she hears.');
+      }
+      if (input.agentId && !(await agentHandOff()?.allowed(identity, input.agentId))) {
+        throw new GestureRefusal(422, 'unknown_agent', 'Not an agent of hers.');
       }
       return createTrigger(db, personOf(identity, locale), input).catch((error: unknown) => {
         if (error instanceof RoutineLimitError) {

@@ -16,6 +16,7 @@ export interface Schedule {
   time: string;
   timeZone: string;
   byEmail: boolean;
+  agentId: string | null;
   active: boolean;
   nextRunAt: string;
   lastRunAt: string | null;
@@ -46,6 +47,7 @@ export const createSchedule = createServerFn({ method: 'POST' })
       time: text(v.time, 5),
       timeZone: text(v.timeZone, 64),
       byEmail: v.byEmail === true,
+      agentId: text(v.agentId, 80),
       locale: v.locale === 'en' ? ('en' as const) : ('fr' as const),
     };
   })
@@ -59,6 +61,7 @@ export const createSchedule = createServerFn({ method: 'POST' })
       time: data.time,
       ...(data.timeZone ? { timeZone: data.timeZone } : {}),
       byEmail: data.byEmail,
+      ...(data.kind === 'prompt' && data.agentId ? { agentId: data.agentId } : {}),
       locale: data.locale,
     };
     return answerOf(

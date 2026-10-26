@@ -2,8 +2,15 @@ import type { SqlExecutor } from '@kete/tenancy';
 import { getPool, transaction } from '../../platform/db.js';
 import type { IdentityVariables } from '../../platform/identity.js';
 import { appsHeardBy, eventOf, onAppEvent, type AcceptedEvent } from '../apps/index.js';
-import { answerAndLand, onScheduleRun } from '../assistant/index.js';
+import {
+  answerAndLand,
+  onScheduleRun,
+  useAgentHandOff,
+  type Instruction,
+} from '../assistant/index.js';
+import { findAgent } from '../agents/index.js';
 import { readFigure } from '../dashboards/index.js';
+import { agentsOfHers, giveToAgent } from '../messages/index.js';
 import { notificationWords, tell } from '../notifications/index.js';
 import {
   claimRun,
@@ -72,6 +79,36 @@ export async function queueEventRuns(db: SqlExecutor, event: AcceptedEvent): Pro
   return queued;
 }
 
+/**
+ * A routine's work handed to one of her agents (spec 113): a task as she would have given it, whose
+ * requests expire after ten minutes. The agent must be at work and hers; otherwise the run fails.
+ */
+async function giveToHerAgent(
+  who: Pick<Instruction, 'organizationId' | 'userId' | 'name' | 'email' | 'locale'>,
+  agentId: string,
+  instruction: string,
+): Promise<{ status: 'done' | 'failed'; text: string; href: string | null }> {
+  const identity = identityOf(who);
+  return transaction(who.organizationId, async (db) => {
+    const agent = await findAgent(db, agentId);
+    const hers = agent?.status === 'active' ? await agentsOfHers(db, identity) : [];
+    if (!agent || !hers.some((a) => a.agentId === agent.agentId)) {
+      return { status: 'failed' as const, text: '', href: null };
+    }
+    await giveToAgent(db, who.organizationId, {
+      agent,
+      givenBy: who.userId,
+      instruction,
+      fromRoutine: true,
+    });
+    return {
+      status: 'done' as const,
+      text: notificationWords(who.locale).routineHandedTo(agent.name),
+      href: `/mes-agents?agent=${agent.agentId}`,
+    };
+  });
+}
+
 /** Runs one trigger: her instruction answered with the event's facts, landed in « À faire ». */
 async function answerTrigger(
   organizationId: string,
@@ -84,6 +121,16 @@ async function answerTrigger(
   }));
   if (!found.trigger) return { status: 'failed', summary: null, href: null };
   const t = found.trigger;
+  if (t.agentId) {
+    const given = await giveToHerAgent(
+      t.person,
+      t.agentId,
+      `${t.prompt}
+
+${factsOf(found.event)}`,
+    );
+    return { status: given.status, summary: summaryOf(given.text), href: given.href };
+  }
   const answer = await answerAndLand(
     {
       ...t.person,
@@ -217,10 +264,17 @@ let listening = false;
 export function listenForRoutines(): void {
   if (listening) return;
   listening = true;
+  useAgentHandOff({
+    allowed: (identity, agentId) =>
+      transaction(identity.organizationId, async (db) =>
+        (await agentsOfHers(db, identity)).some((a) => a.agentId === agentId),
+      ),
+    give: giveToHerAgent,
+  });
   onAppEvent(async (db, event) => {
     await queueEventRuns(db, event);
   });
-  onScheduleRun(async ({ schedule, status, conversationId, text, tried }) => {
+  onScheduleRun(async ({ schedule, status, conversationId, href, text, tried }) => {
     await transaction(schedule.organizationId, (db) =>
       recordRun(db, {
         organizationId: schedule.organizationId,
@@ -231,7 +285,7 @@ export function listenForRoutines(): void {
         cause: tried ? 'essai' : 'heure fixe',
         status,
         summary: summaryOf(text),
-        href: conversationId ? `/assistant?c=${conversationId}` : null,
+        href: href ?? (conversationId ? `/assistant?c=${conversationId}` : null),
         tried,
       }),
     );

@@ -23,11 +23,14 @@ export {
   viewsMigrationSql,
 } from './conversations.js';
 export {
+  agentHandOff,
   answerAndLand,
   onScheduleRun,
   runDueSchedules,
   runSchedule,
   scheduleRoutes,
+  useAgentHandOff,
+  type AgentHandOff,
   type Instruction,
   type ScheduleRunOutcome,
 } from './schedule-runs.js';

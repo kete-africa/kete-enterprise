@@ -26,5 +26,5 @@ and at the Compte Kete, no app is reached; with mandates off, it cannot be given
 
 ## Left for later
 
-- Routines (`features/routines`) that call apps run without a mandate too; they move onto agents
-  (doctrine R13) rather than gaining their own.
+- ~~Routines (`features/routines`) that call apps run without a mandate too; they move onto agents
+  (doctrine R13) rather than gaining their own.~~ Done in spec 113.

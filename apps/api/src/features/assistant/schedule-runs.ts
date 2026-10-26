@@ -156,11 +156,32 @@ export async function answerAndLand(
   return answer;
 }
 
+/**
+ * What hands a routine's work to one of her agents (spec 113): the routines feature sets it, as the
+ * agents sit above the assistant. Without it, a routine naming an agent fails and says so.
+ */
+export interface AgentHandOff {
+  allowed(identity: Identity, agentId: string): Promise<boolean>;
+  give(
+    who: Instruction,
+    agentId: string,
+    instruction: string,
+  ): Promise<{ status: 'done' | 'failed'; text: string; href: string | null }>;
+}
+let handOff: AgentHandOff | null = null;
+export function useAgentHandOff(next: AgentHandOff | null): void {
+  handOff = next;
+}
+/** The hand-off in force, for the routines that share it. */
+export const agentHandOff = () => handOff;
+
 /** What a schedule's run was, for whoever keeps a history of runs (spec 051). */
 export interface ScheduleRunOutcome {
   schedule: ScheduleRun;
   status: 'done' | 'failed' | 'no_model';
   conversationId: string | null;
+  /** Where the run led, when it was not a conversation of hers: the agent's thread. */
+  href?: string | null;
   text: string;
   tried: boolean;
 }
@@ -177,6 +198,7 @@ export async function runSchedule(
   tried = false,
 ): Promise<'done' | 'failed' | 'no_model'> {
   let conversationId: string | null = null;
+  let href: string | null = null;
   let answered = '';
   const w = assistantWords(s.locale);
   const day = new Date().toISOString().slice(0, 10);
@@ -195,6 +217,18 @@ export async function runSchedule(
       paragraphs: briefing.text.split('\n').filter((line) => line.trim()),
       action: url ? { label: w.briefingAction, url } : null,
     };
+  } else if (s.agentId) {
+    // Handed to her agent: the answer comes in its thread, not in a mail.
+    const given = handOff
+      ? await handOff.give(s, s.agentId, s.prompt ?? s.title).catch((error: unknown) => {
+          console.error('[schedule] hand-off', (error as Error).message);
+          return { status: 'failed' as const, text: w.taskFailed, href: null };
+        })
+      : { status: 'failed' as const, text: w.taskFailed, href: null };
+    status = given.status;
+    answered = given.text;
+    href = given.href;
+    mail = { subject: w.taskSubject(s.title), paragraphs: [], action: null };
   } else {
     // The answer waits in her « To do », one per schedule and day.
     const answer = await answerAndLand(s, `${s.scheduleId}-${day}`);
@@ -212,7 +246,7 @@ export async function runSchedule(
     };
   }
   await transaction(s.organizationId, async (db) => {
-    if (s.byEmail && status !== 'no_model') {
+    if (s.byEmail && status !== 'no_model' && !s.agentId) {
       const rendered = renderMail({
         locale: s.locale,
         sender: await organizationName(db),
@@ -231,7 +265,7 @@ export async function runSchedule(
     await markScheduleRun(db, s.scheduleId, status);
   });
   for (const listener of runListeners) {
-    await listener({ schedule: s, status, conversationId, text: answered, tried }).catch(
+    await listener({ schedule: s, status, conversationId, href, text: answered, tried }).catch(
       (error: unknown) => console.error('[schedule] listener', (error as Error).message),
     );
   }
@@ -282,6 +316,9 @@ export const scheduleRoutes = new Hono<{ Variables: IdentityVariables }>()
       throw new GestureRefusal(422, 'invalid_input', 'A title, a time, a cadence.');
     }
     const identity = c.get('identity');
+    if (parsed.data.agentId && !(await handOff?.allowed(identity, parsed.data.agentId))) {
+      throw new GestureRefusal(422, 'unknown_agent', 'Not an agent of hers.');
+    }
     try {
       const schedule = await transaction(identity.organizationId, (db) =>
         createSchedule(db, identity, parsed.data),
