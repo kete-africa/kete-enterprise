@@ -130,7 +130,7 @@ export function eventsFromTheCenterMigrationSql(options: { schema: string }): st
   return `
 alter table ${s}.kete_events drop constraint kete_events_source_check;
 alter table ${s}.kete_events
-  add constraint kete_events_source_check check (source in ('app', 'index', 'center'));
+  add constraint kete_events_source_check check (source in ('app', 'index', 'measure', 'connection', 'center'));
 `;
 }
 
