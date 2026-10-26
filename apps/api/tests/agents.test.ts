@@ -48,6 +48,18 @@ interface AgentView {
 }
 const agentsOf = async (token: string | undefined) =>
   ((await call(token, 'GET', '/agents')).body as unknown as { agents: AgentView[] }).agents;
+/** What an agent signals, as she holds it in « Pour moi » (spec 112; D-062, R8). */
+const signalsHeld = async (token: string | undefined) =>
+  (
+    (await call(token, 'GET', '/pour-moi')).body as unknown as {
+      held: {
+        what: string;
+        source: { kind: string };
+        holder: { id: string };
+        delegate: { kind: string; id: string } | null;
+      }[];
+    }
+  ).held.filter((h) => h.source.kind === 'agent_signal');
 
 beforeAll(async () => {
   db = await startApi();
@@ -181,6 +193,14 @@ describe('it sleeps, wakes and signals', () => {
     expect(mine?.signals).toEqual([
       expect.objectContaining({ kind: 'registry.no_card', subject: 'Caisse' }),
     ]);
+    // One thing in « Pour moi »: hers to hold, her agent its delegate.
+    expect(await signalsHeld(t.awa)).toEqual([
+      expect.objectContaining({
+        what: 'Caisse',
+        holder: expect.objectContaining({ id: 'usr_awa' }),
+        delegate: expect.objectContaining({ kind: 'agent', id: ids.watcher }),
+      }),
+    ]);
   });
 
   it('closes the signal once the problem is solved', async () => {
@@ -201,6 +221,8 @@ describe('it sleeps, wakes and signals', () => {
       closed: 1,
     });
     expect((await agentsOf(t.awa))[0]?.signals).toEqual([]);
+    // Solved, it leaves « Pour moi » with it.
+    expect(await signalsHeld(t.awa)).toEqual([]);
   });
 
   it('journals what it does, as an agent acting for its person', async () => {

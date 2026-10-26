@@ -50,7 +50,7 @@ const iconOf = (h: Holding) =>
       ? 'chat'
       : h.source.kind === 'request'
         ? 'people'
-        : h.source.kind === 'agent_task'
+        : h.source.kind === 'agent_task' || h.source.kind === 'agent_signal'
           ? 'bot'
           : 'inbox';
 

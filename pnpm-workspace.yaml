@@ -18,6 +18,12 @@ minimumReleaseAgeExclude:
   - '@kete-africa/*'
 
 overrides:
+  # undici: denial of service on excessive content-encodings (published 2026-10-25), fixed in
+  # 7.30.1 — the undici the AI SDK uses at run time.
+  'undici@>=7.18.0 <7.30.1': ^7.30.1
+  # Testcontainers' undici stays on the 8.11 that loads on Node 22.14 (8.12 needs 22.19): see the
+  # advisory noted below.
+  'testcontainers>undici': 8.11.2
   # vitest 3 locks a tinypool with known flaws (GHSA-85c8-ppgw-ccpr and its sibling); 2.1.2 fixes
   # them and keeps the same pool interface.
   vitest>tinypool: ^2.1.2
@@ -40,3 +46,6 @@ auditConfig:
     # time, Kete's own file) and @mcp-ui/client, which validates in her browser what an app's view
     # sends to its own frame; every zod at the server is 4.6.6 or later.
     - GHSA-mrhx-c7xc-m3w5
+    # undici 8, only under @kete/testing's Testcontainers (tests, never run here nor at run time):
+    # its fixed 8.12.2 needs Node 22.19, and the CI and this workshop run 22.14.
+    - GHSA-xjj6-f33q-929c

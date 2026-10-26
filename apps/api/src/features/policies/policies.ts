@@ -12,6 +12,7 @@ import type { SqlExecutor } from '@kete/tenancy';
 import { awayOn } from '@kete/work';
 import { transaction } from '../../platform/db.js';
 import { approversOf } from '../decisions/index.js';
+import { hourIn, timeZoneIn } from '../settings/index.js';
 import { centerStructure } from '../work/index.js';
 import {
   basePolicies,
@@ -199,10 +200,15 @@ export async function entitiesFor(db: SqlExecutor, gesture: Gesture): Promise<En
   ];
 }
 
-/** The gesture's context, completed with what the center knows: the hour of a message. */
-function completed(gesture: Gesture): Gesture {
+/**
+ * The gesture's context, completed with what the center knows: the hour of a message, at the
+ * organization's own time zone (spec 112; D-062, R19) — « pas de message au client après 19 h »
+ * means 19 h where the organization works, not in UTC.
+ */
+async function completed(db: SqlExecutor, organizationId: string, gesture: Gesture) {
   if (gesture.kind !== 'message.client' || gesture.context?.hour !== undefined) return gesture;
-  return { ...gesture, context: { ...gesture.context, hour: new Date(gesture.at).getUTCHours() } };
+  const hour = hourIn(new Date(gesture.at), await timeZoneIn(db, organizationId));
+  return { ...gesture, context: { ...gesture.context, hour } };
 }
 
 /**
@@ -224,7 +230,7 @@ export async function decideFor(
   if (!objectOf[kind].includes(gesture.object.kind)) {
     throw new GestureError('wrong_object', `« ${kind} » acts on a ${objectOf[kind].join(' or ')}.`);
   }
-  const full = completed(gesture);
+  const full = await completed(db, organizationId, gesture);
   const entities = await entitiesFor(db, full);
   const policies = (await currentPolicies(db)).filter((p) => p.status !== 'off');
   const deciding = options.appRules

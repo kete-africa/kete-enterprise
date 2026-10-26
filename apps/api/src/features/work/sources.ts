@@ -1,9 +1,11 @@
 import type { Holding as SaidHolding } from '@kete/sdk';
 import type { SqlExecutor } from '@kete/tenancy';
+import { findAgent, personOfAgent } from '../agents/index.js';
 import { approversNow, currentStep, findRequest, pendingRequestIds } from '../decisions/index.js';
 
-// The center's six sources of « a thing in progress », said as holdings (spec 087, FR-001). Their
-// tables stay; each open item is read here and said as a `holding.v1` under its source.
+// The center's sources of « a thing in progress », said as holdings (spec 087, FR-001; an agent's
+// signal since spec 112, D-062 R8). Their tables stay; each open item is read here and said as a
+// `holding.v1` under its source.
 
 export const APP = 'enterprise';
 
@@ -15,6 +17,7 @@ export const sourceKinds = {
   circuit_step: (ref: string) => `/a-faire?decision=${ref}`,
   draft: () => '/a-faire',
   agent_task: () => '/mes-agents',
+  agent_signal: () => '/mes-agents',
 } as const;
 export type SourceKind = keyof typeof sourceKinds;
 
@@ -199,7 +202,45 @@ async function agentTasks(db: SqlExecutor): Promise<Said[]> {
   );
 }
 
-/** Every open item of the six sources, as holdings. */
+/**
+ * A problem an agent's watch found and keeps open (spec 112; D-062, R8): held by the person the
+ * agent acts for, the agent its delegate — one thing in « Pour moi », not a notification alone.
+ * Solved, the agent closes it and the holding finishes with it.
+ */
+async function agentSignals(db: SqlExecutor): Promise<Said[]> {
+  const { rows } = await db.query<{
+    signal_id: string;
+    agent_id: string;
+    subject: string;
+    raised_at: Date;
+  }>(
+    `select signal_id, agent_id, subject, raised_at from agent_signals where closed_at is null
+      order by raised_at`,
+  );
+  const people = new Map<string, string | null>();
+  const found: Said[] = [];
+  for (const r of rows) {
+    if (!people.has(r.agent_id)) {
+      const agent = await findAgent(db, r.agent_id);
+      people.set(r.agent_id, agent ? await personOfAgent(db, agent) : null);
+    }
+    const holder = people.get(r.agent_id);
+    // An agent nobody answers for today raises nothing anybody holds: it waits for its person.
+    if (!holder) continue;
+    found.push(
+      said('agent_signal', r.signal_id, {
+        what: r.subject,
+        holder: person(holder),
+        delegate: { kind: 'agent', id: r.agent_id },
+        state: 'held',
+        since: iso(r.raised_at),
+      }),
+    );
+  }
+  return found;
+}
+
+/** Every open item of the sources, as holdings. */
 export async function openItems(
   db: SqlExecutor,
   head: string | null,
@@ -211,6 +252,7 @@ export async function openItems(
     ...(await actions(db)),
     ...(await circuitSteps(db, head)),
     ...(await agentTasks(db)),
+    ...(await agentSignals(db)),
   ];
   return { items, drafts: await drafts(db) };
 }
