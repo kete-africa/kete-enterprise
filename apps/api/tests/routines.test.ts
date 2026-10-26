@@ -4,6 +4,7 @@ import { MockLanguageModelV4 } from 'ai/test';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApi } from '../src/app.js';
 import { useModel } from '../src/features/assistant/index.js';
+import { dispatchEvents } from '../src/features/events/index.js';
 import { useCardReader, type IdentityCard } from '../src/features/registry/index.js';
 import {
   checkDueWatches,
@@ -244,6 +245,9 @@ describe('a routine', () => {
       ).status,
     ).toBe(422);
     await deliver([event('ticket.critical'), event('pay.changed')]);
+    // The dispatcher delivers it to the trigger, once however often it runs (spec 114).
+    await dispatchEvents(ORG);
+    await dispatchEvents(ORG);
     const queued = (await overview(t.ama)).runs;
     expect(queued).toEqual([expect.objectContaining({ family: 'event', status: 'queued' })]);
     useModel(answering('Afi est libre cet après-midi.'));
@@ -275,8 +279,37 @@ describe('a routine', () => {
       overview(t.ama).then((o) =>
         o.runs.filter((r) => r.family === 'watch' && r.status === 'told'),
       );
+    // An agent of hers follows the center's « figure.* » facts (spec 114).
+    await call(t.ama, 'POST', '/organization/modules', { module: 'agents', enabled: true });
+    const agent = String(
+      (
+        await call(t.ama, 'POST', '/agents', {
+          name: 'Veille délais',
+          kind: 'personal',
+          mission: 'Suivre les délais.',
+          watches: ['decisions'],
+        })
+      ).body.agentId,
+    );
+    const follow = await call(t.ama, 'POST', '/events/subscriptions', {
+      consumer: 'agent',
+      consumerId: agent,
+      type: 'figure.*',
+    });
+    expect(follow.status).toBe(201);
     expect(await checkDueWatches()).toBe(1);
     expect((await told()).length).toBe(1);
+    await dispatchEvents(ORG);
+    await dispatchEvents(ORG);
+    const tasksOf = async () =>
+      (
+        await db.owner.query(
+          `select instruction from ${db.schema}.agent_tasks where agent_id = $1`,
+          [agent],
+        )
+      ).rows as { instruction: string }[];
+    expect(await tasksOf()).toHaveLength(1);
+    expect((await tasksOf())[0]?.instruction).toContain('Délai moyen');
     // Still over the line an hour later: no second word.
     await db.owner.query('update routine_watches set last_checked_at = null');
     await checkDueWatches();
@@ -287,6 +320,10 @@ describe('a routine', () => {
     await db.owner.query('update routine_watches set line = 3, last_checked_at = null');
     await checkDueWatches();
     expect((await told()).length).toBe(2);
+    const crossed = await db.owner.query(
+      `select count(*)::int as n from ${db.schema}.kete_events where type = 'figure.crossed'`,
+    );
+    expect(crossed.rows[0]?.n).toBe(2);
     const notes = (await call(t.ama, 'GET', '/notifications')).body;
     expect(JSON.stringify(notes)).toContain('Délai moyen');
   });

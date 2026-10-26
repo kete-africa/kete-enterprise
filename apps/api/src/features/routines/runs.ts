@@ -1,7 +1,8 @@
+import { newEventId } from '@kete/sdk';
 import type { SqlExecutor } from '@kete/tenancy';
 import { getPool, transaction } from '../../platform/db.js';
 import type { IdentityVariables } from '../../platform/identity.js';
-import { appsHeardBy, eventOf, onAppEvent, type AcceptedEvent } from '../apps/index.js';
+import { appsHeardBy, eventOf, type AcceptedEvent } from '../apps/index.js';
 import {
   answerAndLand,
   onScheduleRun,
@@ -9,6 +10,13 @@ import {
   type Instruction,
 } from '../assistant/index.js';
 import { findAgent } from '../agents/index.js';
+import {
+  logCenterEvent,
+  provideConsumers,
+  type Consumer,
+  type KeteEventRow,
+} from '../events/index.js';
+import { listResources } from '../registry/index.js';
 import { readFigure } from '../dashboards/index.js';
 import { agentsOfHers, giveToAgent } from '../messages/index.js';
 import { notificationWords, tell } from '../notifications/index.js';
@@ -55,28 +63,43 @@ function factsOf(event: AcceptedEvent | null): string {
   return `Évènement « ${event.type} » (${event.description}), le ${event.occurredAt} : ${data}`;
 }
 
-/** Each accepted event queues one run per trigger listening, in the event's own transaction. */
-export async function queueEventRuns(db: SqlExecutor, event: AcceptedEvent): Promise<number> {
-  if (event.classification === 'secret') return 0;
-  let queued = 0;
-  for (const trigger of await triggersListening(db, event.resourceId, event.type)) {
-    // She hears this app still: her registry shows it, her rights in it give her something.
-    const heard = await appsHeardBy(db, { userId: trigger.person.userId, role: null });
-    const app = heard.find((a) => a.resourceId === event.resourceId);
-    if (!app?.emits.some((e) => e.type === event.type)) continue;
-    await recordRun(db, {
-      organizationId: trigger.person.organizationId,
-      userId: trigger.person.userId,
-      family: 'event',
-      routineId: trigger.triggerId,
-      title: trigger.title,
-      cause: `${app.name} · ${event.description}`,
-      status: 'queued',
-      eventId: event.eventId,
-    });
-    queued += 1;
+/**
+ * The routines an event triggers, as the dispatcher's consumers (spec 114): one per active trigger
+ * listening to the app's event. Its run is queued in the delivery's own transaction — once — and
+ * only if its person still hears the app and the app still declares the type.
+ */
+async function routineConsumers(
+  db: SqlExecutor,
+  _organizationId: string,
+  event: KeteEventRow,
+): Promise<Consumer[]> {
+  if (event.source !== 'app') return [];
+  const app = (await listResources(db)).find(
+    (r) => r.kind === 'app' && r.card?.product === event.product,
+  );
+  if (!app) return [];
+  const consumers: Consumer[] = [];
+  for (const trigger of await triggersListening(db, app.resourceId, event.type)) {
+    consumers.push([
+      `routine:${trigger.triggerId}`,
+      async (tx) => {
+        const heard = await appsHeardBy(tx, { userId: trigger.person.userId, role: null });
+        const hears = heard.find((a) => a.resourceId === app.resourceId);
+        if (!hears?.emits.some((e) => e.type === event.type)) return;
+        await recordRun(tx, {
+          organizationId: trigger.person.organizationId,
+          userId: trigger.person.userId,
+          family: 'event',
+          routineId: trigger.triggerId,
+          title: trigger.title,
+          cause: `${hears.name} · ${event.label}`,
+          status: 'queued',
+          eventId: event.eventId,
+        });
+      },
+    ]);
   }
-  return queued;
+  return consumers;
 }
 
 /**
@@ -222,6 +245,19 @@ export async function checkWatch(
     const href = `/tableaux-de-bord/${w.dashboardId}`;
     if (tells && said) {
       await tell(db, organizationId, w.person.userId, { kind: 'routine.watch', title: said, href });
+      // The center says it too, on the one path: whoever follows « figure.* » learns it (spec 114).
+      await logCenterEvent(db, organizationId, {
+        eventId: newEventId(),
+        type: 'figure.crossed',
+        label: said,
+        data: {
+          dashboardId: w.dashboardId,
+          cardId: w.cardId,
+          direction: w.direction,
+          line: w.line,
+          value: figure?.value ?? null,
+        },
+      });
     }
     const status: RunStatus = figure === null ? 'failed' : tells ? 'told' : 'quiet';
     if (tells || options.tried) {
@@ -271,9 +307,7 @@ export function listenForRoutines(): void {
       ),
     give: giveToHerAgent,
   });
-  onAppEvent(async (db, event) => {
-    await queueEventRuns(db, event);
-  });
+  provideConsumers(routineConsumers);
   onScheduleRun(async ({ schedule, status, conversationId, href, text, tried }) => {
     await transaction(schedule.organizationId, (db) =>
       recordRun(db, {

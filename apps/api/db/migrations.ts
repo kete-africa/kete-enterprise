@@ -103,7 +103,10 @@ import {
   runTablesMigrationSql,
 } from '../src/features/messages/index.js';
 import { objectsMigrationSql } from '../src/features/objects/index.js';
-import { eventsMigrationSql } from '../src/features/events/index.js';
+import {
+  eventsFromTheCenterMigrationSql,
+  eventsMigrationSql,
+} from '../src/features/events/index.js';
 import { measureMigrationSql } from '../src/features/measure/index.js';
 import { viewConfigsMigrationSql } from '../src/features/views/index.js';
 import { connectionsMigrationSql } from '../src/features/connections/index.js';
@@ -331,4 +334,9 @@ export const migrations: Migration[] = [
   { name: '0086_run_tables', sql: (context) => runTablesMigrationSql(context) },
   // A routine hands its work to one of her agents (spec 113).
   { name: '0087_routines_on_agents', sql: (context) => routinesOnAgentsMigrationSql(context) },
+  // The center's own facts join the one event path: a figure that crossed its line (spec 114).
+  {
+    name: '0088_events_from_the_center',
+    sql: (context) => eventsFromTheCenterMigrationSql(context),
+  },
 ];

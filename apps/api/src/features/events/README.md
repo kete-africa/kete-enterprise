@@ -14,6 +14,8 @@ flowchart LR
   S[(event_subscriptions)] --> D
   D -->|claimed once · event_deliveries| T[the object's thread · a line said by Kete]
   D -->|claimed once| G[an agent that follows it · a task in the object's thread]
+  D -->|claimed once · spec 114| R[a routine whose trigger listens · a queued run]
+  C[a watch · its figure crossed its line] -->|figure.crossed| L
   N -->|the object changed| V[screens open on it · /v1/objects/:kind/:id/live]
   D -->|failed · retried up to 5 times| F[/v1/events/failures · the administrator/]
 ```
@@ -35,6 +37,10 @@ flowchart LR
   `via: kete`, for information. An agent: a task given in the object's thread (`giveToAgent`) —
   what happened, the object's title, the change of state in words; it proposes, it commits nothing
   alone.
+- **Routines and watches** (spec 114): the routines an app's event triggers are consumers like the
+  others — `routine:<trigger>` — lent by the routines feature through `provideConsumers`, so the
+  event path imports nothing above it. A watch whose figure crossed its line records `figure.crossed`
+  (source `center`, migration 0088); an agent that follows `figure.*` gets a task.
 - **Read.** `GET /v1/objects/:kind/:id/events`: what happened to an object she may read (an app's
   data never shown, only its words). `GET /v1/objects/:kind/:id/live`: a stream that tells the
   screen when the object changes; the screen then reads it again. `GET /v1/events/failures`: what

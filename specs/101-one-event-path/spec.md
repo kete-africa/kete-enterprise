@@ -54,6 +54,6 @@ shown to the administrator only.
 - The agent's screen « Quand il se met au travail » lists and edits its subscriptions (spec 146,
   the agents' tools and triggers).
 - A person (not only an agent) following an object: her attention (spec 149).
-- The routines an app's event triggers (spec 051, `onAppEvent`) and the figure watches still have
+- ~~The routines an app's event triggers (spec 051, `onAppEvent`) and the figure watches still have
   their own trigger: they become consumers of this path with the agents' triggers (spec 146), and a
-  figure past its threshold an event with the Measure (spec 144).
+  figure past its threshold an event with the Measure (spec 144).~~ Done in spec 114.

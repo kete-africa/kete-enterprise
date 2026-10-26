@@ -115,13 +115,47 @@ grant execute on function ${s}.kete_events_pending() to ${options.appRole};
 
 export interface KeteEventRow {
   eventId: string;
-  source: 'app' | 'index';
+  source: 'app' | 'index' | 'center';
   product: string;
   type: string;
   object: { kind: string; id: string } | null;
   label: string;
   data: Record<string, unknown>;
   occurredAt: string;
+}
+
+/** The center's own facts join the log: a figure that crossed its line (spec 114). */
+export function eventsFromTheCenterMigrationSql(options: { schema: string }): string {
+  const s = options.schema;
+  return `
+alter table ${s}.kete_events drop constraint kete_events_source_check;
+alter table ${s}.kete_events
+  add constraint kete_events_source_check check (source in ('app', 'index', 'measure', 'connection', 'center'));
+`;
+}
+
+/** Records a fact of the center itself (spec 114): once, by its own identifier. */
+export async function logCenterEvent(
+  db: SqlExecutor,
+  organizationId: string,
+  event: {
+    eventId: string;
+    type: string;
+    label: string;
+    data: Record<string, unknown>;
+  },
+): Promise<void> {
+  await db.query(
+    `insert into kete_events (organization_id, event_id, source, product, type, label, data)
+     values ($1, $2, 'center', 'center', $3, $4, $5) on conflict do nothing`,
+    [
+      organizationId,
+      event.eventId,
+      event.type,
+      event.label.slice(0, 300),
+      JSON.stringify(event.data),
+    ],
+  );
 }
 
 /** Records an app's accepted business event in the log, with the object it names (spec 143). */

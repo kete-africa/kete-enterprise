@@ -4,14 +4,18 @@ export {
   dispatchEvents,
   dispatchPending,
   dispatchSoon,
+  provideConsumers,
+  type Consumer,
   listenForEvents,
   onObjectChange,
   type ObjectChange,
 } from './dispatch.js';
 export {
+  eventsFromTheCenterMigrationSql,
   eventsMigrationSql,
   follows,
   logAppEvent,
+  logCenterEvent,
   subscriptionInput,
   type KeteEventRow,
   type Subscription,
