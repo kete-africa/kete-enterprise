@@ -1422,7 +1422,12 @@ export function ThreadsScreen({
   const allNames = { ...names, ...(view?.names ?? {}), ...extraNames };
   const nameOf = (who: { id: string }) => (who.id === KETE ? 'Kete' : (allNames[who.id] ?? ''));
   const faceOf = (who: { id: string }) => view?.faces?.[who.id] ?? null;
-  const messages = [...(older?.messages ?? []), ...(view?.messages ?? [])];
+  // Kete's other voices — the morning point, the briefing — are Kete, not an agent (D-061).
+  const asKete = <T extends { author: { kind: string; id: string } }>(msg: T): T =>
+    msg.author.kind === 'agent' && msg.author.id !== KETE && allNames[msg.author.id] === 'Kete'
+      ? { ...msg, author: { kind: 'agent', id: KETE } }
+      : msg;
+  const messages = [...(older?.messages ?? []), ...(view?.messages ?? [])].map(asKete);
   const byId = new Map(
     messages.flatMap((msg) => [[msg.first, msg] as const, [msg.id, msg] as const]),
   );
