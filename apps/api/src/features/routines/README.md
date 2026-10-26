@@ -18,8 +18,8 @@ sequenceDiagram
   M-->>R: family, fields, plan (checked against her choices)
   R-->>P: the plan — nothing kept yet
   P->>R: activate (a schedule, a trigger or a watch)
-  A->>E: an event, accepted once
-  E->>R: onAppEvent, same transaction
+  A->>E: an event, accepted once, in the log
+  E->>R: the dispatcher delivers it to each trigger listening (spec 114), once
   R->>R: one queued run per active trigger whose person still hears the app
   W->>R: run queued (every minute) — her assistant answers, the answer in « À faire »
   W->>R: check watches due (each at most hourly) — crossing tells her once

@@ -18,12 +18,29 @@ import { eventWords } from './words.js';
 // kept and retried, five times at most, then shown. The event is « seen » when every consumer is
 // done or has given up, so the worker stops scanning it.
 
+/** A consumer of one event: its key in the deliveries, and its effect in the delivery's transaction. */
+export type Consumer = [key: string, effect: (db: SqlExecutor) => Promise<void>];
+type ConsumerProvider = (
+  db: SqlExecutor,
+  organizationId: string,
+  event: KeteEventRow,
+) => Promise<Consumer[]>;
+const providers: ConsumerProvider[] = [];
+
+/**
+ * A feature that depends on events says who it is a consumer for (spec 114): the routines an app's
+ * event triggers. It lends them here, so the event path never imports the features above it.
+ */
+export function provideConsumers(provider: ConsumerProvider): void {
+  providers.push(provider);
+}
+
 /** How many times a failing consumer is tried. */
 export const ATTEMPTS = 5;
 
 type Row = {
   event_id: string;
-  source: 'app' | 'index';
+  source: 'app' | 'index' | 'center';
   product: string;
   type: string;
   object_kind: string | null;
@@ -125,7 +142,7 @@ async function toAgent(
   await giveToAgent(db, organizationId, {
     agent,
     givenBy: person,
-    instruction: words.toAgent(event.source === 'app' ? event.label : event.type, title, details),
+    instruction: words.toAgent(event.source === 'index' ? event.type : event.label, title, details),
     ...(thread ? { threadId: thread } : {}),
   });
 }
@@ -187,7 +204,7 @@ export async function dispatchEvents(organizationId: string): Promise<number> {
   });
   let made = 0;
   for (const event of events) {
-    const consumers: [string, (db: SqlExecutor) => Promise<void>][] = [];
+    const consumers: Consumer[] = [];
     if (event.source === 'app' && event.object) {
       consumers.push(['thread', (db) => toThread(db, organizationId, event)]);
     }
@@ -200,6 +217,11 @@ export async function dispatchEvents(organizationId: string): Promise<number> {
         `subscription:${subscription.subscriptionId}`,
         (db) => toAgent(db, organizationId, event, subscription.consumerId),
       ]);
+    }
+    for (const provider of providers) {
+      consumers.push(
+        ...(await transaction(organizationId, (db) => provider(db, organizationId, event))),
+      );
     }
     let pending = false;
     for (const [key, effect] of consumers) {

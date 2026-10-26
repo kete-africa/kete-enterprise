@@ -2,6 +2,7 @@ import { newEventId } from '@kete/sdk';
 import type { TestSchema } from '@kete/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApi } from '../src/app.js';
+import { dispatchEvents } from '../src/features/events/index.js';
 import { useCardReader, type IdentityCard } from '../src/features/registry/index.js';
 import { runQueuedRoutines } from '../src/features/routines/index.js';
 import { useAppVerifier } from '../src/platform/identity.js';
@@ -141,6 +142,7 @@ describe('a routine handed to an agent', () => {
     });
     expect(made.status).toBe(201);
     await deliver();
+    await dispatchEvents(ORG);
     expect(await runQueuedRoutines()).toBe(1);
     const [task] = await tasksOfAgent(ids.amaAgent);
     expect(task?.givenBy).toBe('usr_ama');

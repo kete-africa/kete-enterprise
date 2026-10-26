@@ -13,6 +13,7 @@ import {
   scriptedAnswers,
   scriptedEvening,
   scriptedProposal,
+  scriptedRoutine,
   scriptedTask,
 } from '../db/demo/answers.js';
 import { useClosureModel } from '../src/features/closure/index.js';
@@ -29,6 +30,7 @@ import { migrations } from '../db/migrations.js';
 import { runQueuedTasks, useAgentModel, useTaskModel } from '../src/features/agents/index.js';
 import { runDueRoutines } from '../src/features/messages/index.js';
 import { useModel } from '../src/features/assistant/index.js';
+import { useRoutineModel } from '../src/features/routines/index.js';
 
 // Kete Enterprise on this machine, to look at its screens: `pnpm demo` from the repository's root.
 //
@@ -290,6 +292,8 @@ if (manager && colleague) {
   // Its agents at work (spec 099, part C): what they are given runs every few seconds, their
   // routines at their time — the worker's two jobs, in the demo's own process.
   if (!realModel) useTaskModel(scriptedTask());
+  // « Nouvelle routine » understands any sentence as the same weekday morning look (spec 113).
+  if (!realModel) useRoutineModel(scriptedRoutine());
   setInterval(() => {
     void runQueuedTasks()
       .then(() => runDueRoutines())

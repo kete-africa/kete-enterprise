@@ -207,6 +207,41 @@ export function scriptedTask() {
 }
 
 /**
+ * The routine the demo understands from any sentence (spec 113): every weekday morning, a look at
+ * what stays open. Written in advance, like the answers: it shows the plan and the choice of an
+ * agent to hand it to, not a model.
+ */
+export function scriptedRoutine() {
+  const proposal = {
+    family: 'time',
+    title: 'Ce qui reste ouvert, chaque matin',
+    instruction: 'Dis-moi ce qui reste ouvert dans mes applications.',
+    cadence: 'weekdays',
+    weekday: null,
+    time: '08:00',
+    resourceId: null,
+    eventType: null,
+    dashboardId: null,
+    cardId: null,
+    direction: null,
+    line: null,
+    plan: [
+      'Chaque jour ouvré à 8 h',
+      'Une réponse est préparée avec vos droits',
+      'Elle vous attend dans « À faire »',
+    ],
+  };
+  return new MockLanguageModelV4({
+    doGenerate: {
+      content: [{ type: 'text', text: JSON.stringify(proposal) }],
+      finishReason: { unified: 'stop', raw: 'stop' },
+      usage,
+      warnings: [],
+    },
+  });
+}
+
+/**
  * The job description the demo proposes for any sentence (step C7): an agent that watches her
  * late decisions. Written in advance, like the answers: it shows the dry run, not a model.
  */
