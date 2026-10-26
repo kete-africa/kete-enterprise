@@ -1,6 +1,8 @@
+import { createAccountSettings } from '@kete/settings';
 import type { TestSchema } from '@kete/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApi } from '../src/app.js';
+import { useAccountSettings } from '../src/features/settings/index.js';
 import { startApi, tokenFor } from './support.js';
 
 // Spec 088 (doctrine D-058): one policy engine at the gesture, the same for a person and her
@@ -339,5 +341,48 @@ describe('circuits and compliance', () => {
       outcome: 'fail',
       details: { count: 1, items: ['Aucun achat au-delà de 1 000 000 F'] },
     });
+  });
+});
+
+describe('the hour of a message, where the organization works (spec 112; D-062, R19)', () => {
+  it('reads « after 19 h » at the organization’s time zone, not in UTC', async () => {
+    // The organization works in Tokyo: 10:30 UTC is 19:30 there.
+    useAccountSettings(
+      createAccountSettings({
+        url: 'https://compte.kete.test',
+        fetch: (async () =>
+          Response.json({
+            organizationId: 'org_kya',
+            organization: { 'kete.time_zone': 'Asia/Tokyo' },
+            person: {},
+          })) as unknown as typeof fetch,
+      }),
+    );
+    try {
+      await get(t.admin, '/settings');
+      await inForce({
+        id: 'clients.late',
+        sentence: 'Un agent n’écrit pas aux clients après 19 h',
+        rule: `forbid (principal is Kete::Agent, action == Kete::Action::"message.client", resource)
+          when { context.hour >= 19 };`,
+        set: 'authority',
+      });
+      const late = (at: string) => ({
+        actor: hisAgent,
+        kind: 'message.client',
+        object: { kind: 'party', id: 'pty_hotel_golfe' },
+        channel: 'whatsapp',
+        context: { optedOut: false },
+        at,
+      });
+      expect((await decide(t.kossi, late('2026-10-23T10:30:00.000Z'))).decision.effect).toBe(
+        'refuse',
+      );
+      expect((await decide(t.kossi, late('2026-10-23T05:00:00.000Z'))).decision.effect).not.toBe(
+        'refuse',
+      );
+    } finally {
+      useAccountSettings(createAccountSettings({ url: process.env.KETE_ACCOUNT_URL }));
+    }
   });
 });

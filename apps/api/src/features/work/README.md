@@ -5,13 +5,14 @@ holding of `@kete/work` (kete-core spec 111): one holder, a person or an agent, 
 
 ```mermaid
 flowchart LR
-  subgraph Sources[the six sources · their tables stay]
+  subgraph Sources[the sources · their tables stay]
     R[colleague_requests]
     T[app_tasks]
     A[actions]
     C[decision_requests · current step]
     D[kete_drafts · prepared]
     G[agent_tasks · queued, running]
+    X[agent_signals · open]
   end
   Sources -->|sources.ts · openItems| S[sync.ts · syncHoldings]
   S -->|sayHolding · finishHolding| W[(kete_holdings · kete_holding_events)]
@@ -23,14 +24,15 @@ flowchart LR
   P --> H[POST /v1/pour-moi/:id/rendre]
 ```
 
-| Source                      | Holder                                                                | Waits on                           | Closes when                   |
-| --------------------------- | --------------------------------------------------------------------- | ---------------------------------- | ----------------------------- |
-| A colleague's request       | the colleague asked                                                   | the requester, when she asked back | returned, declined, cancelled |
-| An app's task (« À faire ») | its person                                                            | —                                  | done                          |
-| A meeting's action          | its responsible person (her account)                                  | —                                  | done or cancelled             |
-| A circuit's current step    | its first approver today, else the head; the requester when sent back | —                                  | decided                       |
-| A draft an agent prepared   | the person it was prepared for                                        | —                                  | validated or refused          |
-| An agent's task             | the agent                                                             | —                                  | done, failed or stopped       |
+| Source                       | Holder                                                                | Waits on                           | Closes when                   |
+| ---------------------------- | --------------------------------------------------------------------- | ---------------------------------- | ----------------------------- |
+| A colleague's request        | the colleague asked                                                   | the requester, when she asked back | returned, declined, cancelled |
+| An app's task (« À faire »)  | its person                                                            | —                                  | done                          |
+| A meeting's action           | its responsible person (her account)                                  | —                                  | done or cancelled             |
+| A circuit's current step     | its first approver today, else the head; the requester when sent back | —                                  | decided                       |
+| A draft an agent prepared    | the person it was prepared for                                        | —                                  | validated or refused          |
+| An agent's task              | the agent                                                             | —                                  | done, failed or stopped       |
+| An agent's signal (spec 112) | the person the agent acts for, the agent its delegate                 | —                                  | solved or resolved            |
 
 - **The sync** runs each minute (worker `sync-holdings`) and before « Pour moi » and the figures
   are read. An item unchanged is not written again; a holding the relay gave to a delegate keeps

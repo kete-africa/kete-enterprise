@@ -62,3 +62,6 @@ flowchart LR
 | `POST /decide`           | everyone       | A `gesture.v1` for herself or her agent; a `policy-decision.v1`       |
 
 The demo writes KYA's six policies (`db/demo/kya-policies.ts`).
+
+- **The hour of a message** (spec 112; D-062, R19): a gesture `message.client` without an hour in
+  its context is given the hour at the organization's time zone (`kete.time_zone`), never UTC.
